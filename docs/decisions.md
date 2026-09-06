@@ -108,18 +108,8 @@ history colours and the rank badges each need a single ground designed for
 properly — holds whichever ground is chosen. `color-scheme: light` is
 declared so the browser does not auto-invert anything.
 
-Two consequences for later stages, which is why this is worth recording:
-
-- **Stage 4 heatmap.** The red/orange/yellow/green scale was specified for a
-  dark ground. On white, yellow is the problem colour: it cannot carry a
-  value at small size. The band tokens are already defined as text-safe
-  variants, and the heatmap will need a value or label in each cell rather
-  than relying on the hue — which §12 requires anyway.
-- **Stage 5 rank badges.** "Metallic, dimensional, subtle glow" was written
-  against black. Glow does not read on white; the badges will need to earn
-  their drama from material, depth and geometry instead, or sit on their own
-  darker surface within the otherwise light Rank screen. Worth deciding
-  before that stage starts.
+Two consequences for later stages followed from this; both are now settled
+in D15 and D16.
 
 ## D14 — Two weights per pastel, and they are not interchangeable
 
@@ -131,3 +121,44 @@ softness the design asks for and the contrast accessibility requires.
 
 Where a colour is display-sized (the 76px sports numeral) the 3:1 large-text
 bar applies and the lighter `-mid` is used deliberately.
+
+## D15 — The heatmap stays fully inside the light interface
+
+*Decided by the product owner.*
+
+No dark inset for the history grid. The red/orange/yellow/green bands are
+re-mixed specifically for a light ground rather than reused from the dark
+palette — yellow is the one that does not survive the move unchanged, since
+at small cell size on white it neither reads as a distinct band nor carries
+a value.
+
+Colour is never the only carrier: each cell pairs its band with a value or
+label, and no-data cells are distinguished by treatment rather than hue
+alone. But the grid stays visually clean and compact — a small value inside
+a cell where it earns its place, not a number stamped on all thirty days.
+Legibility comes from the band mix first and the label second.
+
+Open when stage 4 starts: the `--band-*` colour tokens were dropped during
+the light rewrite (D13) and nothing has referenced them since. The
+`SCORE_BANDS` thresholds in the constants module are untouched. Stage 4
+defines the light-adapted colour tokens against those thresholds.
+
+## D16 — The rank badge gets a dark hero inside a light screen
+
+*Decided by the product owner.*
+
+The Rank screen is not a dark screen. It keeps the light chrome, the light
+tab bar and the light surrounding cards — current rank, peak rank and
+Lifetime XP read as part of the same app as everywhere else.
+
+The badge hero area alone sits on its own dark premium surface. That is
+where §6's gaming contrast lives: metallic material, dimensional depth,
+subtle glow, stronger drama, and the one orchestrated moment of motion on a
+promotion reveal.
+
+This is a better outcome than the original all-dark screen, because the
+contrast now works twice: the badge stands against its own dark ground, and
+that dark inset stands against the calm light interface around it. The rule
+from §6 still holds — if everything glows, the badge stops meaning anything —
+and the glow is now confined to a single surface by construction rather than
+by discipline.
