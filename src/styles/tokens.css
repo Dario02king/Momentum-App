@@ -1,0 +1,91 @@
+/*
+ * Design tokens.
+ *
+ * Version 1 is dark only, on purpose: the colour-coded history and the
+ * metallic rank badges are both designed against a dark ground, and a light
+ * mode would halve the care given to each. Light mode is a version 2
+ * candidate, not an omission.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Ground and elevation — Apple dark-mode system colours. True black pays
+     off on the OLED screens this app is designed for. */
+  --surface-base: #000000;
+  --surface-elevated: #1c1c1e;
+  --surface-raised: #2c2c2e;
+  --surface-input: #3a3a3c;
+
+  /* Hairlines, never solid rules. */
+  --separator: rgba(255, 255, 255, 0.09);
+  --separator-strong: rgba(255, 255, 255, 0.16);
+
+  --text-primary: rgba(255, 255, 255, 0.96);
+  --text-secondary: rgba(235, 235, 245, 0.6);
+  --text-tertiary: rgba(235, 235, 245, 0.35);
+
+  --accent: #0a84ff;
+  --accent-muted: rgba(10, 132, 255, 0.16);
+
+  /* Performance bands. Colour never carries meaning alone — every use is
+     paired with a value, a label or a pattern. */
+  --band-low: #ff453a;
+  --band-fair: #ff9f0a;
+  --band-good: #ffd60a;
+  --band-high: #30d158;
+  --band-none: #1f1f22;
+
+  /* iOS type scale. */
+  --type-large-title: 34px;
+  --type-title: 22px;
+  --type-headline: 17px;
+  --type-body: 17px;
+  --type-subhead: 15px;
+  --type-footnote: 13px;
+  --type-caption: 11px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+
+  /* Restrained: depth comes from elevation, not from drop shadows. */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  /* Touch targets never go below this. */
+  --touch-min: 44px;
+
+  --tab-bar-height: 50px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Motion answers an action; it never decorates. When the user has asked for
+   less of it, there is none. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}
