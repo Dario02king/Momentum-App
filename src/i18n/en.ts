@@ -124,6 +124,7 @@ export const en: Translations = {
   'answer.yes': 'Yes',
   'answer.no': 'No',
   'answer.for': 'Answer to: {question}',
+  'answer.clear': 'Clear answer',
   'answer.scaleValue': '{value} out of 10 – {band}',
 
   'sports.thisWeek': 'This week',

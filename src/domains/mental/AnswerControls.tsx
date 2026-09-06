@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import { SCALE_VALUES, SCALE_BAND_LABEL_KEYS, scaleBandOf } from '../../core/scoring/scale';
 import type { AnswerValue } from '../../core/model';
 import { useT } from '../../i18n/I18nProvider';
@@ -7,9 +8,33 @@ import './answerControls.css';
  * The two ways a Mental Wellbeing question is answered.
  *
  * Both save on tap — there is no confirm step anywhere in the daily
- * check-in — and both keep a third state, unanswered, distinct from a
- * negative answer. Tapping the selected option again clears it.
+ * check-in — and both are single-choice: re-tapping the selected option
+ * leaves it selected. Removing an answer is a deliberate, separate action,
+ * because an accidental second tap must never delete data.
+ *
+ * That makes these radio groups rather than toggle buttons, so they carry
+ * radio semantics: one tab stop per group, arrow keys move between options,
+ * and `aria-checked` rather than `aria-pressed`.
  */
+
+/** Arrow-key movement within a radio group, selecting as it goes. */
+function useRadioKeys(count: number, select: (index: number) => void) {
+  return (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const delta =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? -1
+          : 0;
+    if (delta === 0) return;
+    event.preventDefault();
+    const next = (index + delta + count) % count;
+    select(next);
+    const group = event.currentTarget.parentElement;
+    const target = group?.children[next];
+    if (target instanceof HTMLElement) target.focus();
+  };
+}
 
 export function BooleanAnswer({
   value,
@@ -18,31 +43,40 @@ export function BooleanAnswer({
   questionText,
 }: {
   value: boolean | null;
-  onChange(next: AnswerValue | null): void;
+  onChange(next: AnswerValue): void;
   disabled?: boolean;
   questionText: string;
 }) {
   const t = useT();
+  const options: { key: string; label: string; answer: boolean }[] = [
+    { key: 'yes', label: t('answer.yes'), answer: true },
+    { key: 'no', label: t('answer.no'), answer: false },
+  ];
+  const selectedIndex = value === null ? -1 : value ? 0 : 1;
+  const onKeyDown = useRadioKeys(options.length, (index) => onChange(options[index]!.answer));
+
   return (
-    <div className="answer-boolean" role="group" aria-label={t('answer.for', { question: questionText })}>
-      <button
-        type="button"
-        className="answer-boolean__option answer-boolean__option--yes"
-        aria-pressed={value === true}
-        disabled={disabled}
-        onClick={() => onChange(value === true ? null : true)}
-      >
-        {t('answer.yes')}
-      </button>
-      <button
-        type="button"
-        className="answer-boolean__option answer-boolean__option--no"
-        aria-pressed={value === false}
-        disabled={disabled}
-        onClick={() => onChange(value === false ? null : false)}
-      >
-        {t('answer.no')}
-      </button>
+    <div
+      className="answer-boolean"
+      role="radiogroup"
+      aria-label={t('answer.for', { question: questionText })}
+    >
+      {options.map((option, index) => (
+        <button
+          key={option.key}
+          type="button"
+          role="radio"
+          aria-checked={value === option.answer}
+          // One tab stop for the whole group; arrows move within it.
+          tabIndex={selectedIndex === index || (selectedIndex === -1 && index === 0) ? 0 : -1}
+          className={`answer-boolean__option answer-boolean__option--${option.key}`}
+          disabled={disabled}
+          onClick={() => onChange(option.answer)}
+          onKeyDown={(event) => onKeyDown(event, index)}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -60,34 +94,39 @@ export function ScaleAnswer({
   questionText,
 }: {
   value: number | null;
-  onChange(next: AnswerValue | null): void;
+  onChange(next: AnswerValue): void;
   disabled?: boolean;
   questionText: string;
 }) {
   const t = useT();
   const band = value === null ? null : scaleBandOf(value);
+  const selectedIndex = value === null ? -1 : SCALE_VALUES.indexOf(value);
+  const onKeyDown = useRadioKeys(SCALE_VALUES.length, (index) => onChange(SCALE_VALUES[index]!));
 
   return (
     <div className="answer-scale">
       <div
         className="answer-scale__row"
-        role="group"
+        role="radiogroup"
         aria-label={t('answer.for', { question: questionText })}
       >
-        {SCALE_VALUES.map((option) => {
+        {SCALE_VALUES.map((option, index) => {
           const optionBand = scaleBandOf(option);
           return (
             <button
               key={option}
               type="button"
+              role="radio"
+              aria-checked={value === option}
+              tabIndex={selectedIndex === index || (selectedIndex === -1 && index === 0) ? 0 : -1}
               className={`answer-scale__value answer-scale__value--${optionBand}`}
-              aria-pressed={value === option}
               aria-label={t('answer.scaleValue', {
                 value: option,
                 band: t(SCALE_BAND_LABEL_KEYS[optionBand]),
               })}
               disabled={disabled}
-              onClick={() => onChange(value === option ? null : option)}
+              onClick={() => onChange(option)}
+              onKeyDown={(event) => onKeyDown(event, index)}
             >
               {option}
             </button>

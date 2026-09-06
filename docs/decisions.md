@@ -184,8 +184,7 @@ people opening the app in week three. "Ja" takes the domain's green; "Nein"
 takes a neutral grey fill. Only the scale, where the user is rating something
 themselves, uses the full poor-to-very-good ramp.
 
-Tapping the selected option again clears it, so unanswered stays distinct
-from "not done" without needing a separate clear control.
+Removing an answer is a separate, explicit action — see D21.
 
 ## D19 — Scale answers wrap to five and five
 
@@ -208,3 +207,29 @@ two `-ink` values that D14 claimed were text-safe and were not, and the
 secondary button's own tint pairing. Ink-on-tint is the binding constraint
 and it is easy to get wrong by eye, which is the whole argument for checking
 it automatically.
+
+## D21 — Selecting is not toggling; clearing is its own action
+
+*Decided by the product owner, replacing the re-tap-to-clear behaviour
+originally shipped in stage 3.*
+
+Re-tapping the selected option leaves it selected. It does not clear the
+answer. An iOS-style selection control is not expected to un-select on a
+second tap, and treating it that way makes an accidental double tap destroy
+data — the one thing a save-on-tap interface must never do.
+
+Returning a question to unanswered is a small explicit "Antwort entfernen"
+action that appears only once an answer exists, styled as quiet footnote
+text with a full 44px tap target: secondary in weight, not fiddly to hit.
+
+Two consequences worth recording:
+
+- The controls are now single-choice, so they carry **radio semantics**
+  rather than toggle-button semantics: `role="radiogroup"` with
+  `aria-checked`, one tab stop per group, and arrow keys moving the
+  selection. `aria-pressed` would now describe them wrongly, since it
+  implies an option that can be un-pressed.
+- `cycleBooleanAnswer` was **removed** from the check-in service rather than
+  left unused. It encoded exactly the rejected behaviour, and dead code that
+  still works is an invitation to wire it back up. `clearAnswer` remains and
+  is now reached only through the explicit action.

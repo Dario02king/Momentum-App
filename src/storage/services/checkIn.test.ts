@@ -8,7 +8,6 @@ import {
   EditWindowError,
   InvalidAnswerError,
   clearAnswer,
-  cycleBooleanAnswer,
   deleteSession,
   loadDay,
   logSession,
@@ -117,16 +116,30 @@ describe('answering', () => {
     expect(answers[0]?.value).toBe(9);
   });
 
-  it('cycles a yes/no answer through unanswered, yes and no', async () => {
+  it('keeps the answer when the same value is chosen again', async () => {
+    const { boolQuestion, scaleQuestion } = await setup();
+    await saveAnswer(TODAY, boolQuestion.id, true);
+    await saveAnswer(TODAY, boolQuestion.id, true);
+    await saveAnswer(TODAY, scaleQuestion.id, 7);
+    await saveAnswer(TODAY, scaleQuestion.id, 7);
+
+    // Selecting an option is never a toggle: a second tap must not remove
+    // the answer, and must not create a second record either.
+    expect((await answersRepository.get(TODAY, boolQuestion.id))?.value).toBe(true);
+    expect(await answersRepository.listByQuestion(boolQuestion.id)).toHaveLength(1);
+    expect((await answersRepository.get(TODAY, scaleQuestion.id))?.value).toBe(7);
+    expect((await loadDay()).mental?.answeredCount).toBe(2);
+  });
+
+  it('removes an answer only through an explicit clear', async () => {
     const { boolQuestion } = await setup();
-    const yes = await cycleBooleanAnswer(TODAY, boolQuestion.id, null);
-    expect(yes?.value).toBe(true);
-    const no = await cycleBooleanAnswer(TODAY, boolQuestion.id, true);
-    expect(no?.value).toBe(false);
-    const cleared = await cycleBooleanAnswer(TODAY, boolQuestion.id, false);
-    expect(cleared).toBeNull();
-    // Cleared means unanswered, not "not done".
+    await saveAnswer(TODAY, boolQuestion.id, false);
+    expect((await loadDay()).mental?.answeredCount).toBe(1);
+
+    await clearAnswer(TODAY, boolQuestion.id);
+    // Unanswered again — which is a different thing from having answered "no".
     expect(await answersRepository.get(TODAY, boolQuestion.id)).toBeUndefined();
+    expect((await loadDay()).mental?.answeredCount).toBe(0);
   });
 
   it('rejects a value that does not match the question type', async () => {

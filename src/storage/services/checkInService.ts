@@ -189,7 +189,11 @@ export async function saveAnswer(
   });
 }
 
-/** Undoing an answer returns the day to unanswered, not to "not done". */
+/**
+ * Returns a question to unanswered — which is not the same as answering
+ * "no". Only an explicit clear action reaches this; selecting an option
+ * never removes an answer, so a stray second tap cannot destroy data.
+ */
 export async function clearAnswer(
   date: DateKey,
   questionId: string,
@@ -197,22 +201,6 @@ export async function clearAnswer(
 ): Promise<void> {
   assertEditable(date, reference);
   await answersRepository.clear(date, questionId);
-}
-
-/**
- * Toggling a yes/no answer cycles unanswered → yes → no → unanswered, so one
- * control covers all three states without a separate clear affordance.
- */
-export async function cycleBooleanAnswer(
-  date: DateKey,
-  questionId: string,
-  current: AnswerValue | null,
-  reference: DateKey = today(),
-): Promise<AnswerRecord | null> {
-  if (current === null) return saveAnswer(date, questionId, true, reference);
-  if (current === true) return saveAnswer(date, questionId, false, reference);
-  await clearAnswer(date, questionId, reference);
-  return null;
 }
 
 export interface SessionInput {

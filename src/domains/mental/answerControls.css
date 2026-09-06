@@ -25,12 +25,12 @@
 
 /* "Yes" is the domain's own green. "No" is neutral, never red: recording an
    honest negative is the app working, not the user failing. */
-.answer-boolean__option--yes[aria-pressed='true'] {
+.answer-boolean__option--yes[aria-checked='true'] {
   background: var(--mint-ink);
   color: var(--text-on-accent);
 }
 
-.answer-boolean__option--no[aria-pressed='true'] {
+.answer-boolean__option--no[aria-checked='true'] {
   background: var(--text-secondary);
   color: var(--text-on-accent);
 }
@@ -98,19 +98,19 @@
 }
 
 /* The selection fills with the band's readable weight. */
-.answer-scale__value--poor[aria-pressed='true'] {
+.answer-scale__value--poor[aria-checked='true'] {
   background: var(--rose-ink);
   color: var(--text-on-accent);
 }
-.answer-scale__value--okay[aria-pressed='true'] {
+.answer-scale__value--okay[aria-checked='true'] {
   background: var(--peach-ink);
   color: var(--text-on-accent);
 }
-.answer-scale__value--good[aria-pressed='true'] {
+.answer-scale__value--good[aria-checked='true'] {
   background: var(--sand-ink);
   color: var(--text-on-accent);
 }
-.answer-scale__value--veryGood[aria-pressed='true'] {
+.answer-scale__value--veryGood[aria-checked='true'] {
   background: var(--mint-ink);
   color: var(--text-on-accent);
 }

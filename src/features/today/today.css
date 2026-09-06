@@ -73,6 +73,24 @@
   color: var(--text-secondary);
 }
 
+/*
+ * Clearing an answer. Visually secondary — footnote size, no fill, no border —
+ * but a full 44px tap target, so it is quiet without being fiddly. It appears
+ * only once there is an answer to remove.
+ */
+.check-in__clear {
+  align-self: flex-start;
+  min-height: var(--touch-min);
+  margin: calc(var(--space-3) * -1) 0;
+  padding: 0 var(--space-1);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.check-in__clear:active {
+  color: var(--text-primary);
+}
+
 /* Sports ---------------------------------------------------------------- */
 
 .week__header {

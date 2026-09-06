@@ -127,6 +127,7 @@ export const de = {
   'answer.yes': 'Ja',
   'answer.no': 'Nein',
   'answer.for': 'Antwort auf: {question}',
+  'answer.clear': 'Antwort entfernen',
   'answer.scaleValue': '{value} von 10 – {band}',
 
   'sports.thisWeek': 'Diese Woche',

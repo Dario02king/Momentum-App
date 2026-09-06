@@ -103,6 +103,17 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
                           onChange={(next) => answer(item.question.id, next)}
                         />
                       )}
+                      {/* Returning a question to unanswered is deliberate and
+                          explicit — never a side effect of tapping twice. */}
+                      {item.answer && day.editable ? (
+                        <button
+                          type="button"
+                          className="check-in__clear"
+                          onClick={() => answer(item.question.id, null)}
+                        >
+                          {t('answer.clear')}
+                        </button>
+                      ) : null}
                     </div>
                   );
                 })
