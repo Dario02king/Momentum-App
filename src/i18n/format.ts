@@ -48,6 +48,14 @@ export function formatRelativeDay(language: Language, day: DateKey, reference: D
   return formatDayAndMonth(language, day);
 }
 
+/** "14:32" — used where several entries share a day and the time is what
+ *  tells them apart. */
+export function formatTime(language: Language, instant: string | Date): string {
+  const date = typeof instant === 'string' ? new Date(instant) : instant;
+  if (Number.isNaN(date.getTime())) return '';
+  return formatter(language, { hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
 export function formatNumber(language: Language, value: number, fractionDigits = 0): string {
   const formatted = new Intl.NumberFormat(localeOf(language), {
     minimumFractionDigits: fractionDigits,

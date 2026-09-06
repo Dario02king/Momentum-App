@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AreasScreen } from '../features/areas/AreasScreen';
+import { TodayScreen } from '../features/today/TodayScreen';
 import { OnboardingFlow } from '../features/onboarding/OnboardingFlow';
 import { I18nProvider, useT } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
@@ -27,12 +28,13 @@ function MainApp({
   configuration: AppConfiguration;
   actions: AreasActions;
 }) {
-  const [tab, setTab] = useState<TabId>('areas');
+  // Today is where the app opens: the daily check-in is the whole point.
+  const [tab, setTab] = useState<TabId>('today');
 
   return (
     <div className="app">
       <div className="app__content">
-        {tab === 'today' ? <StagePlaceholder titleKey="nav.today" /> : null}
+        {tab === 'today' ? <TodayScreen onGoToAreas={() => setTab('areas')} /> : null}
         {tab === 'progress' ? <StagePlaceholder titleKey="nav.progress" /> : null}
         {tab === 'rank' ? <StagePlaceholder titleKey="nav.rank" /> : null}
         {tab === 'areas' ? (

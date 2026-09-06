@@ -1,0 +1,167 @@
+/*
+ * Today is the screen the whole product is judged by: it has to be
+ * completable in seconds with one thumb. Everything here is either something
+ * to answer or the state of what has been answered — no charts, no analysis.
+ */
+
+.today__scroll {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-1) var(--space-2)
+    calc(var(--tab-bar-height) + var(--safe-bottom) + var(--space-10));
+}
+
+.today__date {
+  margin-top: var(--space-2);
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+/* A quiet completion line, not a score. */
+.today__progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-card);
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.today__progress--complete {
+  background: var(--mint-tint);
+  color: var(--mint-ink);
+  box-shadow: none;
+}
+
+.today__progressDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--separator-strong);
+}
+
+.today__progress--complete .today__progressDot {
+  background: var(--mint-ink);
+}
+
+/* One question, one block. The prompt sits above its control at full width,
+   so a long question never squeezes the tap targets. */
+.check-in {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.check-in + .check-in {
+  border-top: 1px solid var(--separator);
+}
+
+.check-in__question {
+  font-size: var(--type-body);
+  line-height: 1.35;
+  letter-spacing: -0.2px;
+}
+
+.check-in--answered .check-in__question {
+  color: var(--text-secondary);
+}
+
+/* Sports ---------------------------------------------------------------- */
+
+.week__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
+.week__label {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+.week__value {
+  font-size: var(--type-headline);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+
+/*
+ * Progress as one segment per target session — a status indicator, not a
+ * chart. It says how many are done at a glance and never invites analysis.
+ */
+.week__segments {
+  display: flex;
+  gap: 5px;
+  padding: 0 var(--space-5) var(--space-4);
+}
+
+.week__segment {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-input);
+}
+
+.week__segment--filled {
+  background: var(--domain-sports-mid);
+}
+
+.week__status {
+  padding: 0 var(--space-5) var(--space-4);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.week__status--met {
+  color: var(--mint-ink);
+  font-weight: var(--weight-semibold);
+}
+
+.week__log {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 52px;
+  border-top: 1px solid var(--separator);
+  color: var(--accent);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+}
+
+.week__log:active {
+  background: var(--surface-secondary);
+}
+
+.week__log:disabled {
+  color: var(--text-tertiary);
+}
+
+.session-row__time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  font-size: var(--type-footnote);
+}
+
+/* A closed day states the fact once and stops offering controls. */
+.today__closed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}

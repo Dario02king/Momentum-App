@@ -28,8 +28,8 @@ The app is built in reviewed stages. Current status:
 | # | Stage | Status |
 |---|---|---|
 | 1 | Project setup, storage abstraction, schema v1, date and week logic | done |
-| 2 | Onboarding, domain and question configuration | in review |
-| 3 | Today screen and daily check-in | not started |
+| 2 | Onboarding, domain and question configuration | done |
+| 3 | Today screen and daily check-in | in review |
 | 4 | Progress screen: heatmap and trend curve | not started |
 | 5 | Rating engine, rank ladder, rank badges | not started |
 | 6 | Sports domain: weekly target tracking | not started |

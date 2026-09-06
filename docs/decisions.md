@@ -162,3 +162,49 @@ that dark inset stands against the calm light interface around it. The rule
 from §6 still holds — if everything glows, the badge stops meaning anything —
 and the glow is now confined to a single surface by construction rather than
 by discipline.
+
+## D17 — Today shows today, and only today
+
+§10 says the screen is items due today and nothing else, so there is no day
+picker on it. The three-day edit window is nonetheless enforced now, in the
+check-in service rather than in a component: `saveAnswer` and `clearAnswer`
+refuse a day that is closed or in the future, and `loadDay` reports a day's
+edit state so a UI can disable its controls.
+
+The surface for actually correcting an earlier day belongs with the history
+view in stage 4, where the user is already looking at past days. Building a
+second date-navigation UI on Today first would have been the wrong place for
+it.
+
+## D18 — "Nein" is neutral, never red
+
+A yes/no answer records behaviour. Colouring the negative red would make
+honest recording feel like failure, which is exactly the behaviour that stops
+people opening the app in week three. "Ja" takes the domain's green; "Nein"
+takes a neutral grey fill. Only the scale, where the user is rating something
+themselves, uses the full poor-to-very-good ramp.
+
+Tapping the selected option again clears it, so unanswered stays distinct
+from "not done" without needing a separate clear control.
+
+## D19 — Scale answers wrap to five and five
+
+Ten 44px targets never fit one phone row. They wrap to two rows of five
+rather than shrinking below the minimum tap size. Each value carries its
+band's soft tint even when unselected, so the direction of the scale is
+visible before anything is chosen, and the selected value fills with the
+band's readable weight. The qualitative word ("Gut") appears next to it —
+colour never carries the reading alone.
+
+## D20 — The palette is verified by test, not by eye
+
+`src/styles/contrast.test.ts` parses the real token file, resolves `var()`
+aliases and does the WCAG arithmetic: every `-ink` must clear 4.5:1 both on
+white and on its own `-tint`, every filled control must carry its label, and
+the card must actually separate from the ground.
+
+This was not a formality. On first run it failed nine assertions, including
+two `-ink` values that D14 claimed were text-safe and were not, and the
+secondary button's own tint pairing. Ink-on-tint is the binding constraint
+and it is easy to get wrong by eye, which is the whole argument for checking
+it automatically.

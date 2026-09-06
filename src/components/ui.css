@@ -184,10 +184,11 @@
   background: var(--accent-pressed);
 }
 
+/* Tinted, not white: a white button on a white card reads as a card inside
+   a card. This is the iOS tinted-button shape. */
 .button--secondary {
-  background: var(--surface-elevated);
-  color: var(--accent);
-  box-shadow: var(--shadow-card);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
 }
 
 /* Secondary actions step back to plain text — no box, no weight. */

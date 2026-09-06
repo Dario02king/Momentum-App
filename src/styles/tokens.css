@@ -26,10 +26,16 @@
   --separator: rgba(60, 60, 67, 0.09);
   --separator-strong: rgba(60, 60, 67, 0.18);
 
-  /* Text. Secondary is deliberately a little darker than Apple's own
-     secondaryLabel so it clears 4.5:1 on white at footnote size. */
+  /*
+   * Text. Secondary is deliberately darker than Apple's own secondaryLabel so
+   * it clears 4.5:1 on white at footnote size.
+   *
+   * Every colour here is verified by contrast.test.ts rather than by eye:
+   * an `-ink` must read both on white and on its own `-tint`, which is the
+   * harder of the two and the one that badges depend on.
+   */
   --text-primary: #1c1c1e;
-  --text-secondary: #767680;
+  --text-secondary: #72727c;
   --text-tertiary: #a0a0a8;
   --text-on-accent: #ffffff;
 
@@ -38,6 +44,9 @@
   --accent: #5e5ce6;
   --accent-pressed: #4a48cf;
   --accent-tint: #ecebfd;
+  /* Text weight, for a label sitting on --accent-tint. Same split as the
+     pastels: the fill weight does not clear 4.5:1 on its own tint. */
+  --accent-ink: #5654e5;
 
   /*
    * Pastels.
@@ -53,28 +62,28 @@
      leaked into a light one. */
   --lilac-fill: #8f7ff0;
   --lilac-mid: #7a68e8;
-  --lilac-ink: #6a57e0;
+  --lilac-ink: #6652df;
   --lilac-tint: #efecfd;
 
   --mint-fill: #3ecfa2;
   --mint-mid: #12a277;
-  --mint-ink: #0a7f60;
+  --mint-ink: #0a7a5c;
   --mint-tint: #e3f7ef;
 
   --sky-fill: #62b4f7;
-  --sky-ink: #1878c8;
+  --sky-ink: #166db6;
   --sky-tint: #e6f2fd;
 
   --peach-fill: #f7b183;
-  --peach-ink: #b96a24;
+  --peach-ink: #9f5b1f;
   --peach-tint: #fdf0e6;
 
   --rose-fill: #f2909c;
-  --rose-ink: #c8455a;
+  --rose-ink: #bf394e;
   --rose-tint: #fdecef;
 
   --sand-fill: #eccf7a;
-  --sand-ink: #96771a;
+  --sand-ink: #856917;
   --sand-tint: #fbf4de;
 
   /* Domain identity. */

@@ -1,0 +1,137 @@
+/* Yes / No -------------------------------------------------------------- */
+
+.answer-boolean {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.answer-boolean__option {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+  transition: background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.answer-boolean__option:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* "Yes" is the domain's own green. "No" is neutral, never red: recording an
+   honest negative is the app working, not the user failing. */
+.answer-boolean__option--yes[aria-pressed='true'] {
+  background: var(--mint-ink);
+  color: var(--text-on-accent);
+}
+
+.answer-boolean__option--no[aria-pressed='true'] {
+  background: var(--text-secondary);
+  color: var(--text-on-accent);
+}
+
+.answer-boolean__option:disabled {
+  opacity: 0.5;
+}
+
+/* Scale ----------------------------------------------------------------- */
+
+.answer-scale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/*
+ * Ten 44px targets never fit one row on a phone, so they wrap to five and
+ * five. Shrinking them below the minimum tap size would be the worse trade.
+ */
+.answer-scale__row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+}
+
+.answer-scale__value {
+  aspect-ratio: 1;
+  min-height: var(--touch-min);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  border: 1.5px solid transparent;
+  transition: transform var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.answer-scale__value:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.answer-scale__value:disabled {
+  opacity: 0.5;
+}
+
+/* The unselected ramp: a soft tint per band, so the direction of the scale
+   is visible before anything is chosen. */
+.answer-scale__value--poor {
+  background: var(--rose-tint);
+}
+.answer-scale__value--okay {
+  background: var(--peach-tint);
+}
+.answer-scale__value--good {
+  background: var(--sand-tint);
+}
+.answer-scale__value--veryGood {
+  background: var(--mint-tint);
+}
+
+/* The selection fills with the band's readable weight. */
+.answer-scale__value--poor[aria-pressed='true'] {
+  background: var(--rose-ink);
+  color: var(--text-on-accent);
+}
+.answer-scale__value--okay[aria-pressed='true'] {
+  background: var(--peach-ink);
+  color: var(--text-on-accent);
+}
+.answer-scale__value--good[aria-pressed='true'] {
+  background: var(--sand-ink);
+  color: var(--text-on-accent);
+}
+.answer-scale__value--veryGood[aria-pressed='true'] {
+  background: var(--mint-ink);
+  color: var(--text-on-accent);
+}
+
+/* The qualitative reading. Colour is never the only carrier of meaning, so
+   the band is always spelled out in words next to it. */
+.answer-scale__band {
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+}
+
+.answer-scale__band--poor {
+  color: var(--rose-ink);
+}
+.answer-scale__band--okay {
+  color: var(--peach-ink);
+}
+.answer-scale__band--good {
+  color: var(--sand-ink);
+}
+.answer-scale__band--veryGood {
+  color: var(--mint-ink);
+}
