@@ -53,7 +53,7 @@ src/
     model/    schema v1 record types
   i18n/       key-based string layer, German by default
   storage/    IndexedDB, migrations, typed repositories
-  styles/     dark design tokens
+  styles/     light design tokens
 ```
 
 Domain logic never imports from `app/` or `features/`. Storage is reached only

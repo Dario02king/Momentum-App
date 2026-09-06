@@ -74,10 +74,13 @@ export function CloseIcon({ size = 20, className }: IconProps) {
   );
 }
 
+/* Solid bars rather than two strokes: at 18px a stroked pause reads as a
+   pair of hairlines next to the filled icons beside it. */
 export function PauseIcon({ size = 20, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
-      <path d="M9.5 5v14M14.5 5v14" />
+      <rect x="8.25" y="5" width="3" height="14" rx="1.5" fill="currentColor" stroke="none" />
+      <rect x="12.75" y="5" width="3" height="14" rx="1.5" fill="currentColor" stroke="none" />
     </svg>
   );
 }

@@ -81,12 +81,8 @@ export function AreasScreen({
         <Section>
           <Card>
             <div className="areas__domainHeader">
-              <span
-                className="areas__domainMark"
-                style={{ background: 'var(--domain-mental)' }}
-                aria-hidden="true"
-              >
-                <SparkIcon size={19} />
+              <span className="areas__domainMark areas__domainMark--mental" aria-hidden="true">
+                <SparkIcon size={22} />
               </span>
               <span className="row__body">
                 <span className="areas__domainName">{t('domain.mental')}</span>
@@ -95,7 +91,7 @@ export function AreasScreen({
               <Switch
                 checked={mentalOn}
                 label={t('domain.mental')}
-                accent="var(--domain-mental)"
+                accent="var(--domain-mental-mid)"
                 onChange={(next) => (next ? actions.enableMental() : actions.disableMental())}
               />
             </div>
@@ -117,7 +113,7 @@ export function AreasScreen({
                   <>
                     <div className="areas__subhead">
                       <span>{t('areas.mental.questions')}</span>
-                      <span>{live.length}</span>
+                      <span className="areas__subheadCount">{live.length}</span>
                     </div>
                     {live.map((question) => {
                       const statusKey = questionStatusBadgeKey(question.status);
@@ -141,11 +137,13 @@ export function AreasScreen({
                         />
                       );
                     })}
-                    <Row
-                      title={t('areas.mental.add')}
-                      onClick={() => setCreating(true)}
-                      leading={<PlusIcon size={20} />}
-                    />
+                    <div className="areas__addRow">
+                      <Row
+                        title={t('areas.mental.add')}
+                        onClick={() => setCreating(true)}
+                        leading={<PlusIcon size={20} />}
+                      />
+                    </div>
                   </>
                 )}
 
@@ -195,12 +193,8 @@ export function AreasScreen({
         <Section>
           <Card>
             <div className="areas__domainHeader">
-              <span
-                className="areas__domainMark"
-                style={{ background: 'var(--domain-sports)' }}
-                aria-hidden="true"
-              >
-                <ActivityIcon size={19} />
+              <span className="areas__domainMark areas__domainMark--sports" aria-hidden="true">
+                <ActivityIcon size={22} />
               </span>
               <span className="row__body">
                 <span className="areas__domainName">{t('domain.sports')}</span>
@@ -209,7 +203,7 @@ export function AreasScreen({
               <Switch
                 checked={sportsOn}
                 label={t('domain.sports')}
-                accent="var(--domain-sports)"
+                accent="var(--domain-sports-mid)"
                 onChange={(next) => (next ? actions.enableSports() : actions.disableSports())}
               />
             </div>

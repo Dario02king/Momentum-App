@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { SPORTS } from '../../core/config/constants';
 import type { QuestionType } from '../../core/model';
 import { Button, SelectionMark } from '../../components';
-import { ChevronLeftIcon, PlusIcon, SparkIcon } from '../../components/Icons';
+import { ActivityIcon, ChevronLeftIcon, PlusIcon, SparkIcon } from '../../components/Icons';
 import { QuestionSheet } from '../../domains/mental/QuestionSheet';
 import { questionTypeBadgeKey } from '../../domains/mental/questionLabels';
 import { TargetPicker } from '../../domains/sports/TargetPicker';
@@ -74,7 +74,7 @@ export function OnboardingFlow({ onFinish }: { onFinish(selection: OnboardingSel
         <>
           <div className="welcome">
             <span className="welcome__mark" aria-hidden="true">
-              <SparkIcon size={34} />
+              <SparkIcon size={42} />
             </span>
             <h1 className="welcome__tagline">{t('app.tagline')}</h1>
             <p className="onboarding__lead">{t('onboarding.welcome.body')}</p>
@@ -107,7 +107,7 @@ export function OnboardingFlow({ onFinish }: { onFinish(selection: OnboardingSel
                     className="question-pick"
                     aria-pressed={selected}
                     onClick={() => toggleSuggestion(suggestion.id)}
-                    style={{ ['--selection-accent' as string]: 'var(--pastel-lilac)' }}
+                    style={{ ['--selection-accent' as string]: 'var(--lilac-mid)' }}
                   >
                     <span className="question-pick__body">
                       <span className="question-pick__text">{suggestion.text}</span>
@@ -129,7 +129,7 @@ export function OnboardingFlow({ onFinish }: { onFinish(selection: OnboardingSel
                   onClick={() =>
                     setCustomQuestions((current) => current.filter((_, i) => i !== index))
                   }
-                  style={{ ['--selection-accent' as string]: 'var(--pastel-lilac)' }}
+                  style={{ ['--selection-accent' as string]: 'var(--lilac-mid)' }}
                 >
                   <span className="question-pick__body">
                     <span className="question-pick__text">{question.text}</span>
@@ -204,7 +204,9 @@ export function OnboardingFlow({ onFinish }: { onFinish(selection: OnboardingSel
                 </p>
               </div>
 
-              <TargetPicker value={sportsTarget} onChange={(next) => setSportsTarget(next)} />
+              <div className="sports-step__picker">
+                <TargetPicker value={sportsTarget} onChange={(next) => setSportsTarget(next)} />
+              </div>
             </div>
           </div>
 
@@ -252,7 +254,9 @@ export function OnboardingFlow({ onFinish }: { onFinish(selection: OnboardingSel
             <div className="summary__list">
               {chosenQuestions.length > 0 ? (
                 <div className="summary__item">
-                  <span className="summary__dot" style={{ background: 'var(--domain-mental)' }} />
+                  <span className="summary__mark summary__mark--mental" aria-hidden="true">
+                    <SparkIcon size={20} />
+                  </span>
                   {chosenQuestions.length === 1
                     ? t('onboarding.summary.questionsOne')
                     : t('onboarding.summary.questions', { count: chosenQuestions.length })}
@@ -260,7 +264,9 @@ export function OnboardingFlow({ onFinish }: { onFinish(selection: OnboardingSel
               ) : null}
               {sportsTarget !== null ? (
                 <div className="summary__item">
-                  <span className="summary__dot" style={{ background: 'var(--domain-sports)' }} />
+                  <span className="summary__mark summary__mark--sports" aria-hidden="true">
+                    <ActivityIcon size={20} />
+                  </span>
                   {t('onboarding.summary.sports', { count: sportsTarget })}
                 </div>
               ) : null}

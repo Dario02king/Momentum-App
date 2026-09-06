@@ -15,6 +15,8 @@ body,
 body {
   margin: 0;
   background: var(--surface-base);
+  /* Kept in sync with the ground so an overscroll never flashes white. */
+  background-attachment: fixed;
   color: var(--text-primary);
   /* System font only. SF Pro font files may not be embedded on the web. */
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

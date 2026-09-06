@@ -1,30 +1,48 @@
+/*
+ * Areas reads as a list of life areas, not a settings page.
+ *
+ * Each domain is one white card on the tinted ground: a header carrying its
+ * identity mark, name and switch, then its own configuration below a
+ * hairline. The card is the grouping — no boxes inside boxes.
+ */
+
 .areas__domainHeader {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-4);
+  padding: var(--space-5);
 }
 
 .areas__domainMark {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0b0b0d;
+}
+
+.areas__domainMark--mental {
+  background: var(--domain-mental-tint);
+  color: var(--domain-mental-ink);
+}
+
+.areas__domainMark--sports {
+  background: var(--domain-sports-tint);
+  color: var(--domain-sports-ink);
 }
 
 .areas__domainName {
   font-size: var(--type-headline);
   font-weight: var(--weight-semibold);
+  letter-spacing: -0.3px;
 }
 
 .areas__domainDescription {
   font-size: var(--type-footnote);
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .areas__domainBody {
@@ -34,10 +52,10 @@
 .areas__targetBlock {
   /* Narrower side padding than a normal card row: the seven target bubbles
      need the width more than the block needs the inset. */
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-5) var(--space-3) var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .areas__targetHeader {
@@ -45,6 +63,7 @@
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-3);
+  padding: 0 var(--space-2);
 }
 
 .areas__targetLabel {
@@ -55,36 +74,53 @@
 .areas__targetValue {
   font-size: var(--type-subhead);
   font-weight: var(--weight-semibold);
-  color: var(--domain-sports);
+  color: var(--domain-sports-ink);
   font-variant-numeric: tabular-nums;
 }
 
+/* Sub-heading inside a card: quieter than the card's own title. */
 .areas__subhead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4) var(--space-1);
+  padding: var(--space-4) var(--space-5) var(--space-1);
   font-size: var(--type-footnote);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.areas__subheadCount {
   color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .areas__archiveToggle {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: var(--touch-min);
-  padding: 0 var(--space-4);
+  min-height: 48px;
+  padding: 0 var(--space-5);
   font-size: var(--type-footnote);
   color: var(--text-secondary);
   width: 100%;
   box-shadow: inset 0 1px 0 var(--separator);
 }
 
+.areas__addRow .row__title {
+  color: var(--accent);
+  font-weight: var(--weight-medium);
+}
+
+.areas__addRow .row__trailing,
+.areas__addRow svg {
+  color: var(--accent);
+}
+
 .areas__scroll {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: calc(var(--tab-bar-height) + var(--safe-bottom) + var(--space-8));
+  /* Room for the card shadows, which would otherwise be clipped. */
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-1) var(--space-2)
+    calc(var(--tab-bar-height) + var(--safe-bottom) + var(--space-10));
 }

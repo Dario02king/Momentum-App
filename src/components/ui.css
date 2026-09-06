@@ -1,5 +1,5 @@
-/* Shared surfaces and controls. Calm by default: motion answers a tap and
-   nothing here decorates. */
+/* Shared surfaces and controls.
+   Calm by default: motion answers a tap and nothing here decorates. */
 
 .screen {
   /* Exactly the screen, so the inner scroll area shrinks rather than pushing
@@ -7,19 +7,19 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding-left: calc(var(--safe-left) + var(--space-4));
-  padding-right: calc(var(--safe-right) + var(--space-4));
+  padding-left: calc(var(--safe-left) + var(--space-5));
+  padding-right: calc(var(--safe-right) + var(--space-5));
 }
 
 .screen__header {
-  padding-top: calc(var(--safe-top) + var(--space-6));
-  padding-bottom: var(--space-5);
+  padding-top: calc(var(--safe-top) + var(--space-7));
+  padding-bottom: var(--space-6);
 }
 
 .screen__title {
   font-size: var(--type-large-title);
   font-weight: var(--weight-bold);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.6px;
 }
 
 .screen__subtitle {
@@ -30,46 +30,67 @@
 }
 
 .section {
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-7);
 }
 
+/* iOS grouped-list section label: small, quiet, sitting above its card. */
 .section__label {
   font-size: var(--type-footnote);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  padding: 0 var(--space-1) var(--space-2);
+  letter-spacing: -0.05px;
+  color: var(--text-secondary);
+  padding: 0 var(--space-4) var(--space-2);
 }
 
+/* A card is white on a tinted ground, lifted by shadow rather than outlined. */
 .card {
   background: var(--surface-elevated);
   border-radius: var(--radius-card);
   overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
 
 .card--padded {
-  padding: var(--space-4);
+  padding: var(--space-5);
 }
 
-/* A row is a whole tap target: 44px minimum, hairline between rows only. */
+/* A row is a whole tap target, with room to breathe. */
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   width: 100%;
-  min-height: var(--touch-min);
-  padding: var(--space-3) var(--space-4);
+  min-height: 56px;
+  padding: var(--space-4) var(--space-5);
   text-align: left;
   color: inherit;
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-standard);
 }
 
-.row + .row {
-  box-shadow: inset 0 1px 0 var(--separator);
+/*
+ * Separators are inset from the leading edge, the way iOS insets them.
+ * A real hairline element, not an inset shadow — an inset shadow with an
+ * x-offset fills the offset area instead of drawing a line down it.
+ */
+.row {
+  position: relative;
+}
+
+.row + .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--space-5);
+  right: 0;
+  height: 1px;
+  background: var(--separator);
+  transform: scaleY(0.5);
+  transform-origin: top;
 }
 
 .row--tappable:active {
-  background: var(--surface-raised);
+  background: var(--surface-secondary);
 }
 
 .row__body {
@@ -77,12 +98,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .row__title {
   font-size: var(--type-body);
   line-height: 1.3;
+  letter-spacing: -0.2px;
 }
 
 .row__subtitle {
@@ -102,72 +124,82 @@
   color: var(--text-secondary);
 }
 
-/* Badge: says boolean or scale in words, not by colour. */
+/* Badge: says boolean or scale in words, not by colour alone. */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px var(--space-2);
+  padding: 4px var(--space-2);
   border-radius: var(--radius-pill);
   font-size: var(--type-caption);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-secondary);
   color: var(--text-secondary);
 }
 
 .badge--scale {
-  background: color-mix(in srgb, var(--pastel-sky) 18%, transparent);
-  color: var(--pastel-sky);
+  background: var(--sky-tint);
+  color: var(--sky-ink);
 }
 
 .badge--boolean {
-  background: color-mix(in srgb, var(--pastel-lilac) 18%, transparent);
-  color: var(--pastel-lilac);
+  background: var(--lilac-tint);
+  color: var(--lilac-ink);
 }
 
 .badge--paused {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-tertiary);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
 }
 
-/* Buttons. */
+/* Buttons — native iOS proportions: 50px tall, generous radius. */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: var(--touch-min);
-  padding: 0 var(--space-5);
+  min-height: 50px;
+  padding: 0 var(--space-6);
   border-radius: var(--radius-control);
   font-size: var(--type-body);
   font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
   transition: transform var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
     opacity var(--duration-fast) var(--ease-standard);
 }
 
 .button:active {
-  transform: scale(0.975);
+  transform: scale(0.98);
 }
 
 .button--primary {
-  background: var(--text-primary);
-  color: #000;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-button);
+}
+
+.button--primary:active {
+  background: var(--accent-pressed);
 }
 
 .button--secondary {
-  background: var(--surface-raised);
-  color: var(--text-primary);
+  background: var(--surface-elevated);
+  color: var(--accent);
+  box-shadow: var(--shadow-card);
 }
 
+/* Secondary actions step back to plain text — no box, no weight. */
 .button--quiet {
   color: var(--text-secondary);
   font-weight: var(--weight-medium);
+  min-height: var(--touch-min);
 }
 
 .button--destructive {
-  color: var(--pastel-rose);
-  background: color-mix(in srgb, var(--pastel-rose) 14%, transparent);
+  color: var(--rose-ink);
+  background: var(--rose-tint);
 }
 
 .button--block {
@@ -175,7 +207,8 @@
 }
 
 .button:disabled {
-  opacity: 0.35;
+  opacity: 0.4;
+  box-shadow: none;
   cursor: default;
 }
 
@@ -186,13 +219,13 @@
   height: 31px;
   min-height: 31px;
   border-radius: var(--radius-pill);
-  background: var(--surface-input);
+  background: rgba(120, 120, 128, 0.16);
   flex-shrink: 0;
   transition: background var(--duration-base) var(--ease-standard);
 }
 
 .switch[aria-checked='true'] {
-  background: var(--switch-on, var(--pastel-mint));
+  background: var(--switch-on, var(--accent));
 }
 
 .switch__knob {
@@ -203,7 +236,7 @@
   height: 27px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
   transition: transform var(--duration-base) var(--ease-standard);
 }
 
@@ -211,36 +244,37 @@
   transform: translateX(20px);
 }
 
-/* Segmented control. */
+/* Segmented control — iOS: a recessed track, the selection a white pill. */
 .segmented {
   display: flex;
-  gap: var(--space-1);
-  padding: 3px;
-  background: var(--surface-raised);
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-input);
   border-radius: var(--radius-control);
 }
 
 .segmented__option {
   flex: 1;
-  min-height: 38px;
-  border-radius: 9px;
+  min-height: 40px;
+  border-radius: 12px;
   font-size: var(--type-subhead);
   font-weight: var(--weight-medium);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   transition: background var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard);
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 
 .segmented__option[aria-pressed='true'] {
-  background: var(--surface-input);
-  color: var(--text-primary);
+  background: var(--surface-elevated);
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 0 0 0.5px rgba(16, 24, 40, 0.04);
 }
 
-/* Bubbles: round, thumb-sized, used wherever a choice is a small number. */
 /*
- * Seven 44px touch targets plus gaps do not fit one row on a narrow phone.
- * They wrap instead of shrinking: a tap target below 44px is a worse trade
- * than a second row, and a horizontal scroller would hide choices entirely.
+ * Bubbles: round, thumb-sized, used wherever a choice is a small number.
+ * Seven 44px targets plus gaps do not fit one row on a narrow phone, so they
+ * wrap rather than shrink — a sub-44px tap target is the worse trade, and a
+ * horizontal scroller would hide choices entirely.
  */
 .bubble-row {
   display: flex;
@@ -263,7 +297,7 @@
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
-  background: var(--surface-raised);
+  background: var(--surface-secondary);
   border: 1.5px solid transparent;
   transition: transform var(--duration-fast) var(--ease-standard),
     background var(--duration-fast) var(--ease-standard),
@@ -275,23 +309,26 @@
 }
 
 .bubble[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--bubble-accent, var(--pastel-mint)) 22%, transparent);
-  border-color: var(--bubble-accent, var(--pastel-mint));
-  color: var(--text-primary);
+  background: var(--bubble-accent, var(--accent));
+  border-color: transparent;
+  color: var(--text-on-accent);
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.12);
 }
 
 /* Text field. */
 .field {
   width: 100%;
-  min-height: var(--touch-min);
-  padding: var(--space-3) var(--space-4);
-  background: var(--surface-raised);
+  min-height: 52px;
+  padding: var(--space-4);
+  background: var(--surface-input);
   border: 1.5px solid transparent;
   border-radius: var(--radius-control);
   color: var(--text-primary);
   font: inherit;
   /* 17px keeps iOS Safari from zooming the viewport on focus. */
   font-size: var(--type-body);
+  transition: border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
 }
 
 .field::placeholder {
@@ -300,12 +337,14 @@
 
 .field:focus {
   outline: none;
-  border-color: var(--pastel-sky);
+  background: var(--surface-elevated);
+  border-color: var(--accent);
 }
 
 .field-label {
   display: block;
   font-size: var(--type-footnote);
+  font-weight: var(--weight-semibold);
   color: var(--text-secondary);
   margin-bottom: var(--space-2);
 }
@@ -316,7 +355,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-5) var(--space-4);
+  padding: var(--space-6) var(--space-5) var(--space-5);
   color: var(--text-secondary);
 }
 
@@ -325,14 +364,17 @@
 }
 
 .empty__title {
-  font-size: var(--type-body);
+  font-size: var(--type-headline);
+  font-weight: var(--weight-semibold);
   color: var(--text-primary);
+  letter-spacing: -0.2px;
 }
 
 .empty__body {
-  font-size: var(--type-footnote);
+  font-size: var(--type-subhead);
   color: var(--text-secondary);
   max-width: 32ch;
+  line-height: 1.4;
 }
 
 .visually-hidden {
@@ -350,7 +392,9 @@
 .sheet-scrim {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(16, 24, 40, 0.28);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: flex-end;
   z-index: 40;
@@ -363,8 +407,9 @@
   display: flex;
   flex-direction: column;
   background: var(--surface-elevated);
-  border-radius: 22px 22px 0 0;
-  padding-bottom: calc(var(--safe-bottom) + var(--space-4));
+  border-radius: 26px 26px 0 0;
+  box-shadow: var(--shadow-sheet);
+  padding-bottom: calc(var(--safe-bottom) + var(--space-5));
   animation: sheet-rise var(--duration-base) var(--ease-standard);
 }
 
@@ -381,37 +426,36 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-2);
 }
 
 .sheet__title {
   font-size: var(--type-title);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.3px;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.4px;
 }
 
 .sheet__close {
-  width: var(--touch-min);
-  height: var(--touch-min);
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--surface-raised);
+  background: var(--surface-secondary);
   color: var(--text-secondary);
-  margin-right: -6px;
 }
 
 .sheet__body {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-5);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .sheet__footer {
-  padding: var(--space-3) var(--space-4) 0;
+  padding: var(--space-4) var(--space-5) 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -419,7 +463,7 @@
 
 @keyframes sheet-rise {
   from {
-    transform: translateY(6%);
+    transform: translateY(8%);
   }
 }
 
@@ -446,12 +490,12 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #000;
+  color: var(--text-on-accent);
   transition: background var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard);
 }
 
 .selection-mark--on {
-  background: var(--selection-accent, var(--pastel-mint));
-  border-color: var(--selection-accent, var(--pastel-mint));
+  background: var(--selection-accent, var(--accent));
+  border-color: var(--selection-accent, var(--accent));
 }

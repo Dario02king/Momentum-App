@@ -1,12 +1,32 @@
 .onboarding {
+  position: relative;
   /* Height, not min-height: the container must be exactly the screen so the
-     question list shrinks and scrolls inside it. With min-height the
-     container grows instead and pushes the footer button off the bottom. */
+     question list shrinks and scrolls inside it. */
   height: 100%;
   display: flex;
   flex-direction: column;
   padding: calc(var(--safe-top) + var(--space-4)) calc(var(--safe-right) + var(--space-5))
     calc(var(--safe-bottom) + var(--space-5)) calc(var(--safe-left) + var(--space-5));
+  overflow: hidden;
+}
+
+/*
+ * A soft tinted wash behind the whole flow. Two very wide, very faint radial
+ * gradients — enough to keep the ground from reading as flat grey, far too
+ * faint to compete with the content sitting on it.
+ */
+.onboarding::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 60% at 12% -6%, rgba(143, 127, 240, 0.22), transparent 62%),
+    radial-gradient(90% 48% at 96% 6%, rgba(98, 180, 247, 0.16), transparent 60%);
+  pointer-events: none;
+}
+
+.onboarding > * {
+  position: relative;
 }
 
 /* Progress dots. Small, quiet, and the only chrome in the flow. */
@@ -27,30 +47,24 @@
 }
 
 .onboarding__dot--active {
-  width: 20px;
+  width: 22px;
   border-radius: var(--radius-pill);
-  background: var(--pastel-lilac);
-}
-
-.onboarding__back {
-  position: absolute;
-  top: calc(var(--safe-top) + var(--space-4));
-  right: calc(var(--safe-right) + var(--space-4));
+  background: var(--accent);
 }
 
 .onboarding__body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  padding-top: var(--space-5);
+  gap: var(--space-6);
+  padding-top: var(--space-6);
   min-height: 0;
 }
 
 .onboarding__title {
-  font-size: var(--type-large-title);
+  font-size: 32px;
   font-weight: var(--weight-bold);
-  letter-spacing: -0.6px;
+  letter-spacing: -0.8px;
   line-height: 1.15;
 }
 
@@ -58,15 +72,15 @@
   font-size: var(--type-body);
   color: var(--text-secondary);
   max-width: 30ch;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 /* Footer actions sit within thumb reach and never scroll away. */
 .onboarding__footer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding-top: var(--space-4);
+  gap: var(--space-1);
+  padding-top: var(--space-5);
 }
 
 /* Welcome ------------------------------------------------------------- */
@@ -76,27 +90,43 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: var(--space-4);
+  gap: var(--space-5);
+  padding-bottom: var(--space-10);
 }
 
+/*
+ * The hero mark. A soft lavender-to-sky gradient tile with a faint halo —
+ * the one deliberately emotional moment in a flow that is otherwise choices.
+ */
 .welcome__mark {
-  width: 68px;
-  height: 68px;
-  border-radius: 22px;
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--space-4);
-  color: #0b0b0d;
-  background: linear-gradient(150deg, var(--pastel-lilac), var(--pastel-sky));
+  margin-bottom: var(--space-6);
+  color: #fff;
+  background: linear-gradient(150deg, #9d8cf5 0%, #7fb6f2 100%);
+  box-shadow: 0 10px 30px rgba(125, 118, 235, 0.32), 0 2px 6px rgba(16, 24, 40, 0.06);
+}
+
+.welcome__mark::after {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 34px;
+  background: radial-gradient(closest-side, rgba(157, 140, 245, 0.24), transparent);
+  z-index: -1;
 }
 
 .welcome__tagline {
-  font-size: 30px;
+  font-size: 36px;
   font-weight: var(--weight-bold);
-  letter-spacing: -0.6px;
-  line-height: 1.2;
-  max-width: 14ch;
+  letter-spacing: -1.1px;
+  line-height: 1.12;
+  max-width: 13ch;
 }
 
 /* Question picker ------------------------------------------------------ */
@@ -104,28 +134,32 @@
 .question-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-  /* Let the last card clear the footer while scrolling. */
   padding-bottom: var(--space-2);
+  /* Room for the card shadows, which would otherwise be clipped. */
+  margin: 0 calc(var(--space-2) * -1);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
 }
 
-/* A bubble-shaped card: the whole thing is the tap target. */
+/* A soft card: the whole thing is the tap target. */
 .question-pick {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   width: 100%;
-  min-height: 60px;
-  padding: var(--space-3) var(--space-4);
+  min-height: 72px;
+  padding: var(--space-4) var(--space-5);
   border-radius: 20px;
   background: var(--surface-elevated);
   border: 1.5px solid transparent;
+  box-shadow: var(--shadow-card);
   text-align: left;
-  transition: background var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard),
+  transition: border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
     transform var(--duration-fast) var(--ease-standard);
 }
 
@@ -134,8 +168,8 @@
 }
 
 .question-pick[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--pastel-lilac) 14%, var(--surface-elevated));
-  border-color: color-mix(in srgb, var(--pastel-lilac) 55%, transparent);
+  border-color: var(--lilac-fill);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 26px rgba(125, 118, 235, 0.18);
 }
 
 .question-pick__body {
@@ -143,28 +177,34 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--space-2);
+  align-items: flex-start;
 }
 
 .question-pick__text {
   font-size: var(--type-subhead);
-  line-height: 1.3;
+  line-height: 1.35;
+  letter-spacing: -0.2px;
 }
 
 .question-pick--custom {
   justify-content: flex-start;
   gap: var(--space-3);
-  color: var(--text-secondary);
+  color: var(--accent);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-subhead);
   border-style: dashed;
-  border-color: var(--separator-strong);
+  border-color: rgba(94, 92, 230, 0.35);
   background: transparent;
-  min-height: var(--touch-min);
+  box-shadow: none;
+  min-height: 56px;
 }
 
 .question-pick__count {
   font-size: var(--type-footnote);
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   min-height: 20px;
+  text-align: center;
 }
 
 /* Sports --------------------------------------------------------------- */
@@ -176,23 +216,31 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: var(--space-6);
+  align-items: center;
+  gap: var(--space-7);
   padding-bottom: var(--space-10);
+  text-align: center;
 }
 
 .sports-step__value {
-  font-size: 56px;
+  font-size: 76px;
   font-weight: var(--weight-bold);
-  letter-spacing: -1.5px;
+  letter-spacing: -3px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--domain-sports);
+  /* The lighter mint: at 76px this is display type, where 3:1 is the bar, and
+     the darker text-safe green reads as heavy on a light ground. */
+  color: var(--domain-sports-mid);
 }
 
 .sports-step__unit {
   font-size: var(--type-subhead);
   color: var(--text-secondary);
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.sports-step__picker {
+  width: 100%;
 }
 
 /* Summary -------------------------------------------------------------- */
@@ -200,22 +248,37 @@
 .summary__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .summary__item {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: 18px;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: 20px;
   background: var(--surface-elevated);
+  box-shadow: var(--shadow-card);
   font-size: var(--type-body);
+  letter-spacing: -0.2px;
 }
 
-.summary__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.summary__mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary__mark--mental {
+  background: var(--domain-mental-tint);
+  color: var(--domain-mental-ink);
+}
+
+.summary__mark--sports {
+  background: var(--domain-sports-tint);
+  color: var(--domain-sports-ink);
 }

@@ -28,7 +28,7 @@ export function TargetPicker({
       selected={value}
       onSelect={onChange}
       label={t('onboarding.sports.title')}
-      accent="var(--domain-sports)"
+      accent="var(--domain-sports-mid)"
       describe={(count) => t('onboarding.sports.perWeek', { count })}
     />
   );

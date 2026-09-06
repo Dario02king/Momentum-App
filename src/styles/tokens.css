@@ -1,66 +1,97 @@
 /*
- * Design tokens.
+ * Design tokens — light.
  *
- * Version 1 is dark only, on purpose: the colour-coded history and the
- * metallic rank badges are both designed against a dark ground, and a light
- * mode would halve the care given to each. Light mode is a version 2
- * candidate, not an omission.
+ * Version 1 is a single light theme. Not two half-considered ones: the
+ * history colours and the rank badges are both designed against one ground,
+ * and carrying a second would halve the care each gets.
+ *
+ * The language is Apple's: a tinted off-white ground, white cards lifted by
+ * a soft shadow rather than a border, hairline separators, generous spacing,
+ * and pastel used as identity rather than decoration.
  */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Ground and elevation — Apple dark-mode system colours. True black pays
-     off on the OLED screens this app is designed for. */
-  --surface-base: #000000;
-  --surface-elevated: #1c1c1e;
-  --surface-raised: #2c2c2e;
-  --surface-input: #3a3a3c;
+  /* Ground and elevation. The ground is never pure white — cards need
+     something to sit on. */
+  --surface-base: #f4f4f8;
+  --surface-tinted: #f7f6fb;
+  --surface-elevated: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-secondary: #f1f1f5;
+  --surface-input: #f2f2f7;
 
   /* Hairlines, never solid rules. */
-  --separator: rgba(255, 255, 255, 0.09);
-  --separator-strong: rgba(255, 255, 255, 0.16);
+  --separator: rgba(60, 60, 67, 0.09);
+  --separator-strong: rgba(60, 60, 67, 0.18);
 
-  --text-primary: rgba(255, 255, 255, 0.96);
-  --text-secondary: rgba(235, 235, 245, 0.6);
-  --text-tertiary: rgba(235, 235, 245, 0.35);
+  /* Text. Secondary is deliberately a little darker than Apple's own
+     secondaryLabel so it clears 4.5:1 on white at footnote size. */
+  --text-primary: #1c1c1e;
+  --text-secondary: #767680;
+  --text-tertiary: #a0a0a8;
+  --text-on-accent: #ffffff;
 
-  --accent: #0a84ff;
-  --accent-muted: rgba(10, 132, 255, 0.16);
+  /* Primary action. Indigo rather than blue: it belongs to the same family
+     as the Mental Wellbeing lilac without competing with it. */
+  --accent: #5e5ce6;
+  --accent-pressed: #4a48cf;
+  --accent-tint: #ecebfd;
 
   /*
-   * Pastel accents.
+   * Pastels.
    *
-   * Pastels on a black ground only work if they stay *accents*: tints, edges,
-   * selected states and small fills. The surfaces underneath stay Apple dark,
-   * so the interface reads soft rather than washed out, and the rank badges
-   * later still have somewhere louder to go.
+   * Each identity has two values, and they are not interchangeable:
+   * `-fill` is decorative (marks, dots, switches, selected bubbles) and
+   * `-ink` is the text-safe variant that clears 4.5:1 on white. Colour is
+   * never the only carrier of meaning, but where it does carry any, it has
+   * to be readable.
    */
-  --pastel-mint: #7fd8b0;
-  --pastel-sky: #8cc4f0;
-  --pastel-lilac: #b5a9ec;
-  --pastel-peach: #f0b48c;
-  --pastel-rose: #ec9aa0;
-  --pastel-sand: #e5cc8c;
+  /* `-mid` is the switch / selected-bubble weight: strong enough to clear
+     3:1 as a graphical element, light enough not to look like a dark theme
+     leaked into a light one. */
+  --lilac-fill: #8f7ff0;
+  --lilac-mid: #7a68e8;
+  --lilac-ink: #6a57e0;
+  --lilac-tint: #efecfd;
+
+  --mint-fill: #3ecfa2;
+  --mint-mid: #12a277;
+  --mint-ink: #0a7f60;
+  --mint-tint: #e3f7ef;
+
+  --sky-fill: #62b4f7;
+  --sky-ink: #1878c8;
+  --sky-tint: #e6f2fd;
+
+  --peach-fill: #f7b183;
+  --peach-ink: #b96a24;
+  --peach-tint: #fdf0e6;
+
+  --rose-fill: #f2909c;
+  --rose-ink: #c8455a;
+  --rose-tint: #fdecef;
+
+  --sand-fill: #eccf7a;
+  --sand-ink: #96771a;
+  --sand-tint: #fbf4de;
 
   /* Domain identity. */
-  --domain-mental: var(--pastel-lilac);
-  --domain-sports: var(--pastel-mint);
+  --domain-mental: var(--lilac-fill);
+  --domain-mental-mid: var(--lilac-mid);
+  --domain-mental-ink: var(--lilac-ink);
+  --domain-mental-tint: var(--lilac-tint);
+  --domain-sports: var(--mint-fill);
+  --domain-sports-mid: var(--mint-mid);
+  --domain-sports-ink: var(--mint-ink);
+  --domain-sports-tint: var(--mint-tint);
 
-  /* Scale bands, poor to very good. Always paired with their label — colour
-     never carries the meaning on its own. */
-  --scale-poor: var(--pastel-rose);
-  --scale-okay: var(--pastel-peach);
-  --scale-good: var(--pastel-sand);
-  --scale-veryGood: var(--pastel-mint);
-
-  /* Performance bands. Colour never carries meaning alone — every use is
-     paired with a value, a label or a pattern. */
-  --band-low: #ff453a;
-  --band-fair: #ff9f0a;
-  --band-good: #ffd60a;
-  --band-high: #30d158;
-  --band-none: #1f1f22;
+  /* Scale bands, poor to very good. Always paired with their label. */
+  --scale-poor: var(--rose-ink);
+  --scale-okay: var(--peach-ink);
+  --scale-good: var(--sand-ink);
+  --scale-veryGood: var(--mint-ink);
 
   /* iOS type scale. */
   --type-large-title: 34px;
@@ -82,22 +113,31 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-7: 28px;
   --space-8: 32px;
   --space-10: 40px;
+  --space-12: 48px;
 
-  --radius-card: 16px;
-  --radius-control: 12px;
+  /* Generous radii — the references are soft, and so is this. */
+  --radius-card: 22px;
+  --radius-inner: 16px;
+  --radius-control: 14px;
   --radius-pill: 999px;
 
-  /* Restrained: depth comes from elevation, not from drop shadows. */
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /*
+   * Shadows do the work borders would do in a dark theme: two layers, both
+   * very low opacity, so a card lifts off the ground without announcing it.
+   */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.05);
+  --shadow-raised: 0 2px 6px rgba(16, 24, 40, 0.06), 0 16px 40px rgba(16, 24, 40, 0.08);
+  --shadow-button: 0 4px 14px rgba(94, 92, 230, 0.28);
+  --shadow-sheet: 0 -8px 40px rgba(16, 24, 40, 0.14);
 
   /* Touch targets never go below this. */
   --touch-min: 44px;
 
-  --tab-bar-height: 50px;
-  /* Translucent, blurred tab bar — the content scrolls under it. */
-  --tab-bar-material: rgba(18, 18, 20, 0.72);
+  --tab-bar-height: 52px;
+  --tab-bar-material: rgba(255, 255, 255, 0.82);
   --tab-bar-blur: saturate(180%) blur(20px);
 
   --safe-top: env(safe-area-inset-top, 0px);
@@ -105,8 +145,8 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  --duration-fast: 120ms;
-  --duration-base: 220ms;
+  --duration-fast: 130ms;
+  --duration-base: 240ms;
   --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
