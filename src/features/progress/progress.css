@@ -1,0 +1,280 @@
+.progress__scroll {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-1) var(--space-2)
+    calc(var(--tab-bar-height) + var(--safe-bottom) + var(--space-10));
+}
+
+/* Range picker ---------------------------------------------------------- */
+
+.progress__ranges {
+  margin-bottom: var(--space-4);
+}
+
+/* Trend ----------------------------------------------------------------- */
+
+.trend {
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
+.trend__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.trend__range {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+/* The one-word answer to "which way am I going". */
+.trend__direction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+}
+
+.trend__direction--rising {
+  color: var(--mint-ink);
+}
+.trend__direction--falling {
+  color: var(--rose-ink);
+}
+.trend__direction--steady {
+  color: var(--text-secondary);
+}
+
+.trend__chart {
+  width: 100%;
+  height: 96px;
+  margin: var(--space-5) 0 var(--space-4);
+  display: block;
+  overflow: visible;
+}
+
+.trend__figures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.trend__figure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--type-subhead);
+}
+
+.trend__figureLabel {
+  color: var(--text-secondary);
+}
+
+.trend__figureValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-headline);
+  letter-spacing: -0.3px;
+}
+
+.trend__figure--muted .trend__figureValue {
+  font-weight: var(--weight-regular);
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+/* Annotations, used sparingly: a line of plain words, not chart furniture. */
+.trend__notes {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--separator);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.trend__note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.trend__noteDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+/* Heatmap --------------------------------------------------------------- */
+
+.heatmap {
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
+.heatmap__row {
+  margin-bottom: var(--space-4);
+}
+
+.heatmap__row--depth1 {
+  margin-left: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.heatmap__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 28px;
+  margin-bottom: var(--space-2);
+  text-align: left;
+  color: inherit;
+}
+
+.heatmap__header--tappable {
+  min-height: var(--touch-min);
+  margin-bottom: 0;
+}
+
+.heatmap__label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmap__row--depth1 .heatmap__label {
+  font-weight: var(--weight-regular);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.heatmap__average {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.heatmap__chevron--open {
+  transform: rotate(180deg);
+}
+
+/*
+ * One column per day. The bar's height is the value; the colour reinforces
+ * the band it falls in.
+ */
+.heatmap__strip {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 34px;
+}
+
+.heatmap__row--depth1 .heatmap__strip {
+  height: 22px;
+}
+
+.heatmap__cell {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  background: var(--band-track);
+  border-radius: 3px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.heatmap__bar {
+  width: 100%;
+  border-radius: 3px;
+  transition: height var(--duration-base) var(--ease-standard);
+}
+
+.heatmap__bar--low {
+  background: var(--band-low);
+}
+.heatmap__bar--fair {
+  background: var(--band-fair);
+}
+.heatmap__bar--good {
+  background: var(--band-good);
+}
+.heatmap__bar--high {
+  background: var(--band-high);
+}
+
+/* A day with no data is an unfilled track, never another colour. */
+.heatmap__empty {
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--band-none),
+    var(--band-none) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+}
+
+.heatmap__range {
+  font-size: var(--type-footnote);
+  color: var(--text-tertiary);
+  margin-top: var(--space-2);
+}
+
+.heatmap__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-4) 0 0;
+  border-top: 1px solid var(--separator);
+}
+
+.heatmap__legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+}
+
+.heatmap__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.heatmap__swatch--low {
+  background: var(--band-low);
+}
+.heatmap__swatch--fair {
+  background: var(--band-fair);
+}
+.heatmap__swatch--good {
+  background: var(--band-good);
+}
+.heatmap__swatch--high {
+  background: var(--band-high);
+}
+.heatmap__swatch--none {
+  background: var(--band-none);
+}

@@ -147,6 +147,25 @@ export const de = {
   'sports.delete': 'Training löschen',
   'sports.weekClosed': 'Diese Woche ist abgeschlossen.',
 
+  'progress.rangeDays': '{count} Tage',
+  'progress.current': 'Aktuell',
+  'progress.previous': 'Vor {count} Tagen',
+  'progress.rising': 'steigend',
+  'progress.falling': 'fallend',
+  'progress.steady': 'stabil',
+  'progress.noTrendTitle': 'Noch kein Verlauf',
+  'progress.noTrendBody':
+    'Nach ein paar Tagen mit Check-ins zeigt sich hier, wohin es geht.',
+  'progress.emptyTitle': 'Noch keine Daten',
+  'progress.emptyBody': 'Sobald du deine ersten Tage erfasst hast, erscheint hier dein Verlauf.',
+  'progress.annotationPeak': 'Höchststand',
+  'progress.annotationGap': '{count} Tage ohne Daten',
+  'progress.overall': 'Gesamt',
+  'progress.scoredDays': '{count} von {total} Tagen erfasst',
+
+  'heatmap.average': 'Durchschnitt {value} Prozent',
+  'heatmap.range': 'Letzte {count} Tage',
+
   'placeholder.body': 'Dieser Bereich entsteht in einer späteren Stufe.',
 
   'error.storage.title': 'Daten konnten nicht geladen werden',

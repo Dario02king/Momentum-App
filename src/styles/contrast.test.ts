@@ -112,6 +112,24 @@ describe('white on a filled control', () => {
   );
 });
 
+describe('history grid bands', () => {
+  it.each(['--band-low', '--band-fair', '--band-good', '--band-high'])(
+    '%s separates from the empty cell track',
+    (name) => {
+      // A filled bar is a graphical object: 3:1 against what surrounds it.
+      expect(contrast(hex(name), hex('--band-track'))).toBeGreaterThanOrEqual(LARGE);
+    },
+  );
+
+  it('leaves the no-data track lighter than every band', () => {
+    // An empty cell must never be mistaken for a low score.
+    const bands = ['--band-low', '--band-fair', '--band-good', '--band-high'].map((name) =>
+      luminance(hex(name)),
+    );
+    expect(Math.min(...bands)).toBeLessThan(luminance(hex('--band-none')));
+  });
+});
+
 describe('surfaces', () => {
   it('separates the ground from a card', () => {
     // Subtle, but it has to be an actual difference — the card is what makes

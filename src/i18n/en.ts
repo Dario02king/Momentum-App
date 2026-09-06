@@ -144,6 +144,24 @@ export const en: Translations = {
   'sports.delete': 'Delete session',
   'sports.weekClosed': 'This week is closed.',
 
+  'progress.rangeDays': '{count} days',
+  'progress.current': 'Now',
+  'progress.previous': '{count} days ago',
+  'progress.rising': 'rising',
+  'progress.falling': 'falling',
+  'progress.steady': 'steady',
+  'progress.noTrendTitle': 'No trend yet',
+  'progress.noTrendBody': 'After a few days of check-ins this will show where things are heading.',
+  'progress.emptyTitle': 'No data yet',
+  'progress.emptyBody': 'Your history appears here once you have recorded your first days.',
+  'progress.annotationPeak': 'Peak',
+  'progress.annotationGap': '{count} days without data',
+  'progress.overall': 'Overall',
+  'progress.scoredDays': '{count} of {total} days recorded',
+
+  'heatmap.average': 'average {value} per cent',
+  'heatmap.range': 'Last {count} days',
+
   'placeholder.body': 'This part is built in a later stage.',
 
   'error.storage.title': 'Your data could not be loaded',

@@ -100,6 +100,20 @@ export const HEATMAP_DAYS = 30;
 export const TREND_SMOOTHING_DAYS = 7;
 
 /**
+ * How far the smoothed value must move before the trend is called rising or
+ * falling. Inside this band it is steady — the screen answers a directional
+ * question, and calling every wobble a direction would make it meaningless.
+ */
+export const TREND_STEADY_BAND = 2;
+
+/** Below this many scored days there is no trend to state, and the screen
+ *  says so rather than drawing a line through nothing. */
+export const TREND_MIN_SCORED_DAYS = 5;
+
+/** A run of days with no data at least this long is worth annotating. */
+export const INACTIVITY_ANNOTATION_DAYS = 4;
+
+/**
  * Sports. The target is capped at seven — one session per day — because the
  * picker shows every choice as a bubble and a weekly quota above "every day"
  * stops describing a week.

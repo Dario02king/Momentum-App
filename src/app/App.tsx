@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AreasScreen } from '../features/areas/AreasScreen';
+import { ProgressScreen } from '../features/progress/ProgressScreen';
 import { TodayScreen } from '../features/today/TodayScreen';
 import { OnboardingFlow } from '../features/onboarding/OnboardingFlow';
 import { I18nProvider, useT } from '../i18n/I18nProvider';
@@ -35,7 +36,7 @@ function MainApp({
     <div className="app">
       <div className="app__content">
         {tab === 'today' ? <TodayScreen onGoToAreas={() => setTab('areas')} /> : null}
-        {tab === 'progress' ? <StagePlaceholder titleKey="nav.progress" /> : null}
+        {tab === 'progress' ? <ProgressScreen /> : null}
         {tab === 'rank' ? <StagePlaceholder titleKey="nav.rank" /> : null}
         {tab === 'areas' ? (
           <AreasScreen configuration={configuration} actions={actions} />

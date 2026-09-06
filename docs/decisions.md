@@ -233,3 +233,58 @@ Two consequences worth recording:
   left unused. It encoded exactly the rejected behaviour, and dead code that
   still works is an invitation to wire it back up. `clearAnswer` remains and
   is now reached only through the explicit action.
+
+## D22 — The trend runs on the overall daily score, not the rating
+
+§12's example figures (642, 518) look like the 0–1000 rating, but the rating
+engine is stage 5 and the Progress screen is stage 4. The curve therefore
+plots the smoothed **overall daily score** as a percentage.
+
+`core/trends` is deliberately generic over its series — it takes dated values
+where `null` means "no data" and knows nothing about what they measure. Stage
+5 can feed it the rating without touching the module, and the two curves have
+the same shape anyway, since the rating is an exponentially weighted average
+of exactly this score.
+
+## D23 — A weekly sports target is resolved at the week's Monday
+
+A week is scored against the target that was in force when it began. Using
+the target as of each individual day would let a mid-week change retroactively
+rewrite the earlier days of the same week, since the sports score is a
+week-level value shown on every day of that week. Monday's snapshot is
+deterministic and matches the plain reading of "the target I started this
+week with". A change therefore takes effect from the following week.
+
+## D24 — A running week with nothing logged has no data, rather than zero
+
+The same principle as an open day (§11). A week that has not finished cannot
+have missed its target yet, so with no sessions logged it is excluded from
+the mean instead of scoring zero. Once anything is logged it reports running
+progress, and a finished week reports the truth even when that truth is zero.
+
+Without this, every Monday morning would open with the day dragged down by a
+sports domain that had simply not happened yet.
+
+## D25 — Days before the app was configured are neutral, never missed
+
+History resolves each day against the snapshot in force then, and there is
+deliberately **no fallback** to the earliest snapshot for days that precede
+it. Nothing was due before the user configured anything, so those days are
+neutral.
+
+This was found by looking at a freshly onboarded profile: the Progress screen
+showed a flat 0% line across thirty days, a "Höchststand" annotation on a
+date before the app existed, and a grid of red for days the user was never
+asked about — precisely the zero-filled chart §21 forbids.
+
+## D26 — "Inactive" is a property the caller supplies, not one inferred
+
+A closed day on which nothing was answered scores zero rather than being
+excluded, correctly, because it was missed. But that means a run of missed
+days looks like ordinary data to every average, and the inactivity
+annotation §12 asks for would never fire.
+
+`SeriesPoint` therefore carries an optional `inactive` flag that the caller
+sets from what was actually recorded. The trend module cannot infer it from
+the number alone, and pretending otherwise would have made the annotation
+fire only in the rare case where nothing was even due.

@@ -96,6 +96,25 @@
   --domain-sports-ink: var(--mint-ink);
   --domain-sports-tint: var(--mint-tint);
 
+  /*
+   * Performance bands for the history grid (§12), mixed for a light ground
+   * rather than carried over from a dark palette. Each clears 3:1 against
+   * the empty cell track it sits in.
+   *
+   * They sit at similar luminance, so hue alone would leave low and high
+   * confusable for a colour-blind reader. That is why the grid encodes the
+   * value as the height of the bar and uses colour only to reinforce it —
+   * magnitude is carried by a channel everyone can see.
+   */
+  --band-low: #e7516b;
+  --band-fair: #ce6d12;
+  --band-good: #a88113;
+  --band-high: #1d9871;
+  /* No data: an empty track, distinguished by being unfilled rather than by
+     any colour at all. */
+  --band-none: #e6e6ec;
+  --band-track: #f1f1f5;
+
   /* Scale bands, poor to very good. Always paired with their label. */
   --scale-poor: var(--rose-ink);
   --scale-okay: var(--peach-ink);
