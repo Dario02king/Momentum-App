@@ -1,89 +1,77 @@
-import { today } from '../core/clock';
-import { SCHEMA_VERSION } from '../core/model';
-import type { Language } from '../core/model';
-import { formatFullDate } from '../i18n/format';
-import { I18nProvider, useI18n } from '../i18n/I18nProvider';
-import { LANGUAGES } from '../i18n';
-import { useAppSettings } from './useAppSettings';
-import './App.css';
+import { useState } from 'react';
+import { AreasScreen } from '../features/areas/AreasScreen';
+import { OnboardingFlow } from '../features/onboarding/OnboardingFlow';
+import { I18nProvider, useT } from '../i18n/I18nProvider';
+import type { TranslationKey } from '../i18n';
+import { TabBar, type TabId } from './TabBar';
+import { useMomentum } from './useMomentum';
+import type { AppConfiguration } from '../storage/services/configurationService';
+import type { AreasActions } from '../features/areas/AreasScreen';
+import './appShell.css';
 
-/**
- * Stage 1 shell.
- *
- * Deliberately not a preview of the real screens: it proves that storage,
- * the string layer and the dark design tokens work end to end on device, and
- * nothing more. Today, Progress, Rank and Areas arrive in their own stages.
- */
-function Shell() {
-  const { t, language, setLanguage } = useI18n();
+/** Honest stand-in for a screen that a later stage builds. */
+function StagePlaceholder({ titleKey }: { titleKey: TranslationKey }) {
+  const t = useT();
+  return (
+    <div className="stage-placeholder">
+      <p className="stage-placeholder__title">{t(titleKey)}</p>
+      <p className="stage-placeholder__body">{t('placeholder.body')}</p>
+    </div>
+  );
+}
+
+function MainApp({
+  configuration,
+  actions,
+}: {
+  configuration: AppConfiguration;
+  actions: AreasActions;
+}) {
+  const [tab, setTab] = useState<TabId>('areas');
 
   return (
-    <main className="app-shell">
-      <header>
-        <h1 className="app-shell__title">{t('app.name')}</h1>
-        <p className="app-shell__tagline">{t('app.tagline')}</p>
-      </header>
-
-      <section className="app-card" aria-label={t('common.settings')}>
-        <div className="app-card__row">
-          <span className="app-card__label">{t('common.today')}</span>
-          <span className="app-card__value">{formatFullDate(language, today())}</span>
-        </div>
-        <div className="app-card__row">
-          <span className="app-card__label">Schema</span>
-          <span className="app-card__value">v{SCHEMA_VERSION}</span>
-        </div>
-      </section>
-
-      <div
-        className="language-switch"
-        role="group"
-        aria-label={t('common.language')}
-      >
-        {LANGUAGES.map((option: Language) => (
-          <button
-            key={option}
-            type="button"
-            className="language-switch__option"
-            aria-pressed={language === option}
-            onClick={() => setLanguage(option)}
-          >
-            {option === 'de' ? 'Deutsch' : 'English'}
-          </button>
-        ))}
+    <div className="app">
+      <div className="app__content">
+        {tab === 'today' ? <StagePlaceholder titleKey="nav.today" /> : null}
+        {tab === 'progress' ? <StagePlaceholder titleKey="nav.progress" /> : null}
+        {tab === 'rank' ? <StagePlaceholder titleKey="nav.rank" /> : null}
+        {tab === 'areas' ? (
+          <AreasScreen configuration={configuration} actions={actions} />
+        ) : null}
       </div>
+      <TabBar active={tab} onSelect={setTab} />
+    </div>
+  );
+}
 
-      <p className="app-shell__note">
-        {language === 'de'
-          ? 'Alle Daten bleiben auf diesem Gerät.'
-          : 'All data stays on this device.'}
-      </p>
-    </main>
+function StorageError() {
+  const t = useT();
+  return (
+    <div className="stage-placeholder">
+      <p className="stage-placeholder__title">{t('error.storage.title')}</p>
+      <p className="stage-placeholder__body">{t('error.storage.body')}</p>
+    </div>
   );
 }
 
 export function App() {
-  const { state, setLanguage } = useAppSettings();
+  const { state, areasActions, finishOnboarding, setLanguage } = useMomentum();
 
   if (state.status === 'loading') {
-    return <main className="app-shell" aria-busy="true" />;
+    return <div className="app" aria-busy="true" />;
   }
 
-  if (state.status === 'error') {
-    return (
-      <main className="app-shell">
-        <h1 className="app-shell__title">Momentum</h1>
-        <p className="app-shell__tagline">
-          Daten konnten nicht geladen werden. Momentum speichert alles lokal auf diesem Gerät.
-          Im privaten Modus mancher Browser ist das nicht möglich.
-        </p>
-      </main>
-    );
-  }
+  const language = state.status === 'ready' ? state.configuration.settings.language : 'de';
 
   return (
-    <I18nProvider language={state.settings.language} setLanguage={setLanguage}>
-      <Shell />
+    <I18nProvider language={language} setLanguage={setLanguage}>
+      {state.status === 'error' ? (
+        <StorageError />
+      ) : state.configuration.settings.onboardingCompletedAt === null ? (
+        <OnboardingFlow onFinish={finishOnboarding} />
+      ) : (
+        <MainApp configuration={state.configuration} actions={areasActions} />
+      )}
     </I18nProvider>
   );
 }

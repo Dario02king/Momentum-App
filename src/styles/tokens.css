@@ -28,6 +28,32 @@
   --accent: #0a84ff;
   --accent-muted: rgba(10, 132, 255, 0.16);
 
+  /*
+   * Pastel accents.
+   *
+   * Pastels on a black ground only work if they stay *accents*: tints, edges,
+   * selected states and small fills. The surfaces underneath stay Apple dark,
+   * so the interface reads soft rather than washed out, and the rank badges
+   * later still have somewhere louder to go.
+   */
+  --pastel-mint: #7fd8b0;
+  --pastel-sky: #8cc4f0;
+  --pastel-lilac: #b5a9ec;
+  --pastel-peach: #f0b48c;
+  --pastel-rose: #ec9aa0;
+  --pastel-sand: #e5cc8c;
+
+  /* Domain identity. */
+  --domain-mental: var(--pastel-lilac);
+  --domain-sports: var(--pastel-mint);
+
+  /* Scale bands, poor to very good. Always paired with their label — colour
+     never carries the meaning on its own. */
+  --scale-poor: var(--pastel-rose);
+  --scale-okay: var(--pastel-peach);
+  --scale-good: var(--pastel-sand);
+  --scale-veryGood: var(--pastel-mint);
+
   /* Performance bands. Colour never carries meaning alone — every use is
      paired with a value, a label or a pattern. */
   --band-low: #ff453a;
@@ -70,6 +96,9 @@
   --touch-min: 44px;
 
   --tab-bar-height: 50px;
+  /* Translucent, blurred tab bar — the content scrolls under it. */
+  --tab-bar-material: rgba(18, 18, 20, 0.72);
+  --tab-bar-blur: saturate(180%) blur(20px);
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);

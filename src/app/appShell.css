@@ -1,0 +1,74 @@
+.app {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app__content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--separator);
+  background: var(--tab-bar-material);
+  backdrop-filter: var(--tab-bar-blur);
+  -webkit-backdrop-filter: var(--tab-bar-blur);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.tab-bar__tab {
+  flex: 1;
+  min-height: var(--tab-bar-height);
+  padding: 7px 0 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-tertiary);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.tab-bar__tab[aria-current='page'] {
+  color: var(--text-primary);
+}
+
+.tab-bar__label {
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.1px;
+}
+
+/* Placeholder for the screens that arrive in later stages. */
+.stage-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+}
+
+.stage-placeholder__title {
+  font-size: var(--type-title);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+}
+
+.stage-placeholder__body {
+  font-size: var(--type-footnote);
+  max-width: 26ch;
+}

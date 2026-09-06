@@ -58,3 +58,38 @@ apostrophe because ICU versions differ on which one they use.
 
 Per §6, and taken literally: there are no unused light-mode tokens waiting to
 be filled in. Light mode is a version 2 candidate.
+
+## D8 — Pastel accents on an Apple-dark ground
+
+The stage 2 brief asks for soft pastel tones; §6 of the specification warns
+against pastel palettes on dark. Both are satisfied by keeping pastels as
+*accents* — selected states, domain identity, switches, badges, the scale
+ramp — while every surface underneath stays true black and Apple dark grey.
+The interface reads soft without turning washed out, and the rank badges
+still have somewhere louder to go in stage 5.
+
+## D9 — Sports target is capped at seven per week
+
+The picker shows every choice as a bubble, and above "every day" a weekly
+quota stops describing a week. `SPORTS.MAX_TARGET_PER_WEEK` moved from 14
+to 7. Easy to raise if two-a-day training turns out to matter.
+
+## D10 — Bubbles wrap rather than shrink
+
+Seven 44px targets plus gaps do not fit one row below about 390px. They wrap
+to a second row instead of shrinking: a sub-44px tap target is a worse trade
+than an extra row, and a horizontal scroller would hide choices.
+
+## D11 — A question row states its type once
+
+Type lives in the badge; the row subtitle is gone. Every active question is
+asked daily, so "Täglich" on every line distinguished nothing, and the type
+appeared twice per row. Paused and archived get a badge because those are
+the states worth calling out.
+
+## D12 — No Apple HIG design skill is available in this environment
+
+Checked at stage 2: no such skill or plugin is installed. Per §6 this is
+reported rather than invented; the work follows HIG principles directly
+(type scale, 44px targets, safe areas, translucent tab bar, restrained
+motion). Worth re-checking before the stage 8 review.

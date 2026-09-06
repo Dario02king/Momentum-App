@@ -28,7 +28,7 @@ The app is built in reviewed stages. Current status:
 | # | Stage | Status |
 |---|---|---|
 | 1 | Project setup, storage abstraction, schema v1, date and week logic | done |
-| 2 | Onboarding, domain and question configuration | not started |
+| 2 | Onboarding, domain and question configuration | in review |
 | 3 | Today screen and daily check-in | not started |
 | 4 | Progress screen: heatmap and trend curve | not started |
 | 5 | Rating engine, rank ladder, rank badges | not started |
@@ -43,7 +43,10 @@ recorded in [`docs/decisions.md`](docs/decisions.md).
 
 ```
 src/
-  app/        application shell and settings boot
+  app/        application shell, tab bar, storage binding
+  components/ shared surfaces, controls and original SVG icons
+  domains/    domain-specific UI (mental questions, sports target)
+  features/   onboarding, areas
   core/
     config/   every tunable constant, and config snapshots (§18)
     dates/    local-date and Monday-to-Sunday week logic

@@ -1,0 +1,457 @@
+/* Shared surfaces and controls. Calm by default: motion answers a tap and
+   nothing here decorates. */
+
+.screen {
+  /* Exactly the screen, so the inner scroll area shrinks rather than pushing
+     the tab bar away. */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-left: calc(var(--safe-left) + var(--space-4));
+  padding-right: calc(var(--safe-right) + var(--space-4));
+}
+
+.screen__header {
+  padding-top: calc(var(--safe-top) + var(--space-6));
+  padding-bottom: var(--space-5);
+}
+
+.screen__title {
+  font-size: var(--type-large-title);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.5px;
+}
+
+.screen__subtitle {
+  margin-top: var(--space-2);
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+  max-width: 34ch;
+}
+
+.section {
+  margin-bottom: var(--space-8);
+}
+
+.section__label {
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: 0 var(--space-1) var(--space-2);
+}
+
+.card {
+  background: var(--surface-elevated);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.card--padded {
+  padding: var(--space-4);
+}
+
+/* A row is a whole tap target: 44px minimum, hairline between rows only. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  color: inherit;
+}
+
+.row + .row {
+  box-shadow: inset 0 1px 0 var(--separator);
+}
+
+.row--tappable:active {
+  background: var(--surface-raised);
+}
+
+.row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row__title {
+  font-size: var(--type-body);
+  line-height: 1.3;
+}
+
+.row__subtitle {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.row__trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.row--muted .row__title {
+  color: var(--text-secondary);
+}
+
+/* Badge: says boolean or scale in words, not by colour. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.badge--scale {
+  background: color-mix(in srgb, var(--pastel-sky) 18%, transparent);
+  color: var(--pastel-sky);
+}
+
+.badge--boolean {
+  background: color-mix(in srgb, var(--pastel-lilac) 18%, transparent);
+  color: var(--pastel-lilac);
+}
+
+.badge--paused {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-tertiary);
+}
+
+/* Buttons. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-control);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  transition: transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+.button:active {
+  transform: scale(0.975);
+}
+
+.button--primary {
+  background: var(--text-primary);
+  color: #000;
+}
+
+.button--secondary {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.button--quiet {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.button--destructive {
+  color: var(--pastel-rose);
+  background: color-mix(in srgb, var(--pastel-rose) 14%, transparent);
+}
+
+.button--block {
+  width: 100%;
+}
+
+.button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Switch. */
+.switch {
+  position: relative;
+  width: 51px;
+  height: 31px;
+  min-height: 31px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-input);
+  flex-shrink: 0;
+  transition: background var(--duration-base) var(--ease-standard);
+}
+
+.switch[aria-checked='true'] {
+  background: var(--switch-on, var(--pastel-mint));
+}
+
+.switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+
+.switch[aria-checked='true'] .switch__knob {
+  transform: translateX(20px);
+}
+
+/* Segmented control. */
+.segmented {
+  display: flex;
+  gap: var(--space-1);
+  padding: 3px;
+  background: var(--surface-raised);
+  border-radius: var(--radius-control);
+}
+
+.segmented__option {
+  flex: 1;
+  min-height: 38px;
+  border-radius: 9px;
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  transition: background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.segmented__option[aria-pressed='true'] {
+  background: var(--surface-input);
+  color: var(--text-primary);
+}
+
+/* Bubbles: round, thumb-sized, used wherever a choice is a small number. */
+/*
+ * Seven 44px touch targets plus gaps do not fit one row on a narrow phone.
+ * They wrap instead of shrinking: a tap target below 44px is a worse trade
+ * than a second row, and a horizontal scroller would hide choices entirely.
+ */
+.bubble-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-1);
+  justify-content: center;
+}
+
+.bubble {
+  flex: 1;
+  aspect-ratio: 1;
+  max-width: 52px;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1.5px solid transparent;
+  transition: transform var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.bubble:active {
+  transform: scale(0.94);
+}
+
+.bubble[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--bubble-accent, var(--pastel-mint)) 22%, transparent);
+  border-color: var(--bubble-accent, var(--pastel-mint));
+  color: var(--text-primary);
+}
+
+/* Text field. */
+.field {
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  font: inherit;
+  /* 17px keeps iOS Safari from zooming the viewport on focus. */
+  font-size: var(--type-body);
+}
+
+.field::placeholder {
+  color: var(--text-tertiary);
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--pastel-sky);
+}
+
+.field-label {
+  display: block;
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+/* Empty states invite an action; they never apologise. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  color: var(--text-secondary);
+}
+
+.empty__icon {
+  color: var(--text-tertiary);
+}
+
+.empty__title {
+  font-size: var(--type-body);
+  color: var(--text-primary);
+}
+
+.empty__body {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  max-width: 32ch;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Bottom sheet. */
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  z-index: 40;
+  animation: sheet-fade var(--duration-base) var(--ease-standard);
+}
+
+.sheet {
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-elevated);
+  border-radius: 22px 22px 0 0;
+  padding-bottom: calc(var(--safe-bottom) + var(--space-4));
+  animation: sheet-rise var(--duration-base) var(--ease-standard);
+}
+
+.sheet__grabber {
+  width: 36px;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--separator-strong);
+  margin: var(--space-2) auto var(--space-1);
+}
+
+.sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+}
+
+.sheet__title {
+  font-size: var(--type-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.3px;
+}
+
+.sheet__close {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  margin-right: -6px;
+}
+
+.sheet__body {
+  padding: var(--space-3) var(--space-4);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sheet__footer {
+  padding: var(--space-3) var(--space-4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@keyframes sheet-rise {
+  from {
+    transform: translateY(6%);
+  }
+}
+
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .sheet-scrim {
+    animation: none;
+  }
+}
+
+/* Selection mark. */
+.selection-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--separator-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #000;
+  transition: background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.selection-mark--on {
+  background: var(--selection-accent, var(--pastel-mint));
+  border-color: var(--selection-accent, var(--pastel-mint));
+}

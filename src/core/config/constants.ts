@@ -99,10 +99,14 @@ export const HEATMAP_DAYS = 30;
 /** Window of the rolling average used to suppress daily noise in the curve. */
 export const TREND_SMOOTHING_DAYS = 7;
 
-/** Sports. */
+/**
+ * Sports. The target is capped at seven — one session per day — because the
+ * picker shows every choice as a bubble and a weekly quota above "every day"
+ * stops describing a week.
+ */
 export const SPORTS = {
   MIN_TARGET_PER_WEEK: 1,
-  MAX_TARGET_PER_WEEK: 14,
+  MAX_TARGET_PER_WEEK: 7,
   DEFAULT_TARGET_PER_WEEK: 3,
 } as const;
 
