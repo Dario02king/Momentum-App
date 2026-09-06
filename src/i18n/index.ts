@@ -10,8 +10,13 @@ export const DEFAULT_LANGUAGE: Language = 'de';
 
 const CATALOGUES: Record<Language, Translations> = { de, en };
 
-/** BCP 47 tags for `Intl`. Dates and numbers follow the chosen language. */
-const LOCALES: Record<Language, string> = { de: 'de-DE', en: 'en-GB' };
+/**
+ * BCP 47 tags for `Intl`. Dates and numbers follow the chosen language.
+ *
+ * German uses the Swiss locale: dates, weekdays and month names are identical
+ * to de-DE, but thousands group with an apostrophe — 4'820, not 4.820.
+ */
+const LOCALES: Record<Language, string> = { de: 'de-CH', en: 'en-GB' };
 
 export type TranslationParams = Record<string, string | number>;
 

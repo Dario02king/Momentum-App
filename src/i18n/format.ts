@@ -49,10 +49,14 @@ export function formatRelativeDay(language: Language, day: DateKey, reference: D
 }
 
 export function formatNumber(language: Language, value: number, fractionDigits = 0): string {
-  return new Intl.NumberFormat(localeOf(language), {
+  const formatted = new Intl.NumberFormat(localeOf(language), {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   }).format(value);
+  // Some ICU versions group Swiss thousands with a typographic apostrophe
+  // (U+2019) and others with a straight one. Normalise, so the same number
+  // does not render differently on iOS and on desktop.
+  return formatted.replace(/\u2019/g, "'");
 }
 
 /** Percentages are shown without decimals: the extra precision is noise. */
