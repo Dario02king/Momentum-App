@@ -23,7 +23,6 @@ function toQuestionSnapshot(question: QuestionRecord): QuestionConfigSnapshot {
     domainId: question.domainId,
     text: question.text,
     type: question.type,
-    rhythm: question.rhythm,
     status: question.status,
   };
 }

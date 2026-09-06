@@ -21,8 +21,12 @@ export type DomainType = 'mental' | 'sports';
  *  records in their own right. */
 export type MentalDomainSettings = Record<string, never>;
 
+/**
+ * A weekly quota: the user aims for `targetPerWeek` sessions and logs them on
+ * whatever days they happen. This is the shape any future domain with a
+ * weekly target reuses — no fixed training days, no per-item schedules.
+ */
 export interface SportsDomainSettings {
-  /** Sessions the user aims to complete per Monday-to-Sunday week. */
   targetPerWeek: number;
 }
 
@@ -59,24 +63,20 @@ export type QuestionType = 'boolean' | 'scale';
 export type QuestionStatus = 'active' | 'paused' | 'archived';
 
 /**
- * How often a question is due.
+ * A Mental Wellbeing question. Asked once per calendar day, every day.
  *
- * `timesPerWeek` is a quota, not a schedule: the question may be answered on
- * any day of the Monday-to-Sunday week and only becomes mandatory once the
- * remaining days are exactly what the remaining quota needs.
+ * Questions carry no schedule of their own: anything that is genuinely a
+ * weekly quota belongs to a domain with a weekly target, the way Sports
+ * works, rather than to a question pretending to be due on some days and not
+ * on others. That keeps the daily check-in a single unambiguous act and
+ * keeps "was this due?" out of the scoring path entirely.
  */
-export type Rhythm =
-  | { kind: 'daily' }
-  | { kind: 'timesPerWeek'; times: number }
-  | { kind: 'weekly' };
-
 export interface QuestionRecord {
   id: string;
   domainId: string;
   /** The literal sentence asked, e.g. "Hast du dein Bett gemacht?". */
   text: string;
   type: QuestionType;
-  rhythm: Rhythm;
   status: QuestionStatus;
   order: number;
   createdAt: string;
@@ -140,7 +140,6 @@ export interface QuestionConfigSnapshot {
   domainId: string;
   text: string;
   type: QuestionType;
-  rhythm: Rhythm;
   status: QuestionStatus;
 }
 

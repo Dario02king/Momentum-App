@@ -95,7 +95,7 @@ describe('domains', () => {
 });
 
 describe('questions', () => {
-  it('defaults to a daily boolean question', async () => {
+  it('defaults to a boolean question, asked every day', async () => {
     const { mental } = await setup();
     const question = await questionsRepository.create({
       domainId: mental.id,
@@ -103,8 +103,9 @@ describe('questions', () => {
     });
     expect(question.text).toBe('Hast du dein Bett gemacht?');
     expect(question.type).toBe('boolean');
-    expect(question.rhythm).toEqual({ kind: 'daily' });
     expect(question.status).toBe('active');
+    // Questions carry no schedule: an active question is due, full stop.
+    expect(question).not.toHaveProperty('rhythm');
   });
 
   it('asks only active questions', async () => {

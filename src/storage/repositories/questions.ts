@@ -1,6 +1,6 @@
 import { nowIso } from '../../core/clock';
 import { createId } from '../../core/ids';
-import type { QuestionRecord, QuestionStatus, Rhythm, QuestionType } from '../../core/model';
+import type { QuestionRecord, QuestionStatus, QuestionType } from '../../core/model';
 import { STORES } from '../db';
 import { createRepository } from './base';
 
@@ -15,7 +15,6 @@ export interface NewQuestionInput {
   text: string;
   /** Boolean is the default: most things were either done or not. */
   type?: QuestionType;
-  rhythm?: Rhythm;
   order?: number;
 }
 
@@ -45,7 +44,6 @@ export const questionsRepository = {
       domainId: input.domainId,
       text: input.text.trim(),
       type: input.type ?? 'boolean',
-      rhythm: input.rhythm ?? { kind: 'daily' },
       status: 'active',
       order: input.order ?? siblings.length,
       createdAt: stamp,
@@ -58,7 +56,7 @@ export const questionsRepository = {
 
   async update(
     id: string,
-    patch: Partial<Pick<QuestionRecord, 'text' | 'type' | 'rhythm' | 'order' | 'status'>>,
+    patch: Partial<Pick<QuestionRecord, 'text' | 'type' | 'order' | 'status'>>,
   ): Promise<QuestionRecord | undefined> {
     const current = await repo.get(id);
     if (!current) return undefined;

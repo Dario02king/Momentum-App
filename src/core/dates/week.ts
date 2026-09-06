@@ -75,7 +75,7 @@ export function isSameWeek(a: DateKey, b: DateKey): boolean {
 
 /**
  * Days left in `key`'s week, counting `key` itself. Monday = 7, Sunday = 1.
- * Drives when a "N times per week" question stops being optional.
+ * Lets a weekly target say how much of the week is still available.
  */
 export function remainingDaysInWeek(key: DateKey): number {
   return 7 - weekdayIndex(key);

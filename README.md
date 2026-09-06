@@ -36,6 +36,9 @@ The app is built in reviewed stages. Current status:
 | 7 | Backup export/import, PWA behaviour, service worker updates | not started |
 | 8 | Product review pass and fixes | not started |
 
+Decisions taken during the build that the specification did not settle are
+recorded in [`docs/decisions.md`](docs/decisions.md).
+
 ## Architecture
 
 ```
