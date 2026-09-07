@@ -50,6 +50,9 @@ export const answersRepository = {
       domainId: input.domainId,
       value: input.value,
       valueType: input.valueType,
+      // Wellbeing is one of the two domains a later social layer defaults to
+      // private (D47). Nothing reads this yet.
+      sensitivity: existing?.sensitivity ?? 'private',
       configSnapshotId: existing?.configSnapshotId ?? input.configSnapshotId,
       createdAt: existing?.createdAt ?? stamp,
       updatedAt: stamp,

@@ -803,3 +803,110 @@ inside whatever is clipping it.
 `error.storage.body` — the fallback for an unclassified failure — was a
 byte-for-byte copy of `error.storage.unavailable`, so any storage error the
 app could not classify told the user their browser was in private mode.
+
+---
+
+# Iteration 2
+
+Decisions made building iteration 2, continuing the numbering above. Where
+these refer to a decision from the iteration 2 brief they say so explicitly —
+that document has its own D-numbers, and the two sequences are unrelated.
+
+## D66 — Wellbeing keeps `mental` as its stored name
+
+The product calls the domain Wellbeing. The discriminator every answer row
+carries still says `mental`, and will keep saying it. Renaming it means
+rewriting every answer, every question and every config snapshot on every
+device, in exchange for a label — and the label belongs in the string layer,
+where it can differ per language anyway. Display name changes; type does not.
+
+## D67 — Boss weights live in the config snapshot
+
+The brief's D3 asks that a weight change apply forward only and never rewrite
+historical Boss progression. That reads like a demand for an append-only Boss
+log, which would be a departure from replay.
+
+It is not needed. Weights go into the config snapshot, and the replay already
+evaluates every day against the snapshot in force on that day. Editing weights
+today changes what today and every later day mean and cannot reach January.
+Nothing is stored that could drift from what is replayed, and there is no
+second source of truth to keep in step.
+
+## D68 — A snapshot with no `boss` field is the RC2 era
+
+This is the whole of the grandfathering mechanism, and it needed no new data.
+
+Every snapshot RC2 wrote lacks the field. The Boss replay reads that absence
+as "one undivided progression" and uses the legacy rating for that day — so
+the Boss for a pre-upgrade day is not a number carried across a boundary and
+seeded, it is the same replay RC2 ran. Pre-upgrade Boss history is exactly
+what the user already saw and cannot drift. Every snapshot this build writes
+carries weights, so the marker stays unambiguous.
+
+The consequence is a step at the boundary for a user who had RC2's Sport
+domain: the old rating averaged Wellbeing and Sport into one number, and the
+new one is a weighted mean of separate ledgers. The step is forward-only by
+construction, peak rank cannot fall, and the demotion rules need three
+sustained days — but it is a visible change and it is flagged for review
+rather than hidden.
+
+## D69 — The Boss averages ladder position, not rating
+
+Ranks do not span equal numbers of rating points: Rookie covers 120 and
+Legend covers the last 50. Averaging ratings would let the shape of the tier
+boundaries distort the mean. The Boss averages the position on the ladder —
+rank index plus the fraction climbed towards the next rank, on one continuous
+0–8 scale — which is the quantity a user actually experiences.
+
+Legend measures its fraction across the rest of the rating range rather than
+sitting at a flat 7.0, so a maxed-out domain keeps contributing. The result is
+converted back to a rating so the Boss inherits the existing hysteresis and
+sustained-demotion rules instead of growing a second copy of them.
+
+## D70 — A domain that has never been used is left out of the Boss
+
+Not counted as zero. Switching Food on tomorrow would otherwise halve a year
+of Wellbeing on its first day, which is a punishment for adding a goal. Its
+weight leaves the denominator with it.
+
+## D71 — Converting legacy Sport copies the sessions, it never moves them
+
+Every day before the conversion resolves to a config snapshot in which Sport
+is the enabled weekly domain, and snapshots are never rewritten. Deleting the
+rows those days count would turn a year of met targets into a year of empty
+weeks — the user's history rewritten by an act meant to reinterpret it. The
+legacy rows stay; the domain that holds them going forward changes, from the
+day of the conversion.
+
+Nothing is fabricated in the copy. RC2 recorded no distance, elevation or step
+count, so a converted run has none. Duration is carried only where the user
+actually entered one. The weekly target is inherited because it is the number
+the user themselves set.
+
+And there is no default: until the user answers, `legacySportMigration` stays
+`pending`, the sports domain is untouched and the app works exactly as it did.
+
+## D72 — The decay placeholder is RC2's decay, unchanged
+
+The cooling-off formula is a product-owner gate. A placeholder that guessed at
+it would quietly become it: every screen built in phases 2 to 6 would rest on
+a number nobody approved, and the approved formula would then read as a
+regression. The provisional model reproduces RC2 day for day, behind one
+switch and one flag, and a test asserts the flag and the model cannot
+disagree.
+
+Rest days and pause periods are already-approved product decisions rather than
+part of the formula question, so the input carries them and the placeholder
+honours them. On RC2 data this changes nothing, because RC2 recorded neither.
+
+## D73 — The week lookup was quadratic, and the measurement found it
+
+Reconstructing the weeks looked up each week's first day by scanning the whole
+date range. At two years that scan was five sixths of the entire cost of a
+replay — 338 ms of 427 ms — and it grew as the square of a user's history. It
+was there in RC2 too; nobody had a long enough profile to feel it.
+
+Remembering the day while walking the range removes it: two years of four
+domains now replays in about 60 ms, of which 25 ms is reading the answers.
+The four per-domain ledgers and the Boss aggregation together cost about 4 ms,
+so memoising day scores would buy nothing and is not being done.

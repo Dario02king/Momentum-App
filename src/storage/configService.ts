@@ -2,7 +2,12 @@ import { today } from '../core/clock';
 import { buildConfigSnapshot, configSnapshotsEqual } from '../core/config/snapshot';
 import type { DateKey } from '../core/dates';
 import type { AppConfigSnapshot, ConfigSnapshotRecord } from '../core/model';
-import { configSnapshotsRepository, domainsRepository, questionsRepository } from './repositories';
+import {
+  configSnapshotsRepository,
+  domainsRepository,
+  questionsRepository,
+  settingsRepository,
+} from './repositories';
 
 /**
  * Keeps the configuration log honest.
@@ -13,11 +18,15 @@ import { configSnapshotsRepository, domainsRepository, questionsRepository } fro
  */
 
 export async function currentConfigSnapshot(): Promise<AppConfigSnapshot> {
-  const [domains, questions] = await Promise.all([
+  const [domains, questions, settings] = await Promise.all([
     domainsRepository.list(),
     questionsRepository.list(),
+    settingsRepository.get(),
   ]);
-  return buildConfigSnapshot(domains, questions);
+  // Boss weights are scoring-relevant configuration, so they travel with the
+  // rest of it. Changing them appends a snapshot and therefore applies from
+  // that day forward — the forward-only rule, with nothing to enforce.
+  return buildConfigSnapshot(domains, questions, settings?.bossWeights);
 }
 
 /**

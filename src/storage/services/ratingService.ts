@@ -57,7 +57,14 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
   const origin = await progressionOrigin();
   const history = await loadHistory(origin, reference, reference);
 
-  const sessionsByWeek = new Map(history.weeks.map((week) => [week.weekKey, week.sessions]));
+  // Sessions across every weekly-quota domain: for the "was the user away"
+  // question, a run and a gym session are both evidence that they were not.
+  const sessionsByWeek = new Map(
+    history.weeks.map((week) => [
+      week.weekKey,
+      week.domains.reduce((sum, entry) => sum + entry.sessions, 0),
+    ]),
+  );
 
   /*
    * The rating folds over reconstructed daily *state*, not just a score.
@@ -111,10 +118,21 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
   );
 
 
+  /*
+   * The training streak counts weeks in which every weekly quota the user had
+   * set was met. With RC2's single Sport domain that is exactly the old
+   * number; with Gym and Running it is "a week you hit both", which is the
+   * only reading that stays one number. Per-domain streaks belong with the
+   * per-domain screens, not here.
+   */
   const trainingStreak = sportsStreak(
     history.weeks
-      .filter((week) => week.target !== null)
-      .map((week) => ({ weekKey: week.weekKey, met: week.met, inProgress: week.inProgress })),
+      .filter((week) => week.domains.length > 0)
+      .map((week) => ({
+        weekKey: week.weekKey,
+        met: week.domains.every((entry) => entry.met),
+        inProgress: week.inProgress,
+      })),
   );
 
   const lifetimeXp = computeXp(
@@ -123,11 +141,15 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
       complete: day.dueItems > 0 && day.answeredItems === day.dueItems,
       counts: day.status === 'scored',
     })),
-    history.weeks.map((week) => ({
-      sessions: week.sessions,
-      met: week.met,
-      inProgress: week.inProgress,
-    })),
+    // One XP row per domain-week, so hitting two independent targets is worth
+    // two targets. With a single domain this is the RC2 total, unchanged.
+    history.weeks.flatMap((week) =>
+      week.domains.map((entry) => ({
+        sessions: entry.sessions,
+        met: entry.met,
+        inProgress: week.inProgress,
+      })),
+    ),
   );
 
   const promotions = ranks.changes.filter((change) => change.kind === 'promotion');

@@ -1,13 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { itemPercent, scoreDay, type DayInput } from './dayScore';
+import { itemPercent, scoreDay, type DayInput, type WeeklyDayInput } from './dayScore';
 
-function day(overrides: Partial<DayInput> = {}): DayInput {
+/**
+ * `sports` here is shorthand for "the one weekly-quota domain", which is what
+ * every one of these cases is about. The rule under test is the same whether
+ * that quota belongs to RC2's Sport domain, to Gym or to Running.
+ */
+function day(
+  overrides: Partial<Omit<DayInput, 'weekly'>> & {
+    sports?: Omit<WeeklyDayInput, 'domain'> | null;
+  } = {},
+): DayInput {
+  const { sports = null, ...rest } = overrides;
   return {
     date: '2025-03-31',
     editState: 'closed',
     mental: null,
-    sports: null,
-    ...overrides,
+    weekly: sports ? [{ domain: 'sports', ...sports }] : [],
+    ...rest,
   };
 }
 

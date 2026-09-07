@@ -27,3 +27,29 @@ transitions. Keep synthetic multi-day fixtures alongside it for those; this
 file is the one that proves a real export still opens.
 
 Do not edit it. Its value is that nothing in it was written to make a test pass.
+
+## `rc2-synthetic.json`
+
+The multi-day fixture the note above asks for, added in Phase 1 of iteration 2.
+
+Generated, not exported — and generated once, deterministically, then
+committed. It is a schema version 1 profile in the same shape RC2 wrote, and
+it exists to cover exactly what the real export cannot:
+
+| | |
+|---|---|
+| range | 120 days from `2026-05-04` (a Monday) to `2026-08-31` |
+| domains | `mental` (2 questions, one scale and one boolean), `sports` (`targetPerWeek: 3`) |
+| answers | 191, with a deliberate gap: one day in five answers only one of the two questions |
+| sports sessions | 46, on Mondays, Wednesdays and Saturdays; Saturdays carry a duration, the rest do not |
+| silence | days 60–73 have nothing at all — a fortnight away, so decay and a broken streak are exercised |
+| what it produces under RC2 | Master, 5 rank changes, 14 of 18 weeks met, 4640 lifetime XP |
+
+The numbers RC2 produces from it are pinned in `src/storage/migration.test.ts`,
+recorded by checking out application commit `c3e8b7f` and running that build
+against this file. They are asserted to nine decimal places, including the
+date and rating of every promotion, because "existing data survives" means
+the numbers do not move.
+
+Do not regenerate it. Regenerating it would change the pinned numbers, which
+would defeat the point of pinning them.

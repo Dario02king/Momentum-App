@@ -12,10 +12,29 @@ import type { RankId } from '../config/constants';
  *    (`detail`), so version 2 can attach exercises, sets and weights as an
  *    additive write rather than a migration.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
-/** `food` is reserved for version 3 and deliberately not handled in the UI. */
-export type DomainType = 'mental' | 'sports';
+/**
+ * The domains a user can have active.
+ *
+ * `mental` keeps its stored name even though the product calls it Wellbeing:
+ * renaming a discriminator that every answer row references is a data
+ * migration in exchange for a label, and the label belongs in the string
+ * layer. Display name changes; the type does not.
+ */
+export type DomainType = 'mental' | 'gym' | 'running' | 'food';
+
+/**
+ * The generic weekly-sport domain RC2 shipped.
+ *
+ * It is not a domain a user can hold any more — §4 of iteration 2 leaves no
+ * active generic Sport rank — but records carrying it exist on real devices
+ * and are never rewritten without the user saying what they were (D-legacy).
+ * It stays in the stored union so those records keep type-checking.
+ */
+export type LegacyDomainType = 'sports';
+
+export type StoredDomainType = DomainType | LegacyDomainType;
 
 /** Mental Wellbeing carries no configuration of its own — its questions are
  *  records in their own right. */
@@ -29,6 +48,18 @@ export type MentalDomainSettings = Record<string, never>;
 export interface SportsDomainSettings {
   targetPerWeek: number;
 }
+
+/** Gym and Running each own a weekly quota; never a combined sport target. */
+export interface GymDomainSettings {
+  targetPerWeek: number;
+}
+
+export interface RunningDomainSettings {
+  targetPerWeek: number;
+}
+
+/** Food has no weekly quota — adherence is judged daily against a target. */
+export type FoodDomainSettings = Record<string, never>;
 
 interface DomainBase {
   id: string;
@@ -46,10 +77,13 @@ interface DomainBase {
  */
 export type DomainRecord =
   | (DomainBase & { type: 'mental'; settings: MentalDomainSettings })
+  | (DomainBase & { type: 'gym'; settings: GymDomainSettings })
+  | (DomainBase & { type: 'running'; settings: RunningDomainSettings })
+  | (DomainBase & { type: 'food'; settings: FoodDomainSettings })
   | (DomainBase & { type: 'sports'; settings: SportsDomainSettings });
 
 /** Default configuration for a newly enabled domain. */
-export type DomainSettingsFor<T extends DomainType> = Extract<
+export type DomainSettingsFor<T extends StoredDomainType> = Extract<
   DomainRecord,
   { type: T }
 >['settings'];
@@ -71,12 +105,36 @@ export type QuestionStatus = 'active' | 'paused' | 'archived';
  * on others. That keeps the daily check-in a single unambiguous act and
  * keeps "was this due?" out of the scoring path entirely.
  */
+/**
+ * Which part of life a question belongs to (D17).
+ *
+ * The daily Wellbeing score averages within a category before averaging
+ * across categories, so six Alltag questions cannot drown out the one that
+ * asks how the user actually feels.
+ */
+export type QuestionCategory = 'alltag' | 'gesundheit' | 'mental' | 'eigene';
+
+export const QUESTION_CATEGORIES: QuestionCategory[] = [
+  'alltag',
+  'gesundheit',
+  'mental',
+  'eigene',
+];
+
 export interface QuestionRecord {
   id: string;
   domainId: string;
   /** The literal sentence asked, e.g. "Hast du dein Bett gemacht?". */
   text: string;
   type: QuestionType;
+  category: QuestionCategory;
+  /**
+   * A question where a high answer is bad — "Wie gestresst war ich?" (D14).
+   *
+   * Colour band and score contribution are computed on `11 - value`, so an
+   * inverted question cannot silently report stress as wellbeing.
+   */
+  inverted: boolean;
   status: QuestionStatus;
   order: number;
   createdAt: string;
@@ -91,6 +149,15 @@ export type AnswerValue = boolean | number;
  * One answer per question per calendar day — the id enforces it, so a question
  * can never be asked twice on the same day.
  */
+/**
+ * How private a record is (D47).
+ *
+ * No user-facing effect in this iteration. It exists now so that a later
+ * social layer can default Wellbeing and Food to private without a migration
+ * over records written before the question was asked.
+ */
+export type Sensitivity = 'normal' | 'private';
+
 export interface AnswerRecord {
   id: string;
   date: DateKey;
@@ -98,6 +165,7 @@ export interface AnswerRecord {
   domainId: string;
   value: AnswerValue;
   valueType: QuestionType;
+  sensitivity: Sensitivity;
   /** The configuration in force when this answer was written (§18). */
   configSnapshotId: string;
   createdAt: string;
@@ -144,13 +212,29 @@ export interface QuestionConfigSnapshot {
 }
 
 export type DomainConfigSnapshot = {
-  [T in DomainType]: {
+  [T in StoredDomainType]: {
     id: string;
     type: T;
     enabled: boolean;
     settings: DomainSettingsFor<T>;
   };
-}[DomainType];
+}[StoredDomainType];
+
+/**
+ * Boss weights as they stood when the snapshot was taken (D2, D3).
+ *
+ * This is the whole of the forward-only rule. Because the replay evaluates
+ * every day against the snapshot in force on that day, editing weights today
+ * changes what today and later days mean and cannot touch what January meant.
+ * There is nothing to recalculate and nothing stored that could drift.
+ *
+ * Weights are over enabled domains and sum to 1. A snapshot written before
+ * iteration 2 has no `boss` field at all, and the replay reads that absence
+ * as "RC2 era": one undivided progression, which is exactly what it was.
+ */
+export interface BossConfigSnapshot {
+  weights: Partial<Record<DomainType, number>>;
+}
 
 /**
  * The scoring-relevant configuration in force from `effectiveFrom` onwards.
@@ -169,6 +253,8 @@ export interface AppConfigSnapshot {
     scaleMin: number;
     scaleMax: number;
   };
+  /** Absent on every snapshot RC2 wrote. Absence means the RC2 era. */
+  boss?: BossConfigSnapshot;
 }
 
 /** The sports target a given snapshot was taken under, or null if the domain
@@ -202,9 +288,34 @@ export interface SettingsRecord {
    * visit to the screen.
    */
   acknowledgedRankId?: RankId | null;
+  /**
+   * What became of the RC2 generic Sport domain.
+   *
+   * - `none`      — nothing to decide: a fresh install, or no legacy data.
+   * - `pending`   — legacy Sport data exists and the user has not been asked.
+   * - `gym` / `running` — the user said what those sessions were.
+   * - `kept`      — kept as read-only legacy history; Gym and Running start empty.
+   *
+   * There is deliberately no default that resolves itself. Until the user
+   * answers, nothing about their history is reinterpreted.
+   */
+  legacySportMigration?: LegacySportMigration;
+  /**
+   * How much each domain counts towards the Boss Rank (D2).
+   *
+   * Stored here because it is one global setting spanning every domain rather
+   * than a property of any one of them. It is *copied into every config
+   * snapshot*, and the replay reads the snapshot — so this record holds the
+   * weights in force today and has no say over what any past day was worth.
+   *
+   * Absent means "equal shares", which is also what a first run gets.
+   */
+  bossWeights?: Partial<Record<DomainType, number>>;
   createdAt: string;
   updatedAt: string;
 }
+
+export type LegacySportMigration = 'none' | 'pending' | 'gym' | 'running' | 'kept';
 
 export type RankEventKind = 'promotion' | 'demotion';
 
@@ -221,5 +332,218 @@ export interface RankEventRecord {
   rating: number;
   /** Set once the promotion reveal has been shown, so it never replays. */
   acknowledgedAt: string | null;
+  createdAt: string;
+}
+
+/* ── Iteration 2 records ───────────────────────────────────────────────── */
+
+/**
+ * The ten muscle groups (D21).
+ *
+ * Gym performance is equal-weighted across whichever of these are active —
+ * ten per cent each when all ten are — so a muscle never counts for more
+ * because more exercises happen to be attached to it.
+ */
+export type MuscleGroup =
+  | 'chest'
+  | 'back'
+  | 'shoulders'
+  | 'biceps'
+  | 'triceps'
+  | 'core'
+  | 'quadriceps'
+  | 'hamstringsGlutes'
+  | 'calves'
+  | 'forearms';
+
+export const MUSCLE_GROUPS: MuscleGroup[] = [
+  'chest',
+  'back',
+  'shoulders',
+  'biceps',
+  'triceps',
+  'core',
+  'quadriceps',
+  'hamstringsGlutes',
+  'calves',
+  'forearms',
+];
+
+/**
+ * An exercise. One per muscle group ships as prototype content (D22), but the
+ * shape is many-per-muscle from the start so adding a catalogue later is data,
+ * not a migration.
+ *
+ * The three unused fields are deliberate (D23): this prototype only ships
+ * externally loaded exercises, where `weight × reps` is well defined, and
+ * carrying the bodyweight and duration fields now means a pull-up or a plank
+ * can be added later without touching the schema.
+ */
+export interface ExerciseRecord {
+  id: string;
+  muscle: MuscleGroup;
+  /** Exercise names stay English in both language modes, like rank names. */
+  name: string;
+  /** Ships with the app rather than created by the user. */
+  builtIn: boolean;
+  bodyweightBased: boolean;
+  addedWeightKg: number | null;
+  durationSeconds: number | null;
+  /** Reserved for equipment constraints, favourites and injury constraints. */
+  attributes: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TrainingGoal = 'hypertrophy' | 'strength' | 'mixed';
+export type PlanFocus = 'fullBody' | 'upper' | 'lower';
+export type TrainingVolume = 'low' | 'medium' | 'high';
+
+export interface GymPlanRecord {
+  id: string;
+  daysPerWeek: number;
+  focus: PlanFocus;
+  goal: TrainingGoal;
+  volume: TrainingVolume;
+  muscles: MuscleGroup[];
+  /** Generated plans stay editable; nothing changes one without the user. */
+  editedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GymSessionRecord {
+  id: string;
+  date: DateKey;
+  weekKey: WeekKey;
+  performedAt: string;
+  planId: string | null;
+  note: string | null;
+  /**
+   * A session carried over from RC2's generic Sport domain.
+   *
+   * It counts for attendance, consistency and XP, and contributes no
+   * strength, volume or muscle performance — RC2 never recorded any.
+   */
+  legacyCarryOver: boolean;
+  configSnapshotId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One set. Never averaged: D24's primary metric is the best set of the day. */
+export interface GymSetRecord {
+  id: string;
+  sessionId: string;
+  exerciseId: string;
+  date: DateKey;
+  weightKg: number;
+  reps: number;
+  order: number;
+  createdAt: string;
+}
+
+/** Where a run came from. The seam Strava plugs into, with no Strava in it. */
+export type RunSource = 'manual' | 'imported';
+
+export interface RunRecord {
+  id: string;
+  date: DateKey;
+  weekKey: WeekKey;
+  performedAt: string;
+  source: RunSource;
+  /** Set only for imported runs, so one import is one session, never two. */
+  externalId: string | null;
+  distanceMetres: number | null;
+  durationSeconds: number | null;
+  elevationMetres: number | null;
+  steps: number | null;
+  note: string | null;
+  legacyCarryOver: boolean;
+  configSnapshotId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FoodEntryRecord {
+  id: string;
+  date: DateKey;
+  /** Null for a free entry the user typed rather than picked. */
+  foodId: string | null;
+  label: string;
+  grams: number | null;
+  kcal: number;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+  /** Optional breakdown; informational only and never scored (D36). */
+  detail: Record<string, number> | null;
+  sensitivity: Sensitivity;
+  configSnapshotId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WeightEntryRecord {
+  id: string;
+  date: DateKey;
+  kg: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type NutritionGoal = 'cut' | 'balanced' | 'bulk';
+export type BiologicalSex = 'female' | 'male' | 'unspecified';
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'high' | 'veryHigh';
+export type WorkType = 'desk' | 'mixed' | 'physical';
+
+/**
+ * The local profile (D33). Separate from settings because it is the user's
+ * data rather than an app preference, and it belongs in a backup as such.
+ */
+export interface ProfileRecord {
+  id: 'profile';
+  birthYear: number | null;
+  sex: BiologicalSex;
+  heightCm: number | null;
+  activityLevel: ActivityLevel;
+  workType: WorkType;
+  sleepHours: number | null;
+  healthNotes: string | null;
+  goal: NutritionGoal;
+  targetWeightKg: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A day the user declared a rest day (D42) — intentional, not a gap. */
+export interface RestDayRecord {
+  id: string;
+  date: DateKey;
+  domainType: Extract<DomainType, 'gym' | 'running'>;
+  createdAt: string;
+}
+
+/** Holiday, illness, injury (D43). Decay is suspended, XP does not accrue. */
+export interface PausePeriodRecord {
+  id: string;
+  from: DateKey;
+  /** Null while the pause is still open-ended. */
+  to: DateKey | null;
+  reason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TombstoneId =
+  | 'firstFullWeek'
+  | 'thirtyDayStreak'
+  | 'hundredSets'
+  | 'firstPromotion'
+  | 'fiftyKilometres';
+
+export interface TombstoneUnlockRecord {
+  id: TombstoneId;
+  unlockedOn: DateKey;
   createdAt: string;
 }

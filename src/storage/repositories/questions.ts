@@ -1,6 +1,6 @@
 import { nowIso } from '../../core/clock';
 import { createId } from '../../core/ids';
-import type { QuestionRecord, QuestionStatus, QuestionType } from '../../core/model';
+import type { QuestionCategory, QuestionRecord, QuestionStatus, QuestionType } from '../../core/model';
 import { STORES } from '../db';
 import { createRepository } from './base';
 
@@ -15,6 +15,10 @@ export interface NewQuestionInput {
   text: string;
   /** Boolean is the default: most things were either done or not. */
   type?: QuestionType;
+  /** Anything the user writes themselves lands under "Eigene" (D17). */
+  category?: QuestionCategory;
+  /** True when a high answer is a bad answer, e.g. stress (D14). */
+  inverted?: boolean;
   order?: number;
 }
 
@@ -44,6 +48,10 @@ export const questionsRepository = {
       domainId: input.domainId,
       text: input.text.trim(),
       type: input.type ?? 'boolean',
+      category: input.category ?? 'eigene',
+      // A question created without saying otherwise reads the ordinary way:
+      // a high answer is a good answer (D14).
+      inverted: input.inverted ?? false,
       status: 'active',
       order: input.order ?? siblings.length,
       createdAt: stamp,

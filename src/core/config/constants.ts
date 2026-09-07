@@ -134,5 +134,39 @@ export const SPORTS = {
   DEFAULT_TARGET_PER_WEEK: 3,
 } as const;
 
+/**
+ * Gym and Running each own a weekly quota (§4 of iteration 2).
+ *
+ * Deliberately two constants rather than one shared `SPORTS`: the product
+ * decision is that the two targets move independently, and a single constant
+ * is how they would quietly become coupled again.
+ */
+export const GYM = {
+  MIN_TARGET_PER_WEEK: 1,
+  MAX_TARGET_PER_WEEK: 7,
+  DEFAULT_TARGET_PER_WEEK: 3,
+} as const;
+
+export const RUNNING = {
+  MIN_TARGET_PER_WEEK: 1,
+  MAX_TARGET_PER_WEEK: 7,
+  DEFAULT_TARGET_PER_WEEK: 2,
+} as const;
+
+/**
+ * Boss Rank.
+ *
+ * The Boss is a weighted mean of how far each active domain has climbed the
+ * one shared ladder, so it needs no thresholds of its own — it borrows
+ * `RANKS`. The only tunable is how small a weight the user may give a domain
+ * before it stops meaning anything.
+ */
+export const BOSS = {
+  /** No domain may end up counting for less than this share of the Boss. */
+  MIN_WEIGHT: 0.05,
+  /** Weight picker granularity, in relative-importance steps. */
+  WEIGHT_STEP: 0.5,
+} as const;
+
 /** Onboarding recommends three to five questions. */
 export const RECOMMENDED_QUESTION_COUNT = { min: 3, max: 5 } as const;

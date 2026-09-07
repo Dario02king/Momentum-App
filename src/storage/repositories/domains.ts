@@ -1,6 +1,6 @@
 import { nowIso } from '../../core/clock';
 import { createId } from '../../core/ids';
-import type { DomainRecord, DomainSettingsFor, DomainType } from '../../core/model';
+import type { DomainRecord, DomainSettingsFor, StoredDomainType } from '../../core/model';
 import { STORES } from '../db';
 import { createRepository } from './base';
 
@@ -19,7 +19,7 @@ export const domainsRepository = {
     return (await domainsRepository.list()).filter((domain) => domain.enabled);
   },
 
-  async findByType(type: DomainType): Promise<DomainRecord | undefined> {
+  async findByType(type: StoredDomainType): Promise<DomainRecord | undefined> {
     const matches = await repo.queryIndex('by_type', type);
     return matches[0];
   },
@@ -28,7 +28,7 @@ export const domainsRepository = {
    * Domains are records, so enabling one is an insert — not a code change.
    * A version 3 food domain arrives through exactly this function.
    */
-  async ensure<T extends DomainType>(
+  async ensure<T extends StoredDomainType>(
     type: T,
     order: number,
     settings: DomainSettingsFor<T>,
@@ -53,7 +53,7 @@ export const domainsRepository = {
    * Changing domain settings is scoring-relevant: callers must append a config
    * snapshot afterwards so past weeks keep being judged by the old target.
    */
-  async updateSettings<T extends DomainType>(
+  async updateSettings<T extends StoredDomainType>(
     id: string,
     settings: DomainSettingsFor<T>,
   ): Promise<DomainRecord | undefined> {

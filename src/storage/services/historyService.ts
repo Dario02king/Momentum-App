@@ -8,13 +8,25 @@ import {
   weekKeyOf,
   type DateKey,
 } from '../../core/dates';
-import { sportsTargetOf, type AppConfigSnapshot, type ConfigSnapshotRecord } from '../../core/model';
+import type {
+  AppConfigSnapshot,
+  ConfigSnapshotRecord,
+  StoredDomainType,
+} from '../../core/model';
 import type { WeekKey } from '../../core/dates';
-import { scoreDay, type DayScore, type DueQuestion } from '../../core/scoring/dayScore';
+import { WEEKLY_DOMAIN_TYPES, weeklyTargetsIn } from '../../core/domains';
+import {
+  scoreDay,
+  type DayScore,
+  type DueQuestion,
+  type WeeklyDayInput,
+} from '../../core/scoring/dayScore';
 import {
   answersRepository,
   configSnapshotsRepository,
+  gymSessionsRepository,
   questionsRepository,
+  runsRepository,
   sportsSessionsRepository,
 } from '../repositories';
 
@@ -35,13 +47,29 @@ export interface HistoryQuestionRow {
   scores: (number | null)[];
 }
 
+/** One weekly-quota domain's week: what was asked, and what happened. */
+export interface HistoryWeekDomain {
+  domain: StoredDomainType;
+  target: number;
+  sessions: number;
+  met: boolean;
+}
+
 export interface HistoryWeek {
   weekKey: WeekKey;
-  /** The target in force when the week began, or `null` if sports was off. */
+  /**
+   * RC2's generic Sport quota for this week, or `null` if it was off.
+   *
+   * Kept as its own field rather than folded into `domains` because the
+   * legacy progression is replayed from exactly these numbers, and it must
+   * keep producing the rating a user already saw.
+   */
   target: number | null;
   sessions: number;
   met: boolean;
   inProgress: boolean;
+  /** Every weekly-quota domain enabled that week, legacy Sport included. */
+  domains: HistoryWeekDomain[];
 }
 
 export interface History {
@@ -52,6 +80,8 @@ export interface History {
   overall: (number | null)[];
   mental: (number | null)[];
   sports: (number | null)[];
+  gym: (number | null)[];
+  running: (number | null)[];
   /** Every question that was due at some point in the range. */
   questions: HistoryQuestionRow[];
   /** Whether anything at all was recorded on each day, aligned with `days`.
@@ -105,6 +135,8 @@ export async function loadHistory(
       overall: [],
       mental: [],
       sports: [],
+      gym: [],
+      running: [],
       questions: [],
       activity: [],
       weeks: [],
@@ -114,10 +146,12 @@ export async function loadHistory(
 
   // Sessions are counted by week, and the range's edge days belong to weeks
   // that reach beyond it — so the query has to cover those whole weeks.
-  const [snapshots, answers, sessions, liveQuestions] = await Promise.all([
+  const [snapshots, answers, sessions, gymSessions, runs, liveQuestions] = await Promise.all([
     configSnapshotsRepository.list(),
     answersRepository.listByDateRange(from, to),
     sportsSessionsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
+    gymSessionsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
+    runsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
     questionsRepository.list(),
   ]);
 
@@ -135,10 +169,23 @@ export async function loadHistory(
     day.set(answer.questionId, answer.value);
   }
 
-  const sessionsByWeek = new Map<string, number>();
-  for (const session of sessions) {
-    sessionsByWeek.set(session.weekKey, (sessionsByWeek.get(session.weekKey) ?? 0) + 1);
-  }
+  /**
+   * Sessions per week, per domain. Every weekly-quota domain counts its own:
+   * Gym and Running are independent targets, so a run can never help a gym
+   * week and vice versa.
+   */
+  const sessionsByWeek = new Map<StoredDomainType, Map<WeekKey, number>>();
+  for (const domain of WEEKLY_DOMAIN_TYPES) sessionsByWeek.set(domain, new Map());
+  const countSession = (domain: StoredDomainType, weekKey: WeekKey) => {
+    const counts = sessionsByWeek.get(domain)!;
+    counts.set(weekKey, (counts.get(weekKey) ?? 0) + 1);
+  };
+  for (const session of sessions) countSession('sports', session.weekKey);
+  for (const session of gymSessions) countSession('gym', session.weekKey);
+  for (const run of runs) countSession('running', run.weekKey);
+
+  const sessionsIn = (domain: StoredDomainType, weekKey: WeekKey): number =>
+    sessionsByWeek.get(domain)?.get(weekKey) ?? 0;
 
   const questionText = new Map<string, string>();
   const questionOrder: string[] = [];
@@ -159,26 +206,27 @@ export async function loadHistory(
       }
     }
 
-    const target = config ? sportsTargetOf(config) : null;
     const weekKey = weekKeyOf(date);
+    // A week that has not finished yet cannot have missed its target.
+    const weekInProgress = compareDateKeys(endOfWeek(date), reference) >= 0;
+    const weekly: WeeklyDayInput[] = config
+      ? weeklyTargetsIn(config).map(({ domain, target }) => ({
+          domain,
+          target,
+          sessionsInWeek: sessionsIn(domain, weekKey),
+          weekInProgress,
+        }))
+      : [];
 
     return scoreDay({
       date,
       editState: dayEditState(date, reference),
       mental: config ? { due, answers: answersByDate.get(date) ?? new Map() } : null,
-      sports:
-        target === null
-          ? null
-          : {
-              target,
-              sessionsInWeek: sessionsByWeek.get(weekKey) ?? 0,
-              // A week that has not finished yet cannot have missed its target.
-              weekInProgress: compareDateKeys(endOfWeek(date), reference) >= 0,
-            },
+      weekly,
     });
   });
 
-  const domainSeries = (domain: 'mental' | 'sports') =>
+  const domainSeries = (domain: StoredDomainType) =>
     days.map((day) => {
       if (day.status === 'open' || day.status === 'neutral') return null;
       return day.domains.find((entry) => entry.domain === domain)?.score ?? null;
@@ -212,32 +260,46 @@ export async function loadHistory(
    * week's Monday: a mid-week change takes effect from the following week
    * rather than retroactively rewriting the days already lived in this one.
    */
+  /*
+   * The first day of the range that falls in each week, remembered as the
+   * days are walked. Searching the range for it per week instead is a scan
+   * inside a loop — quadratic in the length of the history, and measurably
+   * the whole cost of a replay by the two-year mark.
+   */
   const weekKeys: WeekKey[] = [];
-  const seenWeeks = new Set<WeekKey>();
+  const firstDateInWeek = new Map<WeekKey, DateKey>();
   for (const date of dates) {
     const weekKey = weekKeyOf(date);
-    if (!seenWeeks.has(weekKey)) {
-      seenWeeks.add(weekKey);
+    if (!firstDateInWeek.has(weekKey)) {
+      firstDateInWeek.set(weekKey, date);
       weekKeys.push(weekKey);
     }
   }
   const weeks: HistoryWeek[] = weekKeys.map((weekKey) => {
-    const monday = startOfWeek(
-      dates.find((date) => weekKeyOf(date) === weekKey) ?? from,
-    );
+    const monday = startOfWeek(firstDateInWeek.get(weekKey) ?? from);
     const config = resolveSnapshot(snapshots, monday);
-    const target = config ? sportsTargetOf(config) : null;
-    const count = sessionsByWeek.get(weekKey) ?? 0;
+    const perDomain: HistoryWeekDomain[] = config
+      ? weeklyTargetsIn(config).map(({ domain, target }) => {
+          const count = sessionsIn(domain, weekKey);
+          return { domain, target, sessions: count, met: count >= target };
+        })
+      : [];
+    const legacy = perDomain.find((entry) => entry.domain === 'sports');
     return {
       weekKey,
-      target,
-      sessions: count,
-      met: target !== null && count >= target,
+      target: legacy?.target ?? null,
+      sessions: legacy?.sessions ?? 0,
+      met: legacy?.met ?? false,
       inProgress: compareDateKeys(endOfWeek(monday), reference) >= 0,
+      domains: perDomain,
     };
   });
 
-  const sessionDates = new Set(sessions.map((session) => session.date));
+  const sessionDates = new Set<DateKey>([
+    ...sessions.map((session) => session.date),
+    ...gymSessions.map((session) => session.date),
+    ...runs.map((run) => run.date),
+  ]);
   const activity = dates.map(
     (date) => (answersByDate.get(date)?.size ?? 0) > 0 || sessionDates.has(date),
   );
@@ -250,6 +312,8 @@ export async function loadHistory(
     overall,
     mental: domainSeries('mental'),
     sports: domainSeries('sports'),
+    gym: domainSeries('gym'),
+    running: domainSeries('running'),
     questions,
     activity,
     weeks,

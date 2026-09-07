@@ -17,10 +17,21 @@ import type {
   AnswerRecord,
   ConfigSnapshotRecord,
   DomainRecord,
+  ExerciseRecord,
+  FoodEntryRecord,
+  GymPlanRecord,
+  GymSessionRecord,
+  GymSetRecord,
+  PausePeriodRecord,
+  ProfileRecord,
   QuestionRecord,
   RankEventRecord,
+  RestDayRecord,
+  RunRecord,
   SettingsRecord,
   SportsSessionRecord,
+  TombstoneUnlockRecord,
+  WeightEntryRecord,
 } from '../../core/model';
 
 /**
@@ -40,18 +51,58 @@ const answerStore = createRepository<AnswerRecord>(STORES.answers);
 const sessionStore = createRepository<SportsSessionRecord>(STORES.sportsSessions);
 const snapshotStore = createRepository<ConfigSnapshotRecord>(STORES.configSnapshots);
 const rankEventStore = createRepository<RankEventRecord>(STORES.rankEvents);
+const profileStore = createRepository<ProfileRecord>(STORES.profile);
+const exerciseStore = createRepository<ExerciseRecord>(STORES.exercises);
+const gymPlanStore = createRepository<GymPlanRecord>(STORES.gymPlans);
+const gymSessionStore = createRepository<GymSessionRecord>(STORES.gymSessions);
+const gymSetStore = createRepository<GymSetRecord>(STORES.gymSets);
+const runStore = createRepository<RunRecord>(STORES.runs);
+const foodStore = createRepository<FoodEntryRecord>(STORES.foodEntries);
+const weightStore = createRepository<WeightEntryRecord>(STORES.weightEntries);
+const restDayStore = createRepository<RestDayRecord>(STORES.restDays);
+const pauseStore = createRepository<PausePeriodRecord>(STORES.pausePeriods);
+const tombstoneStore = createRepository<TombstoneUnlockRecord>(STORES.tombstones);
 
 export async function collectBackupData(): Promise<BackupData> {
-  const [settings, domains, questions, answers, sportsSessions, configSnapshots, rankEvents] =
-    await Promise.all([
-      settingsStore.getAll(),
-      domainStore.getAll(),
-      questionStore.getAll(),
-      answerStore.getAll(),
-      sessionStore.getAll(),
-      snapshotStore.getAll(),
-      rankEventStore.getAll(),
-    ]);
+  const [
+    settings,
+    domains,
+    questions,
+    answers,
+    sportsSessions,
+    configSnapshots,
+    rankEvents,
+    profile,
+    exercises,
+    gymPlans,
+    gymSessions,
+    gymSets,
+    runs,
+    foodEntries,
+    weightEntries,
+    restDays,
+    pausePeriods,
+    tombstones,
+  ] = await Promise.all([
+    settingsStore.getAll(),
+    domainStore.getAll(),
+    questionStore.getAll(),
+    answerStore.getAll(),
+    sessionStore.getAll(),
+    snapshotStore.getAll(),
+    rankEventStore.getAll(),
+    profileStore.getAll(),
+    exerciseStore.getAll(),
+    gymPlanStore.getAll(),
+    gymSessionStore.getAll(),
+    gymSetStore.getAll(),
+    runStore.getAll(),
+    foodStore.getAll(),
+    weightStore.getAll(),
+    restDayStore.getAll(),
+    pauseStore.getAll(),
+    tombstoneStore.getAll(),
+  ]);
 
   // Sorted so two exports of the same profile are byte-identical, which makes
   // "export, import, export again" comparable rather than merely equivalent.
@@ -66,6 +117,17 @@ export async function collectBackupData(): Promise<BackupData> {
     sportsSessions: byId(sportsSessions),
     configSnapshots: byId(configSnapshots),
     rankEvents: byId(rankEvents),
+    profile: profile[0] ?? null,
+    exercises: byId(exercises),
+    gymPlans: byId(gymPlans),
+    gymSessions: byId(gymSessions),
+    gymSets: byId(gymSets),
+    runs: byId(runs),
+    foodEntries: byId(foodEntries),
+    weightEntries: byId(weightEntries),
+    restDays: byId(restDays),
+    pausePeriods: byId(pausePeriods),
+    tombstones: byId(tombstones),
   };
 }
 
@@ -94,7 +156,10 @@ export async function exportBackupFile(): Promise<ExportedFile> {
     summary: {
       questions: backup.data.questions.length,
       answers: backup.data.answers.length,
-      sessions: backup.data.sportsSessions.length,
+      sessions:
+        backup.data.sportsSessions.length +
+        backup.data.gymSessions.length +
+        backup.data.runs.length,
     },
   };
 }
@@ -126,6 +191,17 @@ export async function importBackup(
     [STORES.sportsSessions]: data.sportsSessions,
     [STORES.configSnapshots]: data.configSnapshots,
     [STORES.rankEvents]: data.rankEvents,
+    [STORES.profile]: data.profile ? [{ ...data.profile, id: 'profile' }] : [],
+    [STORES.exercises]: data.exercises,
+    [STORES.gymPlans]: data.gymPlans,
+    [STORES.gymSessions]: data.gymSessions,
+    [STORES.gymSets]: data.gymSets,
+    [STORES.runs]: data.runs,
+    [STORES.foodEntries]: data.foodEntries,
+    [STORES.weightEntries]: data.weightEntries,
+    [STORES.restDays]: data.restDays,
+    [STORES.pausePeriods]: data.pausePeriods,
+    [STORES.tombstones]: data.tombstones,
   };
 
   // One transaction: either the profile is fully replaced or nothing changed.

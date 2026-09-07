@@ -4,10 +4,21 @@ import {
   type AnswerRecord,
   type ConfigSnapshotRecord,
   type DomainRecord,
+  type ExerciseRecord,
+  type FoodEntryRecord,
+  type GymPlanRecord,
+  type GymSessionRecord,
+  type GymSetRecord,
+  type PausePeriodRecord,
+  type ProfileRecord,
   type QuestionRecord,
   type RankEventRecord,
+  type RestDayRecord,
+  type RunRecord,
   type SettingsRecord,
   type SportsSessionRecord,
+  type TombstoneUnlockRecord,
+  type WeightEntryRecord,
 } from '../model';
 
 /**
@@ -34,7 +45,17 @@ export const BACKUP_FORMAT = 'momentum-backup';
  * shape changes, the schema when a record's shape does. Keeping both means a
  * future reader can tell which of the two it does not understand.
  */
-export const BACKUP_FORMAT_VERSION = 1;
+export const BACKUP_FORMAT_VERSION = 2;
+
+/**
+ * Version 2 adds collections; it removes and renames nothing.
+ *
+ * That is what makes a version 1 backup still import: the reader refuses only
+ * a file *newer* than it understands (`formatVersion > BACKUP_FORMAT_VERSION`),
+ * and every collection version 2 introduced is read as empty when absent. A
+ * user restoring a file exported before the upgrade gets their whole profile
+ * back, with the new areas simply not started yet.
+ */
 
 export interface BackupData {
   settings: SettingsRecord | null;
@@ -45,6 +66,18 @@ export interface BackupData {
   configSnapshots: ConfigSnapshotRecord[];
   /** Retained because it is part of schema v1; rank history is derived. */
   rankEvents: RankEventRecord[];
+  /* ── Added in format version 2. Absent in a version 1 file. ─────────── */
+  profile: ProfileRecord | null;
+  exercises: ExerciseRecord[];
+  gymPlans: GymPlanRecord[];
+  gymSessions: GymSessionRecord[];
+  gymSets: GymSetRecord[];
+  runs: RunRecord[];
+  foodEntries: FoodEntryRecord[];
+  weightEntries: WeightEntryRecord[];
+  restDays: RestDayRecord[];
+  pausePeriods: PausePeriodRecord[];
+  tombstones: TombstoneUnlockRecord[];
 }
 
 export interface BackupFile {
@@ -113,15 +146,50 @@ function checkArray(
   return value;
 }
 
+const KNOWN_DOMAIN_TYPES = ['mental', 'gym', 'running', 'food', 'sports'];
+/** Domains that carry a weekly quota, so a missing target is a real defect. */
+const WEEKLY_DOMAIN_TYPES = ['sports', 'gym', 'running'];
+
 function validateDomain(item: Record<string, unknown>): string | null {
-  if (item.type !== 'mental' && item.type !== 'sports') return 'has an unknown type';
+  if (typeof item.type !== 'string' || !KNOWN_DOMAIN_TYPES.includes(item.type)) {
+    return 'has an unknown type';
+  }
   if (typeof item.enabled !== 'boolean') return 'has no enabled flag';
-  if (item.type === 'sports') {
+  if (WEEKLY_DOMAIN_TYPES.includes(item.type)) {
     const settings = item.settings;
     if (!isObject(settings) || typeof settings.targetPerWeek !== 'number') {
       return 'has no weekly target';
     }
   }
+  return null;
+}
+
+/** A dated record with nothing else to check beyond the shared rules. */
+function validateDated(item: Record<string, unknown>): string | null {
+  return isValidDateKey(item.date) ? null : 'has no valid date';
+}
+
+function validateTrainingSession(item: Record<string, unknown>): string | null {
+  if (!isValidDateKey(item.date)) return 'has no valid date';
+  if (!isValidWeekKey(item.weekKey)) return 'has no valid week';
+  return null;
+}
+
+function validateFoodEntry(item: Record<string, unknown>): string | null {
+  if (!isValidDateKey(item.date)) return 'has no valid date';
+  if (typeof item.kcal !== 'number' || !Number.isFinite(item.kcal)) return 'has no energy value';
+  return null;
+}
+
+function validateWeightEntry(item: Record<string, unknown>): string | null {
+  if (!isValidDateKey(item.date)) return 'has no valid date';
+  if (typeof item.kg !== 'number' || !Number.isFinite(item.kg)) return 'has no weight';
+  return null;
+}
+
+function validatePause(item: Record<string, unknown>): string | null {
+  if (!isValidDateKey(item.from)) return 'has no valid start date';
+  if (item.to !== null && !isValidDateKey(item.to)) return 'has an invalid end date';
   return null;
 }
 
@@ -182,12 +250,17 @@ function summarise(data: BackupData, exportedAt: string): BackupSummary {
   const days = [
     ...data.answers.map((answer) => answer.date),
     ...data.sportsSessions.map((session) => session.date),
+    ...data.gymSessions.map((session) => session.date),
+    ...data.runs.map((run) => run.date),
+    ...data.foodEntries.map((entry) => entry.date),
   ].sort();
   return {
     exportedAt,
     questions: data.questions.length,
     answers: data.answers.length,
-    sessions: data.sportsSessions.length,
+    // What the confirmation step calls "sessions" is every training session,
+    // whichever log now holds it.
+    sessions: data.sportsSessions.length + data.gymSessions.length + data.runs.length,
     firstDay: days[0] ?? null,
     lastDay: days[days.length - 1] ?? null,
   };
@@ -246,6 +319,32 @@ export function validateBackup(input: unknown): ValidationResult {
   const snapshots = checkArray(data.configSnapshots, 'configSnapshots', validateSnapshot, problems);
   const rankEvents = checkArray(data.rankEvents ?? [], 'rankEvents', () => null, problems);
 
+  /*
+   * Format version 2 collections. `?? []` is what makes a version 1 file
+   * import: the collections did not exist when it was written, and "absent"
+   * means "this profile has not started that area", not "the file is broken".
+   */
+  const exercises = checkArray(data.exercises ?? [], 'exercises', () => null, problems);
+  const gymPlans = checkArray(data.gymPlans ?? [], 'gymPlans', () => null, problems);
+  const gymSessions = checkArray(
+    data.gymSessions ?? [],
+    'gymSessions',
+    validateTrainingSession,
+    problems,
+  );
+  const gymSets = checkArray(data.gymSets ?? [], 'gymSets', validateDated, problems);
+  const runs = checkArray(data.runs ?? [], 'runs', validateTrainingSession, problems);
+  const foodEntries = checkArray(data.foodEntries ?? [], 'foodEntries', validateFoodEntry, problems);
+  const weightEntries = checkArray(
+    data.weightEntries ?? [],
+    'weightEntries',
+    validateWeightEntry,
+    problems,
+  );
+  const restDays = checkArray(data.restDays ?? [], 'restDays', validateDated, problems);
+  const pausePeriods = checkArray(data.pausePeriods ?? [], 'pausePeriods', validatePause, problems);
+  const tombstones = checkArray(data.tombstones ?? [], 'tombstones', () => null, problems);
+
   // Self-consistency: our own exports always satisfy this, and a file that
   // does not would restore a profile with answers to questions that are not
   // there.
@@ -283,6 +382,17 @@ export function validateBackup(input: unknown): ValidationResult {
       sportsSessions: sessions as SportsSessionRecord[],
       configSnapshots: snapshots as ConfigSnapshotRecord[],
       rankEvents: rankEvents as RankEventRecord[],
+      profile: (data.profile ?? null) as ProfileRecord | null,
+      exercises: exercises as ExerciseRecord[],
+      gymPlans: gymPlans as GymPlanRecord[],
+      gymSessions: gymSessions as GymSessionRecord[],
+      gymSets: gymSets as GymSetRecord[],
+      runs: runs as RunRecord[],
+      foodEntries: foodEntries as FoodEntryRecord[],
+      weightEntries: weightEntries as WeightEntryRecord[],
+      restDays: restDays as RestDayRecord[],
+      pausePeriods: pausePeriods as PausePeriodRecord[],
+      tombstones: tombstones as TombstoneUnlockRecord[],
     },
   };
 

@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION } from '../core/model';
+import type { LegacySportMigration, QuestionCategory, Sensitivity } from '../core/model';
 
 /**
  * The only module in Momentum that talks to IndexedDB.
@@ -17,9 +18,23 @@ export const STORES = {
   domains: 'domains',
   questions: 'questions',
   answers: 'answers',
+  /** RC2's generic sport sessions. Kept under its original name: renaming a
+   *  store means copying every record for no gain. */
   sportsSessions: 'sportsSessions',
   configSnapshots: 'configSnapshots',
   rankEvents: 'rankEvents',
+  // Iteration 2.
+  profile: 'profile',
+  exercises: 'exercises',
+  gymPlans: 'gymPlans',
+  gymSessions: 'gymSessions',
+  gymSets: 'gymSets',
+  runs: 'runs',
+  foodEntries: 'foodEntries',
+  weightEntries: 'weightEntries',
+  restDays: 'restDays',
+  pausePeriods: 'pausePeriods',
+  tombstones: 'tombstones',
 } as const;
 
 export type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -37,7 +52,12 @@ interface Migration {
  * Version 1 has nothing to migrate *from*, but the path exists so that
  * version 2 does not have to invent it under pressure.
  */
-const MIGRATIONS: Migration[] = [
+/**
+ * Exported so a migration can be tested against a database that really was
+ * created at the older version, rather than against a hand-built imitation
+ * of one. Nothing in the app reads this.
+ */
+export const MIGRATIONS: Migration[] = [
   {
     version: 1,
     describe: 'initial schema',
@@ -67,7 +87,133 @@ const MIGRATIONS: Migration[] = [
       rankEvents.createIndex('by_date', 'date', { unique: false });
     },
   },
+  {
+    version: 2,
+    describe: 'iteration 2: domains, gym, running, food, profile',
+    up(db, tx) {
+      /*
+       * Purely additive. Not one existing record is deleted or reshaped in a
+       * way that changes its meaning, and the RC2 sport domain is deliberately
+       * left exactly as it is — what those sessions were is the user's to say,
+       * and until they do, nothing about their history is reinterpreted.
+       */
+      db.createObjectStore(STORES.profile, { keyPath: 'id' });
+
+      const exercises = db.createObjectStore(STORES.exercises, { keyPath: 'id' });
+      exercises.createIndex('by_muscle', 'muscle', { unique: false });
+
+      db.createObjectStore(STORES.gymPlans, { keyPath: 'id' });
+
+      const gymSessions = db.createObjectStore(STORES.gymSessions, { keyPath: 'id' });
+      gymSessions.createIndex('by_date', 'date', { unique: false });
+      gymSessions.createIndex('by_week', 'weekKey', { unique: false });
+
+      const gymSets = db.createObjectStore(STORES.gymSets, { keyPath: 'id' });
+      gymSets.createIndex('by_session', 'sessionId', { unique: false });
+      gymSets.createIndex('by_exercise', 'exerciseId', { unique: false });
+      gymSets.createIndex('by_date', 'date', { unique: false });
+
+      const runs = db.createObjectStore(STORES.runs, { keyPath: 'id' });
+      runs.createIndex('by_date', 'date', { unique: false });
+      runs.createIndex('by_week', 'weekKey', { unique: false });
+      // An imported activity may arrive twice; one external id is one run.
+      runs.createIndex('by_external', 'externalId', { unique: false });
+
+      const food = db.createObjectStore(STORES.foodEntries, { keyPath: 'id' });
+      food.createIndex('by_date', 'date', { unique: false });
+
+      const weights = db.createObjectStore(STORES.weightEntries, { keyPath: 'id' });
+      weights.createIndex('by_date', 'date', { unique: false });
+
+      const restDays = db.createObjectStore(STORES.restDays, { keyPath: 'id' });
+      restDays.createIndex('by_date', 'date', { unique: false });
+
+      const pauses = db.createObjectStore(STORES.pausePeriods, { keyPath: 'id' });
+      pauses.createIndex('by_from', 'from', { unique: false });
+
+      db.createObjectStore(STORES.tombstones, { keyPath: 'id' });
+
+      // Questions gain a category and the inverted flag. `false` is the only
+      // safe default: no RC2 question was inverted, so nothing any existing
+      // answer already scored can move.
+      backfill(tx, STORES.questions, (question) => {
+        if (question.category !== undefined && question.inverted !== undefined) return null;
+        return {
+          ...question,
+          category:
+            question.category ??
+            RC2_QUESTION_CATEGORIES[String(question.text)] ??
+            ('eigene' satisfies QuestionCategory),
+          inverted: question.inverted ?? false,
+        };
+      });
+
+      backfill(tx, STORES.answers, (answer) =>
+        answer.sensitivity === undefined
+          ? { ...answer, sensitivity: 'private' satisfies Sensitivity }
+          : null,
+      );
+
+      /*
+       * Does this device carry RC2 sport data that has to be classified?
+       *
+       * Only if a sports domain exists. `pending` means the user is asked
+       * once, on their own terms; `none` means there is nothing to ask about
+       * and they are never interrupted.
+       */
+      const sportsQuery = tx.objectStore(STORES.domains).index('by_type').count('sports');
+      sportsQuery.onsuccess = () => {
+        const hasLegacySport = sportsQuery.result > 0;
+        backfill(tx, STORES.settings, (settings) =>
+          settings.legacySportMigration === undefined
+            ? {
+                ...settings,
+                legacySportMigration: (hasLegacySport
+                  ? 'pending'
+                  : 'none') satisfies LegacySportMigration,
+              }
+            : null,
+        );
+      };
+    },
+  },
 ];
+
+/**
+ * The five predefined questions RC2 shipped, and the category each belongs to.
+ *
+ * Matched on the exact text because that is what RC2 copied into the record —
+ * a suggestion's id was never stored. Anything unrecognised, including every
+ * question the user wrote, becomes "Eigene", which is true by definition.
+ */
+const RC2_QUESTION_CATEGORIES: Record<string, QuestionCategory> = {
+  'Wie gut hast du geschlafen?': 'gesundheit',
+  'How well did you sleep?': 'gesundheit',
+  'Wie hoch war dein Energielevel?': 'gesundheit',
+  'How high was your energy level?': 'gesundheit',
+  'Wie zufrieden bist du heute mit deinem Tag?': 'mental',
+  'How satisfied are you with your day?': 'mental',
+  'Hast du dir heute bewusst Zeit für dich genommen?': 'mental',
+  'Did you take time for yourself today?': 'mental',
+  'Hast du heute etwas gemacht, das dir gutgetan hat?': 'mental',
+  'Did you do something today that was good for you?': 'mental',
+};
+
+/** Walks every record in a store and writes back whatever `fn` returns. */
+function backfill(
+  tx: IDBTransaction,
+  store: StoreName,
+  fn: (record: Record<string, unknown>) => Record<string, unknown> | null,
+): void {
+  const request = tx.objectStore(store).openCursor();
+  request.onsuccess = () => {
+    const cursor = request.result;
+    if (!cursor) return;
+    const next = fn(cursor.value as Record<string, unknown>);
+    if (next) cursor.update(next);
+    cursor.continue();
+  };
+}
 
 /**
  * Why storage failed, in terms the interface can act on.

@@ -75,14 +75,28 @@ describe('the exported file', () => {
     await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: 2 });
     await recordDays(5);
     const backup = await exportBackup();
+    // Exhaustive on purpose: adding a collection to the backup should be a
+    // deliberate act, and forgetting to add one is exactly the bug that loses
+    // a user's data on restore.
     expect(Object.keys(backup.data).sort()).toEqual([
       'answers',
       'configSnapshots',
       'domains',
+      'exercises',
+      'foodEntries',
+      'gymPlans',
+      'gymSessions',
+      'gymSets',
+      'pausePeriods',
+      'profile',
       'questions',
       'rankEvents',
+      'restDays',
+      'runs',
       'settings',
       'sportsSessions',
+      'tombstones',
+      'weightEntries',
     ]);
     // Ratings, ranks, streaks and scores are replayed, never stored.
     expect(JSON.stringify(backup.data)).not.toContain('"rating"');

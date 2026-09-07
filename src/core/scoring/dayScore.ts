@@ -1,5 +1,5 @@
 import type { DateKey, DayEditState } from '../dates';
-import type { DomainType, QuestionType } from '../model';
+import type { StoredDomainType, QuestionType } from '../model';
 import { scaleValueToPercent } from './scale';
 
 /**
@@ -32,7 +32,16 @@ export interface MentalDayInput {
   answers: Map<string, boolean | number>;
 }
 
-export interface SportsDayInput {
+/**
+ * A domain judged on sessions against a weekly quota.
+ *
+ * RC2 had exactly one of these and named it `sports`. Iteration 2 has Gym and
+ * Running, which are two independent quotas rather than one shared one, so
+ * the input is a list keyed by domain — and the legacy `sports` domain is
+ * simply one more entry in it, scored by the same rule it always was.
+ */
+export interface WeeklyDayInput {
+  domain: StoredDomainType;
   /** The target in force for the week this day belongs to. */
   target: number;
   /** Sessions logged in that whole week. */
@@ -46,11 +55,12 @@ export interface DayInput {
   editState: DayEditState;
   /** `null` when the domain is disabled or was never enabled. */
   mental: MentalDayInput | null;
-  sports: SportsDayInput | null;
+  /** Every weekly-quota domain enabled on this day. Empty when none are. */
+  weekly: WeeklyDayInput[];
 }
 
 export interface DomainScore {
-  domain: DomainType;
+  domain: StoredDomainType;
   /** `null` means no data — excluded from the mean, never counted as zero. */
   score: number | null;
   itemsDue: number;
@@ -136,7 +146,7 @@ function scoreMental(
  * the week reports its running progress, and a finished week reports the
  * truth even when that truth is zero.
  */
-function scoreSports(input: SportsDayInput): number | null {
+function scoreWeekly(input: WeeklyDayInput): number | null {
   if (input.weekInProgress && input.sessionsInWeek === 0) return null;
   const target = Math.max(1, input.target);
   return Math.min(100, (input.sessionsInWeek / target) * 100);
@@ -169,14 +179,14 @@ export function scoreDay(input: DayInput): DayScore {
     });
   }
 
-  if (input.sports) {
-    const sports = scoreSports(input.sports);
-    recordedDomains.push(sports);
+  for (const weekly of input.weekly) {
+    const score = scoreWeekly(weekly);
+    recordedDomains.push(score);
     domains.push({
-      domain: 'sports',
-      score: sports,
-      itemsDue: input.sports.target,
-      itemsAnswered: input.sports.sessionsInWeek,
+      domain: weekly.domain,
+      score,
+      itemsDue: weekly.target,
+      itemsAnswered: weekly.sessionsInWeek,
     });
   }
 
@@ -185,7 +195,7 @@ export function scoreDay(input: DayInput): DayScore {
     ? recordedScored.reduce((sum, value) => sum + value, 0) / recordedScored.length
     : null;
 
-  const nothingDue = !mentalHasDue && input.sports === null;
+  const nothingDue = !mentalHasDue && input.weekly.length === 0;
   if (nothingDue) {
     return {
       date: input.date,
