@@ -14,7 +14,7 @@ export default defineWorkspace([
     test: {
       name: 'berlin',
       env: { TZ: 'Europe/Berlin' },
-      include: ['src/**/*.test.ts'],
+      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
       exclude: ['src/**/*.tz.test.ts'],
     },
   },

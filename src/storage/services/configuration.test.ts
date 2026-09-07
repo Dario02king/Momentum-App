@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setClock } from '../../core/clock';
-import { sportsTargetOf } from '../../core/model';
+import { weeklyTargetIn } from '../../core/domains';
+import { } from '../../core/model';
 import { closeDatabase, deleteDatabase } from '../db';
 import { configForDate } from '../configService';
 import {
@@ -14,17 +15,30 @@ import {
   addQuestion,
   applyOnboarding,
   archiveQuestion,
-  clampSportsTarget,
   disableDomain,
   enableMental,
-  enableSports,
   loadConfiguration,
   pauseQuestion,
   resumeQuestion,
-  setSportsTarget,
-  sportsTargetOfDomain,
+  weeklyTargetOfDomain,
   updateQuestion,
+  clampWeeklyTarget,
+  enableDomain,
+  setWeeklyTarget,
 } from './configurationService';
+
+/**
+ * The weekly-quota domain these suites exercise is Gym.
+ *
+ * RC2 had one generic Sport domain; iteration 2 has two independent ones, and
+ * the rules under test here — the target, the week window, what a met week is
+ * worth — belong to any weekly quota rather than to a particular sport. Gym
+ * stands in for all of them.
+ */
+const enableGym = (target?: number) => enableDomain('gym', target);
+const setGymTarget = (target: number) => setWeeklyTarget('gym', target);
+const clampGymTarget = (target: number) => clampWeeklyTarget('gym', target);
+
 
 function freezeAt(day: string, hour = 9): void {
   const [y, m, d] = day.split('-').map(Number) as [number, number, number];
@@ -45,10 +59,10 @@ describe('onboarding', () => {
   it('persists questions, the sports target and completion in one go', async () => {
     await applyOnboarding({
       questions: [
-        { text: 'Wie gut hast du geschlafen?', type: 'scale' },
-        { text: 'Hast du dein Bett gemacht?', type: 'boolean' },
+        { text: 'Wie gut hast du geschlafen?', type: 'scale', category: 'eigene' },
+        { text: 'Hast du dein Bett gemacht?', type: 'boolean', category: 'eigene' },
       ],
-      sportsTargetPerWeek: 3,
+      gymTargetPerWeek: 3,
     });
 
     const configuration = await loadConfiguration();
@@ -58,18 +72,18 @@ describe('onboarding', () => {
       'Hast du dein Bett gemacht?',
     ]);
     expect(configuration.questions.map((question) => question.type)).toEqual(['scale', 'boolean']);
-    expect(configuration.mental?.enabled).toBe(true);
-    expect(sportsTargetOfDomain(configuration.sports)).toBe(3);
+    expect(configuration.domains.mental?.enabled).toBe(true);
+    expect(weeklyTargetOfDomain(configuration.domains.gym)).toBe(3);
   });
 
   it('keeps the order the questions were chosen in', async () => {
     await applyOnboarding({
       questions: [
-        { text: 'Erste', type: 'boolean' },
-        { text: 'Zweite', type: 'boolean' },
-        { text: 'Dritte', type: 'boolean' },
+        { text: 'Erste', type: 'boolean', category: 'eigene' },
+        { text: 'Zweite', type: 'boolean', category: 'eigene' },
+        { text: 'Dritte', type: 'boolean', category: 'eigene' },
       ],
-      sportsTargetPerWeek: null,
+      gymTargetPerWeek: null,
     });
     const configuration = await loadConfiguration();
     expect(configuration.questions.map((question) => question.text)).toEqual([
@@ -81,37 +95,37 @@ describe('onboarding', () => {
 
   it('completes with Mental Wellbeing only', async () => {
     await applyOnboarding({
-      questions: [{ text: 'Hast du dein Bett gemacht?', type: 'boolean' }],
-      sportsTargetPerWeek: null,
+      questions: [{ text: 'Hast du dein Bett gemacht?', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: null,
     });
     const configuration = await loadConfiguration();
-    expect(configuration.mental?.enabled).toBe(true);
+    expect(configuration.domains.mental?.enabled).toBe(true);
     // Skipping sports must leave no sports domain at all: scoring then
     // excludes it rather than counting an empty domain as zero.
-    expect(configuration.sports).toBeNull();
+    expect(configuration.domains.gym).toBeNull();
     expect(configuration.settings.onboardingCompletedAt).not.toBeNull();
   });
 
   it('completes with Sports only', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: 4 });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: 4 });
     const configuration = await loadConfiguration();
-    expect(configuration.mental).toBeNull();
-    expect(sportsTargetOfDomain(configuration.sports)).toBe(4);
+    expect(configuration.domains.mental).toBeNull();
+    expect(weeklyTargetOfDomain(configuration.domains.gym)).toBe(4);
     expect(configuration.questions).toEqual([]);
   });
 
   it('completes with nothing configured at all', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
     const configuration = await loadConfiguration();
-    expect(configuration.mental).toBeNull();
-    expect(configuration.sports).toBeNull();
+    expect(configuration.domains.mental).toBeNull();
+    expect(configuration.domains.gym).toBeNull();
     expect(configuration.questions).toEqual([]);
     // The user still reaches a working app.
     expect(configuration.settings.onboardingCompletedAt).not.toBeNull();
   });
 
   it('does not run again after completion', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
     const first = (await settingsRepository.get())?.onboardingCompletedAt;
     expect(first).not.toBeNull();
     const reloaded = await loadConfiguration();
@@ -121,7 +135,7 @@ describe('onboarding', () => {
 
 describe('question lifecycle', () => {
   async function withOneQuestion() {
-    const question = await addQuestion({ text: 'Hast du dein Bett gemacht?', type: 'boolean' });
+    const question = await addQuestion({ text: 'Hast du dein Bett gemacht?', type: 'boolean', category: 'eigene' });
     const snapshot = await configSnapshotsRepository.latest();
     await answersRepository.save({
       date: '2025-03-30',
@@ -136,16 +150,16 @@ describe('question lifecycle', () => {
 
   it('creates the Mental Wellbeing domain on the first question', async () => {
     const before = await loadConfiguration();
-    expect(before.mental).toBeNull();
-    await addQuestion({ text: 'Neu', type: 'boolean' });
+    expect(before.domains.mental).toBeNull();
+    await addQuestion({ text: 'Neu', type: 'boolean', category: 'eigene' });
     const after = await loadConfiguration();
-    expect(after.mental?.enabled).toBe(true);
+    expect(after.domains.mental?.enabled).toBe(true);
   });
 
   it('edits text and type without touching history', async () => {
     const question = await withOneQuestion();
     freezeAt('2025-04-02');
-    await updateQuestion(question.id, { text: 'Neu formuliert', type: 'scale' });
+    await updateQuestion(question.id, { text: 'Neu formuliert', type: 'scale', category: 'eigene' });
 
     const updated = await questionsRepository.get(question.id);
     expect(updated?.text).toBe('Neu formuliert');
@@ -190,7 +204,7 @@ describe('question lifecycle', () => {
 
   it('records every lifecycle change as a configuration revision', async () => {
     freezeAt('2025-03-31');
-    const question = await addQuestion({ text: 'A', type: 'boolean' });
+    const question = await addQuestion({ text: 'A', type: 'boolean', category: 'eigene' });
     freezeAt('2025-04-01');
     await pauseQuestion(question.id);
     freezeAt('2025-04-02');
@@ -210,68 +224,68 @@ describe('question lifecycle', () => {
 
 describe('sports target configuration', () => {
   it('creates the domain with a target when first enabled', async () => {
-    await enableSports(3);
+    await enableGym(3);
     const configuration = await loadConfiguration();
-    expect(sportsTargetOfDomain(configuration.sports)).toBe(3);
+    expect(weeklyTargetOfDomain(configuration.domains.gym)).toBe(3);
   });
 
   it('defaults the target when enabled without one', async () => {
-    await enableSports();
+    await enableGym();
     const configuration = await loadConfiguration();
-    expect(sportsTargetOfDomain(configuration.sports)).toBe(3);
+    expect(weeklyTargetOfDomain(configuration.domains.gym)).toBe(3);
   });
 
   it('keeps the existing target when re-enabled', async () => {
-    await enableSports(5);
+    await enableGym(5);
     const configuration = await loadConfiguration();
-    await disableDomain(configuration.sports!.id);
-    await enableSports();
-    expect(sportsTargetOfDomain((await loadConfiguration()).sports)).toBe(5);
+    await disableDomain(configuration.domains.gym!.id);
+    await enableGym();
+    expect(weeklyTargetOfDomain((await loadConfiguration()).domains.gym)).toBe(5);
   });
 
   it('clamps a target to the range the picker offers', () => {
-    expect(clampSportsTarget(0)).toBe(1);
-    expect(clampSportsTarget(99)).toBe(7);
-    expect(clampSportsTarget(3.4)).toBe(3);
+    expect(clampGymTarget(0)).toBe(1);
+    expect(clampGymTarget(99)).toBe(7);
+    expect(clampGymTarget(3.4)).toBe(3);
   });
 
   it('leaves past weeks judged by the target that was in force then', async () => {
     freezeAt('2025-01-06');
-    await enableSports(3);
+    await enableGym(3);
 
     freezeAt('2025-04-07');
-    await setSportsTarget(5);
+    await setGymTarget(5);
 
     const january = await configForDate('2025-01-20');
     const april = await configForDate('2025-04-10');
-    expect(january && sportsTargetOf(january)).toBe(3);
-    expect(april && sportsTargetOf(april)).toBe(5);
+    expect(january && weeklyTargetIn(january, 'gym')).toBe(3);
+    expect(april && weeklyTargetIn(april, 'gym')).toBe(5);
   });
 
   it('excludes a disabled domain from scoring rather than zeroing it', async () => {
     freezeAt('2025-03-31');
-    await enableSports(3);
+    await enableGym(3);
     freezeAt('2025-04-01');
     const configuration = await loadConfiguration();
-    await disableDomain(configuration.sports!.id);
+    await disableDomain(configuration.domains.gym!.id);
 
-    expect(sportsTargetOf((await configForDate('2025-03-31'))!)).toBe(3);
-    expect(sportsTargetOf((await configForDate('2025-04-01'))!)).toBeNull();
+    expect(weeklyTargetIn((await configForDate('2025-03-31'))!, 'gym')).toBe(3);
+    expect(weeklyTargetIn((await configForDate('2025-04-01'))!, 'gym')).toBeNull();
     // Disabling never deletes: the record is still there, just off.
-    expect((await loadConfiguration()).sports?.enabled).toBe(false);
+    expect((await loadConfiguration()).domains.gym?.enabled).toBe(false);
   });
 });
 
 describe('domain switches', () => {
   it('re-enabling Mental Wellbeing keeps its questions', async () => {
-    await addQuestion({ text: 'A', type: 'boolean' });
+    await addQuestion({ text: 'A', type: 'boolean', category: 'eigene' });
     const configuration = await loadConfiguration();
-    await disableDomain(configuration.mental!.id);
-    expect((await loadConfiguration()).mental?.enabled).toBe(false);
+    await disableDomain(configuration.domains.mental!.id);
+    expect((await loadConfiguration()).domains.mental?.enabled).toBe(false);
 
     await enableMental();
     const reloaded = await loadConfiguration();
-    expect(reloaded.mental?.enabled).toBe(true);
+    expect(reloaded.domains.mental?.enabled).toBe(true);
     expect(reloaded.questions).toHaveLength(1);
   });
 
@@ -284,7 +298,7 @@ describe('domain switches', () => {
   });
 
   it('writes no revision for a language change', async () => {
-    await addQuestion({ text: 'A', type: 'boolean' });
+    await addQuestion({ text: 'A', type: 'boolean', category: 'eigene' });
     const before = (await configSnapshotsRepository.list()).length;
     freezeAt('2025-04-05');
     await settingsRepository.setLanguage('en');

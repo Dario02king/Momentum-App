@@ -8,22 +8,24 @@ import {
   type DayEditState,
   type WeekKey,
 } from '../../core/dates';
+import { WEEKLY_DOMAIN_TYPES, weeklyTargetOf } from '../../core/domains';
 import { isValidScaleValue } from '../../core/scoring/scale';
 import type {
   AnswerRecord,
   AnswerValue,
   QuestionRecord,
-  SportsSessionRecord,
+  StoredDomainType,
 } from '../../core/model';
 import { weekProgress, type WeekProgress } from '../../domains/sports/weekProgress';
 import { ensureCurrentSnapshot } from '../configService';
 import {
   answersRepository,
   domainsRepository,
+  gymSessionsRepository,
   questionsRepository,
+  runsRepository,
   sportsSessionsRepository,
 } from '../repositories';
-import { sportsTargetOfDomain } from './configurationService';
 
 /**
  * The daily check-in.
@@ -36,6 +38,12 @@ import { sportsTargetOfDomain } from './configurationService';
  * - A training session may be edited or deleted within the week it belongs
  *   to; sessions are diary entries, not daily check-ins, so they get their
  *   own rule.
+ *
+ * Training is plural now. Gym and Running are separate quotas with separate
+ * logs, and RC2's generic Sport is a third that the product no longer creates
+ * but still has to show a migrated user who chose to keep it. All three are
+ * the same shape here, so the Today screen has one card to render rather than
+ * three cases to branch on.
  */
 
 /** Thrown when a write targets a day the user may no longer change. */
@@ -69,23 +77,43 @@ export interface MentalDayView {
   complete: boolean;
 }
 
-export interface SportsDayView {
+/**
+ * One logged training session, whichever log it lives in.
+ *
+ * A view type rather than a record: Gym sets and run distances belong to
+ * their own screens, and the Today card only ever needs "when, and roughly
+ * what". Phases 4 and 5 add the detail behind this, not instead of it.
+ */
+export interface TrainingSession {
+  id: string;
+  domain: StoredDomainType;
+  date: DateKey;
+  performedAt: string;
+  note: string | null;
+  durationMinutes: number | null;
+  /** Carried over from RC2's Sport log, so a screen can say so. */
+  legacyCarryOver: boolean;
+}
+
+export interface TrainingDayView {
+  domain: StoredDomainType;
   weekKey: WeekKey;
   progress: WeekProgress;
   /** This week's sessions, oldest first. */
-  sessions: SportsSessionRecord[];
+  sessions: TrainingSession[];
   /** Sessions logged on the day being viewed. */
-  sessionsToday: SportsSessionRecord[];
+  sessionsToday: TrainingSession[];
 }
 
 export interface DayView {
   date: DateKey;
   editState: DayEditState;
   editable: boolean;
-  /** `null` when the domain is disabled or was never enabled. */
+  /** `null` when Wellbeing is disabled or was never enabled. */
   mental: MentalDayView | null;
-  sports: SportsDayView | null;
-  /** True when neither domain is set up — the day has nothing to ask. */
+  /** One entry per enabled weekly-quota domain, in display order. */
+  training: TrainingDayView[];
+  /** True when nothing is set up — the day has nothing to ask. */
   empty: boolean;
 }
 
@@ -94,12 +122,50 @@ function assertEditable(date: DateKey, reference: DateKey): void {
   if (state !== 'open') throw new EditWindowError(date, state);
 }
 
+const minutesFromSeconds = (seconds: number | null): number | null =>
+  seconds === null ? null : Math.round(seconds / 60);
+
+/** Every training log, behind one interface. */
+async function loadWeek(domain: StoredDomainType, weekKey: WeekKey): Promise<TrainingSession[]> {
+  if (domain === 'gym') {
+    return (await gymSessionsRepository.listByWeek(weekKey)).map((session) => ({
+      id: session.id,
+      domain,
+      date: session.date,
+      performedAt: session.performedAt,
+      note: session.note,
+      durationMinutes: null,
+      legacyCarryOver: session.legacyCarryOver,
+    }));
+  }
+  if (domain === 'running') {
+    return (await runsRepository.listByWeek(weekKey)).map((run) => ({
+      id: run.id,
+      domain,
+      date: run.date,
+      performedAt: run.performedAt,
+      note: run.note,
+      durationMinutes: minutesFromSeconds(run.durationSeconds),
+      legacyCarryOver: run.legacyCarryOver,
+    }));
+  }
+  return (await sportsSessionsRepository.listByWeek(weekKey)).map((session) => ({
+    id: session.id,
+    domain: 'sports',
+    date: session.date,
+    performedAt: session.performedAt,
+    note: session.note,
+    durationMinutes: session.durationMinutes,
+    legacyCarryOver: false,
+  }));
+}
+
 /**
  * Reads everything due on a day.
  *
  * Active questions are due, full stop — there is no schedule to evaluate.
- * A disabled domain returns `null` rather than an empty view, so scoring and
- * the UI both distinguish "nothing due" from "nothing tracked".
+ * A disabled domain is absent rather than empty, so scoring and the UI both
+ * distinguish "nothing due" from "nothing tracked".
  */
 export async function loadDay(date: DateKey = today(), reference: DateKey = today()): Promise<DayView> {
   const [domains, answers] = await Promise.all([
@@ -108,7 +174,6 @@ export async function loadDay(date: DateKey = today(), reference: DateKey = toda
   ]);
 
   const mentalDomain = domains.find((domain) => domain.type === 'mental') ?? null;
-  const sportsDomain = domains.find((domain) => domain.type === 'sports') ?? null;
 
   let mental: MentalDayView | null = null;
   if (mentalDomain?.enabled) {
@@ -128,17 +193,20 @@ export async function loadDay(date: DateKey = today(), reference: DateKey = toda
     };
   }
 
-  let sports: SportsDayView | null = null;
-  const target = sportsTargetOfDomain(sportsDomain);
-  if (sportsDomain?.enabled && target !== null) {
-    const weekKey = weekKeyOf(date);
-    const sessions = await sportsSessionsRepository.listByWeek(weekKey);
-    sports = {
+  const weekKey = weekKeyOf(date);
+  const training: TrainingDayView[] = [];
+  for (const type of WEEKLY_DOMAIN_TYPES) {
+    const domain = domains.find((entry) => entry.type === type);
+    const target = domain ? weeklyTargetOf(domain) : null;
+    if (!domain || target === null) continue;
+    const sessions = await loadWeek(type, weekKey);
+    training.push({
+      domain: type,
       weekKey,
       progress: weekProgress(sessions.length, target, weekKey),
       sessions,
       sessionsToday: sessions.filter((session) => session.date === date),
-    };
+    });
   }
 
   const editState = dayEditState(date, reference, EDIT_WINDOW_DAYS);
@@ -147,8 +215,8 @@ export async function loadDay(date: DateKey = today(), reference: DateKey = toda
     editState,
     editable: editState === 'open',
     mental,
-    sports,
-    empty: mental === null && sports === null,
+    training,
+    empty: mental === null && training.length === 0,
   };
 }
 
@@ -204,7 +272,6 @@ export async function clearAnswer(
 }
 
 export interface SessionInput {
-  activityType?: string | null;
   note?: string | null;
   durationMinutes?: number | null;
   /** Moving a session within its own week — the day it actually happened. */
@@ -219,47 +286,145 @@ function assertSessionWeekEditable(date: DateKey, reference: DateKey): void {
 }
 
 export async function logSession(
+  domain: StoredDomainType,
   date: DateKey = today(),
   input: SessionInput = {},
   reference: DateKey = today(),
-): Promise<SportsSessionRecord> {
+): Promise<TrainingSession> {
   assertSessionWeekEditable(date, reference);
-  const domain = await domainsRepository.findByType('sports');
-  if (!domain || !domain.enabled) {
-    throw new InvalidAnswerError('Sports is not enabled');
+  const record = await domainsRepository.findByType(domain);
+  if (!record || !record.enabled) {
+    throw new InvalidAnswerError(`${domain} is not enabled`);
   }
   const snapshot = await ensureCurrentSnapshot();
-  return sportsSessionsRepository.create({
-    domainId: domain.id,
+
+  if (domain === 'gym') {
+    const session = await gymSessionsRepository.create({
+      date,
+      note: input.note ?? null,
+      configSnapshotId: snapshot.id,
+    });
+    return {
+      id: session.id,
+      domain,
+      date: session.date,
+      performedAt: session.performedAt,
+      note: session.note,
+      durationMinutes: null,
+      legacyCarryOver: false,
+    };
+  }
+
+  if (domain === 'running') {
+    const run = await runsRepository.create({
+      date,
+      note: input.note ?? null,
+      durationSeconds:
+        input.durationMinutes === undefined || input.durationMinutes === null
+          ? null
+          : Math.round(input.durationMinutes * 60),
+      configSnapshotId: snapshot.id,
+    });
+    return {
+      id: run.id,
+      domain,
+      date: run.date,
+      performedAt: run.performedAt,
+      note: run.note,
+      durationMinutes: minutesFromSeconds(run.durationSeconds),
+      legacyCarryOver: false,
+    };
+  }
+
+  const session = await sportsSessionsRepository.create({
+    domainId: record.id,
     date,
-    activityType: input.activityType ?? null,
     note: input.note ?? null,
     durationMinutes: input.durationMinutes ?? null,
     configSnapshotId: snapshot.id,
   });
+  return {
+    id: session.id,
+    domain: 'sports',
+    date: session.date,
+    performedAt: session.performedAt,
+    note: session.note,
+    durationMinutes: session.durationMinutes,
+    legacyCarryOver: false,
+  };
 }
 
 export async function updateSession(
+  domain: StoredDomainType,
   id: string,
   input: SessionInput,
   reference: DateKey = today(),
-): Promise<SportsSessionRecord | undefined> {
+): Promise<void> {
+  if (domain === 'gym') {
+    const session = await gymSessionsRepository.get(id);
+    if (!session) return;
+    assertSessionWeekEditable(session.date, reference);
+    const date = input.date ?? session.date;
+    if (date !== session.date) assertSessionWeekEditable(date, reference);
+    await gymSessionsRepository.put({
+      ...session,
+      date,
+      weekKey: weekKeyOf(date),
+      note: input.note ?? null,
+    });
+    return;
+  }
+
+  if (domain === 'running') {
+    const run = await runsRepository.get(id);
+    if (!run) return;
+    assertSessionWeekEditable(run.date, reference);
+    const date = input.date ?? run.date;
+    if (date !== run.date) assertSessionWeekEditable(date, reference);
+    await runsRepository.put({
+      ...run,
+      date,
+      weekKey: weekKeyOf(date),
+      note: input.note ?? null,
+      durationSeconds:
+        input.durationMinutes === undefined || input.durationMinutes === null
+          ? null
+          : Math.round(input.durationMinutes * 60),
+    });
+    return;
+  }
+
   const session = await sportsSessionsRepository.get(id);
-  if (!session) return undefined;
+  if (!session) return;
   assertSessionWeekEditable(session.date, reference);
-  // A session may be moved to the day it actually happened, as long as that
-  // day is in the same week — the week is what the target counts.
   const date = input.date ?? session.date;
   if (date !== session.date) assertSessionWeekEditable(date, reference);
-  return sportsSessionsRepository.update(id, {
+  await sportsSessionsRepository.update(id, {
     date,
-    activityType: input.activityType ?? null,
     note: input.note ?? null,
     durationMinutes: input.durationMinutes ?? null,
   });
 }
 
-export async function deleteSession(id: string, reference: DateKey = today()): Promise<void> {
+export async function deleteSession(
+  domain: StoredDomainType,
+  id: string,
+  reference: DateKey = today(),
+): Promise<void> {
+  if (domain === 'gym') {
+    const session = await gymSessionsRepository.get(id);
+    if (!session) return;
+    assertSessionWeekEditable(session.date, reference);
+    await gymSessionsRepository.remove(id);
+    return;
+  }
+  if (domain === 'running') {
+    const run = await runsRepository.get(id);
+    if (!run) return;
+    assertSessionWeekEditable(run.date, reference);
+    await runsRepository.remove(id);
+    return;
+  }
   const session = await sportsSessionsRepository.get(id);
   if (!session) return;
   assertSessionWeekEditable(session.date, reference);

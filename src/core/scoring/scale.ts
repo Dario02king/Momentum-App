@@ -33,6 +33,7 @@ export function scaleValueToPercent(value: number): number {
 
 export const SCALE_BAND_LABEL_KEYS = {
   poor: 'scale.poor',
+  fair: 'scale.fair',
   okay: 'scale.okay',
   good: 'scale.good',
   veryGood: 'scale.veryGood',

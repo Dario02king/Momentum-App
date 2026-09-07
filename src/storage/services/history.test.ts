@@ -6,10 +6,21 @@ import {
   addQuestion,
   applyOnboarding,
   archiveQuestion,
-  setSportsTarget,
+  setWeeklyTarget,
 } from './configurationService';
 import { logSession, saveAnswer } from './checkInService';
 import { loadHistory } from './historyService';
+
+/**
+ * The weekly-quota domain these suites exercise is Gym.
+ *
+ * RC2 had one generic Sport domain; iteration 2 has two independent ones, and
+ * the rules under test here — the target, the week window, what a met week is
+ * worth — belong to any weekly quota rather than to a particular sport. Gym
+ * stands in for all of them.
+ */
+const setGymTarget = (target: number) => setWeeklyTarget('gym', target);
+
 
 function freezeAt(day: string, hour = 9): void {
   const [y, m, d] = day.split('-').map(Number) as [number, number, number];
@@ -35,10 +46,10 @@ describe('reconstructing past days', () => {
     freezeAt('2025-03-03');
     await applyOnboarding({
       questions: [
-        { text: 'A', type: 'boolean' },
-        { text: 'B', type: 'scale' },
+        { text: 'A', type: 'boolean', category: 'eigene' },
+        { text: 'B', type: 'scale', category: 'eigene' },
       ],
-      sportsTargetPerWeek: null,
+      gymTargetPerWeek: null,
     });
     const questions = (await loadHistory('2025-03-03', '2025-03-03')).questions;
     // The drill-down follows the order the questions appear in Areas.
@@ -54,7 +65,7 @@ describe('reconstructing past days', () => {
 
   it('counts an unanswered closed day as missed, and an open one as neither', async () => {
     freezeAt('2025-03-03');
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: null });
 
     // On 8 March the window covers the 5th to the 8th; the 4th has closed.
     freezeAt('2025-03-08');
@@ -67,7 +78,7 @@ describe('reconstructing past days', () => {
 
   it('leaves days before the app was ever configured neutral', async () => {
     freezeAt('2025-03-10');
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: null });
     freezeAt('2025-03-20');
     const history = await loadHistory('2025-03-01', '2025-03-20');
 
@@ -83,7 +94,7 @@ describe('reconstructing past days', () => {
 
   it('shows a brand-new profile as empty rather than as a wall of zeros', async () => {
     freezeAt('2025-03-20');
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: 3 });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: 3 });
     const history = await loadHistory('2025-02-19', '2025-03-20');
     const scored = history.overall.filter((value) => value !== null);
     // Only today, which is still open, so nothing is scored at all yet.
@@ -96,24 +107,24 @@ describe('configuration history is respected', () => {
   it('judges each week against the sports target in force then', async () => {
     // Week of 3 March: target 2, one session logged.
     freezeAt('2025-03-03');
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: 2 });
-    await logSession('2025-03-03');
+    await applyOnboarding({ questions: [], gymTargetPerWeek: 2 });
+    await logSession('gym', '2025-03-03');
 
     // Week of 10 March: target raised to 4, one session logged.
     freezeAt('2025-03-10');
-    await setSportsTarget(4);
-    await logSession('2025-03-10');
+    await setGymTarget(4);
+    await logSession('gym', '2025-03-10');
 
     freezeAt('2025-03-24');
     const history = await loadHistory('2025-03-03', '2025-03-16');
     // The earlier week is still judged against 2, not against 4.
-    expect(history.sports[at(history, '2025-03-03')]).toBe(50);
-    expect(history.sports[at(history, '2025-03-10')]).toBe(25);
+    expect(history.gym[at(history, '2025-03-03')]).toBe(50);
+    expect(history.gym[at(history, '2025-03-10')]).toBe(25);
   });
 
   it('keeps counting a question for the days it was actually asked', async () => {
     freezeAt('2025-03-03');
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: null });
     const first = (await loadHistory('2025-03-03', '2025-03-03')).questions[0]!;
     await saveAnswer('2025-03-03', first.id, true);
 
@@ -135,10 +146,10 @@ describe('configuration history is respected', () => {
 
   it('shows a question as absent before it was created', async () => {
     freezeAt('2025-03-03');
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: null });
 
     freezeAt('2025-03-06');
-    const added = await addQuestion({ text: 'B', type: 'boolean' });
+    const added = await addQuestion({ text: 'B', type: 'boolean', category: 'eigene' });
 
     freezeAt('2025-03-20');
     const history = await loadHistory('2025-03-03', '2025-03-08');
@@ -151,7 +162,7 @@ describe('configuration history is respected', () => {
 describe('the shape handed to the Progress screen', () => {
   it('aligns every series with the day list', async () => {
     freezeAt('2025-03-03');
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: 2 });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: 2 });
     freezeAt('2025-03-20');
     const history = await loadHistory('2025-03-01', '2025-03-20');
     expect(history.days).toHaveLength(20);
@@ -165,7 +176,7 @@ describe('the shape handed to the Progress screen', () => {
 
   it('reports an empty range rather than a grid of zeros', async () => {
     freezeAt('2025-03-20');
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
     const history = await loadHistory('2025-03-01', '2025-03-20');
     expect(history.empty).toBe(true);
     expect(history.overall.every((value) => value === null)).toBe(true);
@@ -174,7 +185,7 @@ describe('the shape handed to the Progress screen', () => {
 
   it('reports which days had anything recorded at all', async () => {
     freezeAt('2025-03-03');
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: null });
     const question = (await loadHistory('2025-03-03', '2025-03-03')).questions[0]!;
     await saveAnswer('2025-03-03', question.id, true);
 

@@ -140,7 +140,7 @@ rating of every promotion.
 |---|---|---|
 | 0 | this document, `.github/fixtures/` | **done** |
 | 1 | `core/model`, `storage/db.ts` (migration 2), `core/domains/*`, `core/ledger/*`, `core/boss/*`, `core/decay/*`, `core/migration/legacySport.ts`, `storage/repositories/*`, `storage/services/bossService.ts`, `storage/services/legacySportService.ts` | **review stop** ← we are here |
-| 2 | `features/onboarding/*`, `domains/mental/*`, `core/scoring/dayScore.ts` (category means, D18), `features/progress/QuestionDetail.tsx` (new), `styles/tokens.css` (1–10 bands) | |
+| 2 | `features/onboarding/*`, `domains/mental/*`, `features/progress/QuestionDetail.tsx`, `styles/tokens.css` (1–10 bands), `storage/services/configurationService.ts`, `checkInService.ts` | **review stop** ← we are here |
 | 3 | `features/ranking/*` (mystery states, Boss UI), `core/ranks` (progress-bar single source of truth + regression tests) | |
 | 4 | `features/gym/*` (new), `components/BodyRenderer/*` (new), `core/gym/performance.ts` (D24/D26) | **review stop** |
 | 5 | `features/running/*` (new), `core/running/*`, `RunSource` adapter shape | |
@@ -204,13 +204,41 @@ rating of every promotion.
 
 ### Deliberately not in place
 
-- No UI. Onboarding still creates RC2's generic Sport domain, because
-  `features/onboarding/*` is a Phase 2 target. A *new* install in this state
-  therefore creates legacy data it will never be asked about — harmless while
-  Phase 1 is a review stop, and fixed by the Phase 2 onboarding rewrite.
+- ~~No UI. Onboarding still creates RC2's generic Sport domain.~~ **Fixed in
+  Phase 2**: nothing in the product creates one, and `wellbeing.test.ts`
+  asserts it of a new profile, its config snapshot, and its Today screen.
 - Gym, Running and Food have no scoring engines yet beyond the weekly quota
   that Gym and Running inherit from the existing weekly-target rule. Food has
   none at all, so its ledger never starts and it contributes nothing to the
   Boss — which is the correct behaviour, not a gap left open.
 - `loadProgression` is untouched and still drives the Rank screen. The Boss
   replaces it in Phase 3, when there is a screen to show it on.
+
+## Phase 2 as built
+
+- **Onboarding**: three concept screens (Momentum, the three worlds, rank and
+  milestones), a domain picker, and setup only for what was switched on. Sport
+  is presented as one world; the configuration underneath is two independent
+  targets. Gym detail and Food setup are deliberately absent — they belong to
+  the first time those areas are opened.
+- **No generic Sport**: `OnboardingSelection` has no field for it, `Areas` has
+  no switch that turns it on, and `configurationService` has no branch that
+  reaches it. It appears only where a migrated device carries one, read-only.
+- **Categories**: a library grouped by Alltag / Gesundheit / Mental, a
+  category picker on every question, and Areas grouped the same way.
+- **Custom questions**: ordinary questions with a category of their own,
+  defaulting to Eigene.
+- **1–10 bands**: five bands, four tokens each, checked by `contrast.test.ts`.
+- **Question drill-down**: its own screen, with the chart's semantic
+  alternative carrying the dates the picture cannot.
+
+### Deliberately not in Phase 2
+
+- **D18's category means are not in the scoring path yet.** The category is
+  stored, shown, grouped and tested; `dayScore` still means over questions
+  rather than over categories. Changing the arithmetic changes every existing
+  user's history, so it belongs with the rest of the scoring work rather than
+  in a screen-building phase — and it wants its own regression against the
+  fixtures.
+- Gym sets, run distances and Food remain Phases 4–6. Today logs a session or
+  a run in one tap; what a session *contains* comes later.

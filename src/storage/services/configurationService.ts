@@ -1,6 +1,14 @@
-import { SPORTS } from '../../core/config/constants';
+import { GYM, RUNNING } from '../../core/config/constants';
+import {
+  DOMAIN_DEFINITIONS,
+  DOMAIN_TYPES,
+  activationOf,
+  type DomainActivation,
+} from '../../core/domains';
 import type {
   DomainRecord,
+  DomainType,
+  QuestionCategory,
   QuestionRecord,
   QuestionStatus,
   QuestionType,
@@ -16,27 +24,31 @@ import {
 /**
  * Everything the configuration surfaces read and write.
  *
- * Two invariants live here rather than in the UI:
+ * Three invariants live here rather than in the UI:
  *
  * 1. A domain record is created the first time it is enabled, never before.
- *    A user who skips Sports has no sports domain at all, and scoring
+ *    A user who skips Running has no running domain at all, and scoring
  *    therefore excludes it rather than scoring it as zero.
  * 2. Every scoring-relevant change appends a configuration revision, so a
  *    past day is always read back through the configuration it was lived
  *    under. Changing the language does not, because it changes nothing that
  *    is scored.
+ * 3. **Nothing here can create the generic `sports` domain.** There is no
+ *    parameter for it and no branch that reaches it. It survives as a stored
+ *    discriminator so a device carrying RC2 history can still replay it, and
+ *    that is the whole of its remaining role.
  */
 
 export interface AppConfiguration {
   settings: SettingsRecord;
-  mental: DomainRecord | null;
-  sports: DomainRecord | null;
+  /** One entry per live domain; `null` where the user has never enabled it. */
+  domains: Record<DomainType, DomainRecord | null>;
+  /** RC2's generic Sport domain, where a migrated device still carries one. */
+  legacySport: DomainRecord | null;
+  activation: DomainActivation;
   /** Every question, including paused and archived ones. */
   questions: QuestionRecord[];
 }
-
-/** Display order for the two domains version 1 knows about. */
-const DOMAIN_ORDER = { mental: 0, sports: 1 } as const;
 
 export async function loadConfiguration(): Promise<AppConfiguration> {
   const [settings, domains, questions] = await Promise.all([
@@ -44,55 +56,79 @@ export async function loadConfiguration(): Promise<AppConfiguration> {
     domainsRepository.list(),
     questionsRepository.list(),
   ]);
+
+  const byType = Object.fromEntries(
+    DOMAIN_TYPES.map((type) => [type, domains.find((domain) => domain.type === type) ?? null]),
+  ) as Record<DomainType, DomainRecord | null>;
+
   return {
     settings,
-    mental: domains.find((domain) => domain.type === 'mental') ?? null,
-    sports: domains.find((domain) => domain.type === 'sports') ?? null,
+    domains: byType,
+    legacySport: domains.find((domain) => domain.type === 'sports') ?? null,
+    activation: activationOf(domains),
     questions,
   };
 }
 
-export function sportsTargetOfDomain(domain: DomainRecord | null): number | null {
-  if (!domain || domain.type !== 'sports' || !domain.enabled) return null;
-  return domain.settings.targetPerWeek;
+/** The weekly quota a domain is set to, or `null` when it has none or is off. */
+export function weeklyTargetOfDomain(domain: DomainRecord | null): number | null {
+  if (!domain || !domain.enabled) return null;
+  const settings = domain.settings as { targetPerWeek?: unknown };
+  return typeof settings.targetPerWeek === 'number' ? settings.targetPerWeek : null;
 }
 
-export function clampSportsTarget(target: number): number {
+const LIMITS: Partial<Record<DomainType, { min: number; max: number; fallback: number }>> = {
+  gym: {
+    min: GYM.MIN_TARGET_PER_WEEK,
+    max: GYM.MAX_TARGET_PER_WEEK,
+    fallback: GYM.DEFAULT_TARGET_PER_WEEK,
+  },
+  running: {
+    min: RUNNING.MIN_TARGET_PER_WEEK,
+    max: RUNNING.MAX_TARGET_PER_WEEK,
+    fallback: RUNNING.DEFAULT_TARGET_PER_WEEK,
+  },
+};
+
+export function clampWeeklyTarget(type: DomainType, target: number): number {
+  const limits = LIMITS[type];
+  if (!limits) return target;
   const rounded = Math.round(target);
-  if (!Number.isFinite(rounded)) return SPORTS.DEFAULT_TARGET_PER_WEEK;
-  return Math.min(SPORTS.MAX_TARGET_PER_WEEK, Math.max(SPORTS.MIN_TARGET_PER_WEEK, rounded));
-}
-
-/** Enables Mental Wellbeing, creating its record the first time. */
-export async function enableMental(): Promise<DomainRecord> {
-  const existing = await domainsRepository.findByType('mental');
-  const domain = existing
-    ? ((await domainsRepository.setEnabled(existing.id, true)) ?? existing)
-    : await domainsRepository.ensure('mental', DOMAIN_ORDER.mental, {});
-  await ensureCurrentSnapshot();
-  return domain;
+  if (!Number.isFinite(rounded)) return limits.fallback;
+  return Math.min(limits.max, Math.max(limits.min, rounded));
 }
 
 /**
- * Enables Sports with a weekly target, creating its record the first time.
- * Re-enabling an existing domain keeps whatever target it already had unless
- * a new one is given.
+ * Enables a domain, creating its record the first time.
+ *
+ * Re-enabling one keeps whatever settings it already had unless new ones are
+ * given, so switching Gym off for a month and back on does not silently
+ * reset the target the user chose.
  */
-export async function enableSports(targetPerWeek?: number): Promise<DomainRecord> {
-  const existing = await domainsRepository.findByType('sports');
+export async function enableDomain(
+  type: DomainType,
+  targetPerWeek?: number,
+): Promise<DomainRecord> {
+  const definition = DOMAIN_DEFINITIONS[type];
+  const existing = await domainsRepository.findByType(type);
+
+  const settings =
+    definition.hasWeeklyTarget && targetPerWeek !== undefined
+      ? { targetPerWeek: clampWeeklyTarget(type, targetPerWeek) }
+      : undefined;
+
   let domain: DomainRecord;
   if (!existing) {
-    domain = await domainsRepository.ensure('sports', DOMAIN_ORDER.sports, {
-      targetPerWeek: clampSportsTarget(targetPerWeek ?? SPORTS.DEFAULT_TARGET_PER_WEEK),
-    });
+    domain = await domainsRepository.ensure(
+      type,
+      definition.order,
+      (settings ?? definition.defaultSettings) as never,
+    );
   } else {
     const enabled = (await domainsRepository.setEnabled(existing.id, true)) ?? existing;
-    domain =
-      targetPerWeek === undefined
-        ? enabled
-        : ((await domainsRepository.updateSettings(enabled.id, {
-            targetPerWeek: clampSportsTarget(targetPerWeek),
-          })) ?? enabled);
+    domain = settings
+      ? ((await domainsRepository.updateSettings(enabled.id, settings as never)) ?? enabled)
+      : enabled;
   }
   await ensureCurrentSnapshot();
   return domain;
@@ -107,13 +143,28 @@ export async function disableDomain(id: string): Promise<void> {
   await ensureCurrentSnapshot();
 }
 
-export async function setSportsTarget(targetPerWeek: number): Promise<DomainRecord> {
-  return enableSports(targetPerWeek);
+export async function disableDomainType(type: DomainType): Promise<void> {
+  const domain = await domainsRepository.findByType(type);
+  if (domain) await disableDomain(domain.id);
+}
+
+export async function setWeeklyTarget(
+  type: DomainType,
+  targetPerWeek: number,
+): Promise<DomainRecord> {
+  return enableDomain(type, targetPerWeek);
+}
+
+/** Enables Wellbeing, which is where questions live. */
+export async function enableMental(): Promise<DomainRecord> {
+  return enableDomain('mental');
 }
 
 export interface QuestionDraft {
   text: string;
   type: QuestionType;
+  /** Which part of life the question belongs to (D17). */
+  category: QuestionCategory;
 }
 
 export async function addQuestion(draft: QuestionDraft): Promise<QuestionRecord> {
@@ -122,6 +173,7 @@ export async function addQuestion(draft: QuestionDraft): Promise<QuestionRecord>
     domainId: domain.id,
     text: draft.text,
     type: draft.type,
+    category: draft.category,
   });
   await ensureCurrentSnapshot();
   return question;
@@ -139,6 +191,7 @@ export async function updateQuestion(
   const updated = await questionsRepository.update(id, {
     ...(patch.text === undefined ? {} : { text: patch.text.trim() }),
     ...(patch.type === undefined ? {} : { type: patch.type }),
+    ...(patch.category === undefined ? {} : { category: patch.category }),
   });
   await ensureCurrentSnapshot();
   return updated;
@@ -158,16 +211,29 @@ export const resumeQuestion = (id: string) => setQuestionStatus(id, 'active');
 /** Archiving hides a question. Its answers stay, and old days keep counting. */
 export const archiveQuestion = (id: string) => setQuestionStatus(id, 'archived');
 
+/**
+ * What onboarding chose.
+ *
+ * A weekly target of `null` — or an omitted field — means the domain was not
+ * switched on. Omission defaults to *off* rather than on, so a caller that
+ * forgets a field can only ever fail to enable something, never enable
+ * something the user did not ask for.
+ *
+ * There is deliberately no field for the legacy Sport domain. That is how
+ * "no path in the new product creates one" is enforced rather than merely
+ * intended: the parameter does not exist to be passed.
+ */
 export interface OnboardingSelection {
   questions: QuestionDraft[];
-  /** `null` means the user skipped Sports. */
-  sportsTargetPerWeek: number | null;
+  gymTargetPerWeek?: number | null;
+  runningTargetPerWeek?: number | null;
+  food?: boolean;
 }
 
 /**
  * Writes the choices made during onboarding and marks it complete.
  *
- * Both domains are optional: an empty selection is valid and leaves the user
+ * Every domain is optional: an empty selection is valid and leaves the user
  * on an app with nothing configured but everything reachable.
  */
 export async function applyOnboarding(selection: OnboardingSelection): Promise<AppConfiguration> {
@@ -179,14 +245,17 @@ export async function applyOnboarding(selection: OnboardingSelection): Promise<A
         domainId: domain.id,
         text: draft.text,
         type: draft.type,
+        category: draft.category,
         order: order++,
       });
     }
   }
 
-  if (selection.sportsTargetPerWeek !== null) {
-    await enableSports(selection.sportsTargetPerWeek);
-  }
+  const gym = selection.gymTargetPerWeek ?? null;
+  const running = selection.runningTargetPerWeek ?? null;
+  if (gym !== null) await enableDomain('gym', gym);
+  if (running !== null) await enableDomain('running', running);
+  if (selection.food === true) await enableDomain('food');
 
   await ensureCurrentSnapshot();
   await settingsRepository.completeOnboarding();

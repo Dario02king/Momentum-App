@@ -204,7 +204,7 @@ describe('after the upgrade', () => {
     const gym = boss.domains.find((domain) => domain.domain === 'gym')!;
     const firstGymDay = gym.active.findIndex(Boolean);
     // Not one day before the domain existed.
-    expect(boss.history.days[firstGymDay]?.date >= '2026-09-01').toBe(true);
+    expect(boss.history.days[firstGymDay]!.date >= '2026-09-01').toBe(true);
 
     const mental = boss.domains.find((domain) => domain.domain === 'mental')!;
     // Wellbeing's own history is genuinely its own, and it is not the

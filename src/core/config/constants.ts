@@ -15,16 +15,28 @@ export const SCALE_MIN = 1;
 export const SCALE_MAX = 10;
 
 /**
- * Qualitative bands for scale answers. `from` is inclusive, `to` exclusive,
- * except for the last band, which includes SCALE_MAX.
- * The same bands drive colour, label and summary text so the three can never
- * disagree with each other.
+ * The fixed 1–10 mapping (D13 of iteration 2), and the only one there is.
+ *
+ * ```
+ *   1 2 3 4   red
+ *   5         orange
+ *   6         yellow
+ *   7 8       green
+ *   9 10      dark green
+ * ```
+ *
+ * `from` is inclusive and `to` exclusive, so the boundaries are unambiguous
+ * and the last band takes SCALE_MAX with it. The same bands drive colour,
+ * label and summary text everywhere a 1–10 value appears, so the three can
+ * never disagree — and colour is never the only carrier: the band is spelled
+ * out in words wherever it is shown.
  */
 export const SCALE_BANDS = [
   { id: 'poor', from: 1.0, to: 5.0 },
-  { id: 'okay', from: 5.0, to: 7.0 },
-  { id: 'good', from: 7.0, to: 8.0 },
-  { id: 'veryGood', from: 8.0, to: 10.0 },
+  { id: 'fair', from: 5.0, to: 6.0 },
+  { id: 'okay', from: 6.0, to: 7.0 },
+  { id: 'good', from: 7.0, to: 9.0 },
+  { id: 'veryGood', from: 9.0, to: 10.0001 },
 ] as const;
 
 export type ScaleBandId = (typeof SCALE_BANDS)[number]['id'];

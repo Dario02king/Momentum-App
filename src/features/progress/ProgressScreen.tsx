@@ -6,6 +6,7 @@ import { ProgressIcon } from '../../components/Icons';
 import { formatDayAndMonth } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
 import { Heatmap, type HeatmapRow } from './Heatmap';
+import { QuestionDetail } from './QuestionDetail';
 import { TrendCurve } from './TrendCurve';
 import { useProgression } from './useProgression';
 import './progress.css';
@@ -17,10 +18,11 @@ import './progress.css';
  * stated in a word before any number, and neither view is ever rendered
  * against zero-filled data.
  */
-export function ProgressScreen() {
+export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {}) {
   const t = useT();
   const { language } = useI18n();
   const [range, setRange] = useState<number>(TREND_RANGES[TREND_RANGES.length - 1]!);
+  const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
   const { state, reload } = useProgression();
 
   /** The last `range` days of the replay, for both views. */
@@ -70,21 +72,38 @@ export function ProgressScreen() {
     if (mental.some((value) => value !== null) || history.questions.length > 0) {
       result.push({
         key: 'mental',
-        label: t('domain.mental'),
+        label: t('domain.wellbeing'),
         values: mental,
         children: history.questions.map((question) => ({
           key: question.id,
           label: question.text,
           values: slice(question.scores),
+          // Tapping a question opens that question, not Today. Today is
+          // where you act; this is where you look.
+          onOpen: () => setOpenQuestionId(question.id),
         })),
       });
     }
-    const sports = slice(history.sports);
-    if (sports.some((value) => value !== null)) {
-      result.push({ key: 'sports', label: t('domain.sports'), values: sports });
+    // Every training domain that has anything to show, including the retired
+    // one on a device that still carries it.
+    const training: { key: string; label: string; values: (number | null)[] }[] = [
+      { key: 'gym', label: t('domain.gym'), values: slice(history.gym) },
+      { key: 'running', label: t('domain.running'), values: slice(history.running) },
+      { key: 'sports', label: t('domain.legacySport'), values: slice(history.sports) },
+    ];
+    for (const row of training) {
+      if (row.values.some((value) => value !== null)) result.push(row);
     }
     return result;
   }, [window, t]);
+
+  /** The question being looked at, sliced to the range on screen. */
+  const openQuestion = useMemo(() => {
+    if (!window || openQuestionId === null) return null;
+    const row = window.history.questions.find((question) => question.id === openQuestionId);
+    if (!row) return null;
+    return { ...row, scores: row.scores.slice(window.start) };
+  }, [window, openQuestionId]);
 
   // Still loading, failed outright, or loaded — three states, never one.
   // Emptiness is a property of the loaded data and is decided below.
@@ -117,6 +136,26 @@ export function ProgressScreen() {
       />
     </div>
   );
+
+  if (openQuestion) {
+    return (
+      <QuestionDetail
+        question={openQuestion}
+        days={window.days.map((day) => day.date)}
+        onClose={() => setOpenQuestionId(null)}
+        // Offered only while the question is actually being asked; sending
+        // someone to a check-in for a question nobody is asking is a dead end.
+        onAnswerToday={
+          openQuestion.status === 'active' && onGoToToday
+            ? () => {
+                setOpenQuestionId(null);
+                onGoToToday();
+              }
+            : undefined
+        }
+      />
+    );
+  }
 
   return (
     <div className="screen">

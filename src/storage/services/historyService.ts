@@ -11,6 +11,9 @@ import {
 import type {
   AppConfigSnapshot,
   ConfigSnapshotRecord,
+  QuestionCategory,
+  QuestionStatus,
+  QuestionType,
   StoredDomainType,
 } from '../../core/model';
 import type { WeekKey } from '../../core/dates';
@@ -43,6 +46,10 @@ import {
 export interface HistoryQuestionRow {
   id: string;
   text: string;
+  /** Carried so the drill-down can read a scale answer back as 1–10. */
+  type: QuestionType;
+  category: QuestionCategory;
+  status: QuestionStatus;
   /** One entry per day in the range, aligned with `days`. */
   scores: (number | null)[];
 }
@@ -158,6 +165,9 @@ export async function loadHistory(
   // Snapshots store questions sorted by id, which is meaningless to a reader.
   // The drill-down follows the order the questions appear in Areas.
   const displayOrder = new Map(liveQuestions.map((question, index) => [question.id, index]));
+  // The live record, for the facts a snapshot does not carry: which category
+  // the question belongs to now, and whether it is still being asked.
+  const liveById = new Map(liveQuestions.map((question) => [question.id, question]));
 
   const answersByDate = new Map<DateKey, Map<string, boolean | number>>();
   for (const answer of answers) {
@@ -245,6 +255,9 @@ export async function loadHistory(
     .map((id) => ({
       id,
       text: questionText.get(id) ?? '',
+      type: liveById.get(id)?.type ?? ('boolean' as QuestionType),
+      category: liveById.get(id)?.category ?? ('eigene' as QuestionCategory),
+      status: liveById.get(id)?.status ?? ('archived' as QuestionStatus),
       scores: days.map((day) => {
         // Not asked that day — paused, archived, or not yet created. That is
         // absent, which is a different thing from a zero.

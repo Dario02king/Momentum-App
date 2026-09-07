@@ -64,7 +64,7 @@ export const questionsRepository = {
 
   async update(
     id: string,
-    patch: Partial<Pick<QuestionRecord, 'text' | 'type' | 'order' | 'status'>>,
+    patch: Partial<Pick<QuestionRecord, 'text' | 'type' | 'category' | 'inverted' | 'order' | 'status'>>,
   ): Promise<QuestionRecord | undefined> {
     const current = await repo.get(id);
     if (!current) return undefined;

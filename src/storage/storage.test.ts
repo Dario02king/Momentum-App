@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setClock } from '../core/clock';
-import { SCHEMA_VERSION, sportsTargetOf } from '../core/model';
+import { weeklyTargetIn } from '../core/domains';
+import { SCHEMA_VERSION } from '../core/model';
 import { ALL_STORES, closeDatabase, deleteDatabase, openDatabase } from './db';
 import {
   answersRepository,
@@ -280,7 +281,7 @@ describe('sports sessions', () => {
     await sportsSessionsRepository.create({
       domainId: sports.id,
       date: '2025-03-31',
-      activityType: 'Laufen',
+      note: 'Laufen',
       configSnapshotId: snapshot.id,
     });
     const second = await sportsSessionsRepository.create({
@@ -336,11 +337,11 @@ describe('config snapshots', () => {
 
     const january = await configForDate('2025-01-20');
     const april = await configForDate('2025-04-10');
-    expect(january && sportsTargetOf(january)).toBe(3);
-    expect(april && sportsTargetOf(april)).toBe(4);
+    expect(january && weeklyTargetIn(january, 'sports')).toBe(3);
+    expect(april && weeklyTargetIn(april, 'sports')).toBe(4);
     // The day the change took effect uses the new target; the day before does not.
     const dayBefore = await configForDate('2025-04-06');
-    expect(dayBefore && sportsTargetOf(dayBefore)).toBe(3);
+    expect(dayBefore && weeklyTargetIn(dayBefore, 'sports')).toBe(3);
   });
 
   it('resolves days before the first snapshot to the earliest configuration', async () => {
@@ -349,7 +350,7 @@ describe('config snapshots', () => {
     await ensureCurrentSnapshot();
     const earlier = await configForDate('2025-01-01');
     expect(earlier).toBeDefined();
-    expect(sportsTargetOf(earlier!)).toBe(3);
+    expect(weeklyTargetIn(earlier!, 'sports')).toBe(3);
   });
 
   it('keeps archived questions in the snapshot so past days keep their meaning', async () => {
@@ -370,6 +371,6 @@ describe('config snapshots', () => {
   it('reports a domain that was not enabled as having no target', async () => {
     await domainsRepository.ensure('mental', 0, {});
     const snapshot = await currentConfigSnapshot();
-    expect(sportsTargetOf(snapshot)).toBeNull();
+    expect(weeklyTargetIn(snapshot, 'gym')).toBeNull();
   });
 });

@@ -95,6 +95,21 @@
   --domain-sports-mid: var(--mint-mid);
   --domain-sports-ink: var(--mint-ink);
   --domain-sports-tint: var(--mint-tint);
+  /* Gym keeps the training identity RC2 established; Running and Food take
+     their own so three cards on one screen are told apart by more than a
+     label. */
+  --domain-gym: var(--mint-fill);
+  --domain-gym-mid: var(--mint-mid);
+  --domain-gym-ink: var(--mint-ink);
+  --domain-gym-tint: var(--mint-tint);
+  --domain-running: var(--sky-fill);
+  --domain-running-mid: var(--sky-ink);
+  --domain-running-ink: var(--sky-ink);
+  --domain-running-tint: var(--sky-tint);
+  --domain-food: var(--peach-fill);
+  --domain-food-mid: var(--peach-ink);
+  --domain-food-ink: var(--peach-ink);
+  --domain-food-tint: var(--peach-tint);
 
   /*
    * Performance bands for the history grid (§12), mixed for a light ground
@@ -115,11 +130,50 @@
   --band-none: #e6e6ec;
   --band-track: #f1f1f5;
 
-  /* Scale bands, poor to very good. Always paired with their label. */
-  --scale-poor: var(--rose-ink);
-  --scale-okay: var(--peach-ink);
-  --scale-good: var(--sand-ink);
-  --scale-veryGood: var(--mint-ink);
+  /*
+   * The fixed 1–10 mapping: red, orange, yellow, green, dark green.
+   *
+   * Four values per band, because one colour cannot do four jobs:
+   *
+   * - `-fill` is the band at full strength, for a selected control or a bar.
+   * - `-on`   is the text colour that reads **on** that fill. It is white for
+   *           four of the five and near-black for yellow, because a yellow
+   *           dark enough to carry white text is not a yellow any more.
+   * - `-ink`  is text-safe on white and on the band's own tint.
+   * - `-tint` is the pale ground of an unselected control.
+   *
+   * Green and dark green are two steps of one hue, so they are separated by
+   * luminance as well — hue alone would leave 8 and 9 indistinguishable for a
+   * colour-blind reader, and contrast.test.ts checks the gap.
+   *
+   * A yellow fill cannot clear 3:1 against a white card, so a selected
+   * control is outlined in its own ink. That is what makes the shape a
+   * graphical object rather than a pale wash.
+   */
+  --scale-poor-fill: #c62d45;
+  --scale-poor-on: #ffffff;
+  --scale-poor-ink: #bf394e;
+  --scale-poor-tint: #fdecef;
+
+  --scale-fair-fill: #b8500b;
+  --scale-fair-on: #ffffff;
+  --scale-fair-ink: #a2560f;
+  --scale-fair-tint: #fdeee2;
+
+  --scale-okay-fill: #f2c300;
+  --scale-okay-on: #1c1c1e;
+  --scale-okay-ink: #7a6410;
+  --scale-okay-tint: #fdf3d4;
+
+  --scale-good-fill: #15804e;
+  --scale-good-on: #ffffff;
+  --scale-good-ink: #177a4c;
+  --scale-good-tint: #e4f6ec;
+
+  --scale-veryGood-fill: #07452a;
+  --scale-veryGood-on: #ffffff;
+  --scale-veryGood-ink: #0b5733;
+  --scale-veryGood-tint: #dcece2;
 
   /* iOS type scale. */
   --type-large-title: 34px;

@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react';
-import type { Language, QuestionRecord } from '../../core/model';
+import { DOMAIN_TYPES } from '../../core/domains';
+import type {
+  DomainRecord,
+  DomainType,
+  Language,
+  QuestionCategory,
+  QuestionRecord,
+} from '../../core/model';
+import { QUESTION_CATEGORIES } from '../../core/model';
 import { Button, Card, EmptyState, Row, Section, Segmented, Switch } from '../../components';
 import {
   ActivityIcon,
@@ -13,12 +21,13 @@ import {
   questionStatusBadgeKey,
   questionTypeBadgeKey,
 } from '../../domains/mental/questionLabels';
+import { CATEGORY_LABEL_KEYS } from '../../domains/mental/questionLibrary';
 import { TargetPicker } from '../../domains/sports/TargetPicker';
 import { BackupSection } from '../backup/BackupSection';
 import { useI18n, useT } from '../../i18n/I18nProvider';
-import { LANGUAGES } from '../../i18n';
+import { LANGUAGES, type TranslationKey } from '../../i18n';
 import {
-  sportsTargetOfDomain,
+  weeklyTargetOfDomain,
   type AppConfiguration,
 } from '../../storage/services/configurationService';
 import './areas.css';
@@ -26,11 +35,11 @@ import './areas.css';
 export interface AreasActions {
   /** Reloads everything after a restore replaced the profile. */
   reload(): void;
-  enableMental(): void;
-  disableMental(): void;
-  enableSports(): void;
-  disableSports(): void;
-  setSportsTarget(target: number): void;
+  enableDomain(type: DomainType): void;
+  disableDomain(type: DomainType): void;
+  setWeeklyTarget(type: DomainType, target: number): void;
+  /** Only ever switches the retired domain off — never on. */
+  disableLegacySport(): void;
   addQuestion(draft: QuestionSheetSubmit): void;
   updateQuestion(id: string, draft: QuestionSheetSubmit): void;
   pauseQuestion(id: string): void;
@@ -39,12 +48,36 @@ export interface AreasActions {
   setLanguage(language: Language): void;
 }
 
+const DOMAIN_COPY: Record<DomainType, { name: TranslationKey; description: TranslationKey; off: TranslationKey }> = {
+  mental: {
+    name: 'domain.wellbeing',
+    description: 'domain.wellbeing.description',
+    off: 'areas.wellbeing.offTitle',
+  },
+  gym: { name: 'domain.gym', description: 'domain.gym.description', off: 'areas.gym.offTitle' },
+  running: {
+    name: 'domain.running',
+    description: 'domain.running.description',
+    off: 'areas.running.offTitle',
+  },
+  food: { name: 'domain.food', description: 'domain.food.description', off: 'areas.food.offTitle' },
+};
+
+const TARGET_VALUE_KEYS: Partial<Record<DomainType, TranslationKey>> = {
+  gym: 'areas.gym.targetValue',
+  running: 'areas.running.targetValue',
+};
+
 /**
  * The configuration surface for everything the app tracks.
  *
  * It reads as a list of life areas rather than a settings panel: each domain
  * is one card carrying its own switch and its own configuration, so enabling
- * Sports and choosing its target are the same gesture in the same place.
+ * Gym and choosing its target are the same gesture in the same place.
+ *
+ * RC2's generic Sport appears here only when a migrated device still carries
+ * it, and only with a switch that turns it **off**. There is no path in this
+ * screen — or anywhere else in the product — that turns it back on.
  */
 export function AreasScreen({
   configuration,
@@ -59,10 +92,7 @@ export function AreasScreen({
   const [creating, setCreating] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
 
-  const { mental, sports, questions } = configuration;
-  const mentalOn = Boolean(mental?.enabled);
-  const sportsOn = Boolean(sports?.enabled);
-  const target = sportsTargetOfDomain(sports);
+  const { domains, legacySport, questions } = configuration;
 
   const { live, archived } = useMemo(
     () => ({
@@ -72,6 +102,159 @@ export function AreasScreen({
     [questions],
   );
 
+  /**
+   * Questions grouped the way the score groups them.
+   *
+   * A user looking at six questions under Alltag and one under Mental can
+   * see, without being told, why the day reads the way it does. A flat list
+   * hides exactly that.
+   */
+  const byCategory = useMemo(() => {
+    const groups = new Map<QuestionCategory, QuestionRecord[]>();
+    for (const question of live) {
+      const list = groups.get(question.category) ?? [];
+      list.push(question);
+      groups.set(question.category, list);
+    }
+    return QUESTION_CATEGORIES.filter((category) => (groups.get(category)?.length ?? 0) > 0).map(
+      (category) => ({ category, questions: groups.get(category)! }),
+    );
+  }, [live]);
+
+  const questionRow = (question: QuestionRecord) => {
+    const statusKey = questionStatusBadgeKey(question.status);
+    return (
+      <Row
+        key={question.id}
+        title={question.text}
+        muted={question.status === 'paused'}
+        onClick={() => setEditing(question)}
+        trailing={
+          <>
+            {statusKey ? <span className="badge badge--paused">{t(statusKey)}</span> : null}
+            <span className={`badge badge--${question.type}`}>
+              {t(questionTypeBadgeKey(question.type))}
+            </span>
+            <ChevronRightIcon size={18} />
+          </>
+        }
+      />
+    );
+  };
+
+  const domainCard = (type: DomainType, domain: DomainRecord | null) => {
+    const on = Boolean(domain?.enabled);
+    const copy = DOMAIN_COPY[type];
+    const target = weeklyTargetOfDomain(domain);
+    const targetKey = TARGET_VALUE_KEYS[type];
+
+    return (
+      <Section key={type}>
+        <Card>
+          <div className="areas__domainHeader">
+            <span className={`areas__domainMark areas__domainMark--${type}`} aria-hidden="true">
+              {type === 'mental' || type === 'food' ? (
+                <SparkIcon size={22} />
+              ) : (
+                <ActivityIcon size={22} />
+              )}
+            </span>
+            <span className="row__body">
+              <span className="areas__domainName">{t(copy.name)}</span>
+              <span className="areas__domainDescription">{t(copy.description)}</span>
+            </span>
+            <Switch
+              checked={on}
+              label={t(copy.name)}
+              accent={`var(--domain-${type}-mid)`}
+              onChange={(next) =>
+                next ? actions.enableDomain(type) : actions.disableDomain(type)
+              }
+            />
+          </div>
+
+          <div className="areas__domainBody">
+            {!on ? (
+              <EmptyState
+                title={t(copy.off)}
+                body={type === 'mental' ? t('areas.mental.offBody') : t('areas.training.offBody')}
+              />
+            ) : type === 'mental' ? (
+              live.length === 0 ? (
+                <EmptyState
+                  title={t('areas.mental.emptyTitle')}
+                  body={t('areas.mental.emptyBody')}
+                  action={
+                    <Button variant="secondary" onClick={() => setCreating(true)}>
+                      <PlusIcon size={18} />
+                      {t('areas.mental.add')}
+                    </Button>
+                  }
+                />
+              ) : (
+                <>
+                  {byCategory.map((group) => (
+                    <div key={group.category}>
+                      <div className="areas__subhead">
+                        <span>{t(CATEGORY_LABEL_KEYS[group.category])}</span>
+                        <span className="areas__subheadCount">
+                          {group.questions.length === 1
+                            ? t('areas.category.countOne')
+                            : t('areas.category.count', { count: group.questions.length })}
+                        </span>
+                      </div>
+                      {group.questions.map(questionRow)}
+                    </div>
+                  ))}
+                  <div className="areas__addRow">
+                    <Row
+                      title={t('areas.mental.add')}
+                      onClick={() => setCreating(true)}
+                      leading={<PlusIcon size={20} />}
+                    />
+                  </div>
+                </>
+              )
+            ) : targetKey ? (
+              <div className="areas__targetBlock">
+                <div className="areas__targetHeader">
+                  <span className="areas__targetLabel">{t('areas.training.target')}</span>
+                  <span className="areas__targetValue">{t(targetKey, { count: target ?? 0 })}</span>
+                </div>
+                <TargetPicker
+                  domain={type === 'gym' ? 'gym' : 'running'}
+                  value={target}
+                  onChange={(next) => actions.setWeeklyTarget(type, next)}
+                />
+              </div>
+            ) : (
+              // Food is switched on but has no setup here: the profile and
+              // the targets are asked for when the area is first opened.
+              <p className="areas__note">{t('areas.food.on')}</p>
+            )}
+
+            {type === 'mental' && on && archived.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  className="areas__archiveToggle"
+                  onClick={() => setShowArchive((value) => !value)}
+                  aria-expanded={showArchive}
+                >
+                  <ArchiveIcon size={16} />
+                  {showArchive
+                    ? t('areas.archiveHide')
+                    : t('areas.archiveShow', { count: archived.length })}
+                </button>
+                {showArchive ? archived.map(questionRow) : null}
+              </>
+            ) : null}
+          </div>
+        </Card>
+      </Section>
+    );
+  };
+
   return (
     <div className="screen">
       <header className="screen__header">
@@ -80,154 +263,41 @@ export function AreasScreen({
       </header>
 
       <div className="areas__scroll">
-        {/* Mental Wellbeing -------------------------------------------- */}
-        <Section>
-          <Card>
-            <div className="areas__domainHeader">
-              <span className="areas__domainMark areas__domainMark--mental" aria-hidden="true">
-                <SparkIcon size={22} />
-              </span>
-              <span className="row__body">
-                <span className="areas__domainName">{t('domain.mental')}</span>
-                <span className="areas__domainDescription">{t('domain.mental.description')}</span>
-              </span>
-              <Switch
-                checked={mentalOn}
-                label={t('domain.mental')}
-                accent="var(--domain-mental-mid)"
-                onChange={(next) => (next ? actions.enableMental() : actions.disableMental())}
-              />
-            </div>
+        {DOMAIN_TYPES.map((type) => domainCard(type, domains[type]))}
 
-            {mentalOn ? (
-              <div className="areas__domainBody">
-                {live.length === 0 ? (
-                  <EmptyState
-                    title={t('areas.mental.emptyTitle')}
-                    body={t('areas.mental.emptyBody')}
-                    action={
-                      <Button variant="secondary" onClick={() => setCreating(true)}>
-                        <PlusIcon size={18} />
-                        {t('areas.mental.add')}
-                      </Button>
-                    }
+        {/*
+          The retired domain. It is shown only where it exists, only so a user
+          can see where their old sessions went, and its switch is one-way:
+          off is possible, on is not offered anywhere in the product.
+        */}
+        {legacySport ? (
+          <Section>
+            <Card>
+              <div className="areas__domainHeader">
+                <span className="areas__domainMark areas__domainMark--sports" aria-hidden="true">
+                  <ActivityIcon size={22} />
+                </span>
+                <span className="row__body">
+                  <span className="areas__domainName">{t('domain.legacySport')}</span>
+                  <span className="areas__domainDescription">
+                    {t('domain.legacySport.description')}
+                  </span>
+                </span>
+                {legacySport.enabled ? (
+                  <Switch
+                    checked
+                    label={t('domain.legacySport')}
+                    accent="var(--domain-sports-mid)"
+                    onChange={() => actions.disableLegacySport()}
                   />
-                ) : (
-                  <>
-                    <div className="areas__subhead">
-                      <span>{t('areas.mental.questions')}</span>
-                      <span className="areas__subheadCount">{live.length}</span>
-                    </div>
-                    {live.map((question) => {
-                      const statusKey = questionStatusBadgeKey(question.status);
-                      return (
-                        <Row
-                          key={question.id}
-                          title={question.text}
-                          muted={question.status === 'paused'}
-                          onClick={() => setEditing(question)}
-                          trailing={
-                            <>
-                              {statusKey ? (
-                                <span className="badge badge--paused">{t(statusKey)}</span>
-                              ) : null}
-                              <span className={`badge badge--${question.type}`}>
-                                {t(questionTypeBadgeKey(question.type))}
-                              </span>
-                              <ChevronRightIcon size={18} />
-                            </>
-                          }
-                        />
-                      );
-                    })}
-                    <div className="areas__addRow">
-                      <Row
-                        title={t('areas.mental.add')}
-                        onClick={() => setCreating(true)}
-                        leading={<PlusIcon size={20} />}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {archived.length > 0 ? (
-                  <>
-                    <button
-                      type="button"
-                      className="areas__archiveToggle"
-                      onClick={() => setShowArchive((value) => !value)}
-                      aria-expanded={showArchive}
-                    >
-                      <ArchiveIcon size={16} />
-                      {showArchive
-                        ? t('areas.archiveHide')
-                        : t('areas.archiveShow', { count: archived.length })}
-                    </button>
-                    {showArchive
-                      ? archived.map((question) => (
-                          <Row
-                            key={question.id}
-                            title={question.text}
-                            muted
-                            onClick={() => setEditing(question)}
-                            trailing={
-                              <>
-                                <span className={`badge badge--${question.type}`}>
-                                  {t(questionTypeBadgeKey(question.type))}
-                                </span>
-                                <ChevronRightIcon size={18} />
-                              </>
-                            }
-                          />
-                        ))
-                      : null}
-                  </>
                 ) : null}
               </div>
-            ) : (
               <div className="areas__domainBody">
-                <EmptyState title={t('areas.mental.offTitle')} body={t('areas.mental.offBody')} />
+                <p className="areas__note">{t('areas.legacySport.note')}</p>
               </div>
-            )}
-          </Card>
-        </Section>
-
-        {/* Sports ------------------------------------------------------ */}
-        <Section>
-          <Card>
-            <div className="areas__domainHeader">
-              <span className="areas__domainMark areas__domainMark--sports" aria-hidden="true">
-                <ActivityIcon size={22} />
-              </span>
-              <span className="row__body">
-                <span className="areas__domainName">{t('domain.sports')}</span>
-                <span className="areas__domainDescription">{t('domain.sports.description')}</span>
-              </span>
-              <Switch
-                checked={sportsOn}
-                label={t('domain.sports')}
-                accent="var(--domain-sports-mid)"
-                onChange={(next) => (next ? actions.enableSports() : actions.disableSports())}
-              />
-            </div>
-
-            <div className="areas__domainBody">
-              {sportsOn ? (
-                <div className="areas__targetBlock">
-                  <div className="areas__targetHeader">
-                    <span className="areas__targetLabel">{t('areas.sports.target')}</span>
-                    <span className="areas__targetValue">
-                      {t('areas.sports.targetValue', { count: target ?? 0 })}
-                    </span>
-                  </div>
-                  <TargetPicker value={target} onChange={actions.setSportsTarget} />
-                </div>
-              ) : (
-                <EmptyState title={t('areas.sports.offTitle')} body={t('areas.sports.offBody')} />
-              )}
-            </div>
-          </Card>
-        </Section>
+            </Card>
+          </Section>
+        ) : null}
 
         <BackupSection onRestored={actions.reload} />
 

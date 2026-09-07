@@ -9,11 +9,22 @@ import {
   addQuestion,
   applyOnboarding,
   archiveQuestion,
-  setSportsTarget,
+  setWeeklyTarget,
 } from './configurationService';
 import { logSession, saveAnswer } from './checkInService';
 import { loadHistory } from './historyService';
 import { loadProgression } from './ratingService';
+
+/**
+ * The weekly-quota domain these suites exercise is Gym.
+ *
+ * RC2 had one generic Sport domain; iteration 2 has two independent ones, and
+ * the rules under test here — the target, the week window, what a met week is
+ * worth — belong to any weekly quota rather than to a particular sport. Gym
+ * stands in for all of them.
+ */
+const setGymTarget = (target: number) => setWeeklyTarget('gym', target);
+
 
 function freezeAt(day: string, hour = 9): void {
   const [y, m, d] = day.split('-').map(Number) as [number, number, number];
@@ -47,8 +58,8 @@ describe('a rating derived from history', () => {
   it('starts new users at the specified value', async () => {
     freezeAt(ORIGIN);
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: null,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: null,
     });
     const progression = await loadProgression();
     expect(progression.current).toBe(RATING.START);
@@ -59,8 +70,8 @@ describe('a rating derived from history', () => {
   it('rises with sustained good days and drives the rank', async () => {
     freezeAt(ORIGIN);
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: null,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: null,
     });
     await recordGoodDays(40);
 
@@ -82,12 +93,12 @@ describe('historical integrity', () => {
   async function ratingsAfter(setup: () => Promise<void>) {
     freezeAt(ORIGIN);
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: 2,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: 2,
     });
     await recordGoodDays(20);
     freezeAt(addDays(ORIGIN, 24));
-    await logSession(addDays(ORIGIN, 22));
+    await logSession('gym', addDays(ORIGIN, 22));
 
     freezeAt(addDays(ORIGIN, 30));
     const before = await loadProgression();
@@ -110,7 +121,7 @@ describe('historical integrity', () => {
   it('does not move when a new question is added today', async () => {
     const { before, after } = await ratingsAfter(async () => {
       freezeAt(addDays(ORIGIN, 30));
-      await addQuestion({ text: 'Neu', type: 'scale' });
+      await addQuestion({ text: 'Neu', type: 'scale', category: 'eigene' });
     });
     expect(pastPoints(after)).toEqual(pastPoints(before));
   });
@@ -127,7 +138,7 @@ describe('historical integrity', () => {
   it('does not move when the sports target changes today', async () => {
     const { before, after } = await ratingsAfter(async () => {
       freezeAt(addDays(ORIGIN, 30));
-      await setSportsTarget(6);
+      await setGymTarget(6);
     });
     expect(pastPoints(after)).toEqual(pastPoints(before));
   });
@@ -135,8 +146,8 @@ describe('historical integrity', () => {
   it('gives the same answer every time it is replayed', async () => {
     freezeAt(ORIGIN);
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: 2,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: 2,
     });
     await recordGoodDays(15);
     freezeAt(addDays(ORIGIN, 20));
@@ -153,8 +164,8 @@ describe('historical integrity', () => {
   it('keeps earlier days identical as the history grows past them', async () => {
     freezeAt(ORIGIN);
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: null,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: null,
     });
     await recordGoodDays(10);
 
@@ -178,8 +189,8 @@ describe('peak and lifetime totals never decrease', () => {
   it('keeps the peak rank after the rating falls back', async () => {
     freezeAt(ORIGIN);
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: null,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: null,
     });
     await recordGoodDays(60);
 
@@ -201,8 +212,8 @@ describe('peak and lifetime totals never decrease', () => {
   it('never loses the best streak once the current one breaks', async () => {
     freezeAt(ORIGIN);
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: null,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: null,
     });
     await recordGoodDays(12);
 

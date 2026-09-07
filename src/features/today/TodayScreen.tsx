@@ -1,26 +1,40 @@
 import { useState } from 'react';
 import { today as currentDay } from '../../core/clock';
-import type { SportsSessionRecord } from '../../core/model';
+import type { StoredDomainType } from '../../core/model';
 import { Button, Card, EmptyState, LoadFailure, Row, Section, StaleNotice } from '../../components';
 import { ChevronRightIcon, PlusIcon, SparkIcon } from '../../components/Icons';
 import { SessionSheet } from '../../domains/sports/SessionSheet';
 import { formatDayAndMonth, formatTime, formatWeekday } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
+import type { TrainingSession } from '../../storage/services/checkInService';
+import type { TranslationKey } from '../../i18n';
 import { CheckInItem } from './CheckInItem';
 import { useDay } from './useDay';
 import './today.css';
+
+/** Titles and log labels per training domain, including the retired one. */
+const TRAINING_COPY: Record<StoredDomainType, { title: TranslationKey; log: TranslationKey }> = {
+  mental: { title: 'domain.wellbeing', log: 'sports.log' },
+  food: { title: 'domain.food', log: 'sports.log' },
+  gym: { title: 'today.gym.title', log: 'today.gym.log' },
+  running: { title: 'today.running.title', log: 'today.running.log' },
+  sports: { title: 'domain.legacySport', log: 'sports.log' },
+};
 
 /**
  * The primary interaction point: what is due today, grouped by domain, and
  * nothing else. Answers save on tap — no confirm buttons — and there are no
  * charts here, because this screen is for acting, not for analysis.
+ *
+ * Training is a list rather than one card: Gym and Running are separate
+ * quotas, so a week that met one and missed the other has to read that way.
  */
 export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
   const t = useT();
   const { language } = useI18n();
   const date = currentDay();
   const { state, answer, logSession, updateSession, deleteSession, reload } = useDay(date);
-  const [editingSession, setEditingSession] = useState<SportsSessionRecord | null>(null);
+  const [editingSession, setEditingSession] = useState<TrainingSession | null>(null);
 
   // Three states, never collapsed into one: still loading, failed outright,
   // or loaded. What is *empty* is decided further down, from the day itself.
@@ -41,7 +55,6 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
 
   const day = state.value;
   const mental = day.mental;
-  const sports = day.sports;
 
   return (
     <div className="screen">
@@ -108,72 +121,88 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
           </Section>
         ) : null}
 
-        {sports ? (
-          <Section label={t('domain.sports')}>
-            <Card>
-              <div className="week__header">
-                <span className="week__label">{t('sports.thisWeek')}</span>
-                <span className="week__value">
-                  {t('sports.progress', {
-                    done: sports.progress.completed,
-                    target: sports.progress.target,
-                  })}
-                </span>
-              </div>
+        {day.training.map((training) => {
+          const copy = TRAINING_COPY[training.domain];
+          return (
+            <Section key={training.domain} label={t(copy.title)}>
+              <Card>
+                <div className="week__header">
+                  <span className="week__label">{t('sports.thisWeek')}</span>
+                  <span className="week__value">
+                    {t('sports.progress', {
+                      done: training.progress.completed,
+                      target: training.progress.target,
+                    })}
+                  </span>
+                </div>
 
-              <div
-                className="week__segments"
-                role="img"
-                aria-label={t('sports.progress', {
-                  done: sports.progress.completed,
-                  target: sports.progress.target,
-                })}
-              >
-                {Array.from({ length: sports.progress.target }, (_, index) => (
-                  <span
-                    key={index}
-                    className={`week__segment ${
-                      index < sports.progress.completed ? 'week__segment--filled' : ''
-                    }`.trim()}
+                <div
+                  className="week__segments"
+                  role="img"
+                  aria-label={t('sports.progress', {
+                    done: training.progress.completed,
+                    target: training.progress.target,
+                  })}
+                >
+                  {Array.from({ length: training.progress.target }, (_, index) => (
+                    <span
+                      key={index}
+                      className={`week__segment ${
+                        index < training.progress.completed ? 'week__segment--filled' : ''
+                      }`.trim()}
+                    />
+                  ))}
+                </div>
+
+                <p
+                  className={`week__status ${training.progress.met ? 'week__status--met' : ''}`.trim()}
+                >
+                  {training.progress.exceeded
+                    ? t('sports.exceeded')
+                    : training.progress.met
+                      ? t('sports.met')
+                      : t('sports.remaining', { count: training.progress.remaining })}
+                </p>
+
+                {training.sessions.map((session) => (
+                  <Row
+                    key={session.id}
+                    title={t(copy.title)}
+                    subtitle={
+                      <span className="session-row__time">
+                        {/* Several sessions can share a day, so today's are told
+                            apart by time and earlier ones by weekday. */}
+                        {session.date === date
+                          ? formatTime(language, session.performedAt)
+                          : formatWeekday(language, session.date)}
+                        {session.durationMinutes ? ` · ${session.durationMinutes} min` : ''}
+                        {session.note ? ` · ${session.note}` : ''}
+                      </span>
+                    }
+                    onClick={() => setEditingSession(session)}
+                    trailing={<ChevronRightIcon size={18} />}
                   />
                 ))}
-              </div>
 
-              <p className={`week__status ${sports.progress.met ? 'week__status--met' : ''}`.trim()}>
-                {sports.progress.exceeded
-                  ? t('sports.exceeded')
-                  : sports.progress.met
-                    ? t('sports.met')
-                    : t('sports.remaining', { count: sports.progress.remaining })}
-              </p>
-
-              {sports.sessions.map((session) => (
-                <Row
-                  key={session.id}
-                  title={session.activityType ?? t('sports.session')}
-                  subtitle={
-                    <span className="session-row__time">
-                      {/* Several sessions can share a day, so today's are told
-                          apart by time and earlier ones by weekday. */}
-                      {session.date === date
-                        ? formatTime(language, session.performedAt)
-                        : formatWeekday(language, session.date)}
-                      {session.durationMinutes ? ` · ${session.durationMinutes} min` : ''}
-                      {session.note ? ` · ${session.note}` : ''}
-                    </span>
-                  }
-                  onClick={() => setEditingSession(session)}
-                  trailing={<ChevronRightIcon size={18} />}
-                />
-              ))}
-
-              <button type="button" className="week__log" onClick={logSession}>
-                <PlusIcon size={19} />
-                {t('sports.log')}
-              </button>
-            </Card>
-          </Section>
-        ) : null}
+                {/*
+                  The retired Sport log is read-only. Those sessions still
+                  count for every week they were logged in, and nothing new
+                  is ever added to it.
+                */}
+                {training.domain === 'sports' ? null : (
+                  <button
+                    type="button"
+                    className="week__log"
+                    onClick={() => logSession(training.domain)}
+                  >
+                    <PlusIcon size={19} />
+                    {t(copy.log)}
+                  </button>
+                )}
+              </Card>
+            </Section>
+          );
+        })}
       </div>
 
       <SessionSheet
@@ -181,11 +210,11 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
         session={editingSession}
         onClose={() => setEditingSession(null)}
         onSave={(input) => {
-          if (editingSession) updateSession(editingSession.id, input);
+          if (editingSession) updateSession(editingSession.domain, editingSession.id, input);
           setEditingSession(null);
         }}
         onDelete={() => {
-          if (editingSession) deleteSession(editingSession.id);
+          if (editingSession) deleteSession(editingSession.domain, editingSession.id);
           setEditingSession(null);
         }}
       />

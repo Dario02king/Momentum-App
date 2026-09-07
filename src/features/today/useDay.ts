@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { today } from '../../core/clock';
-import type { AnswerValue } from '../../core/model';
+import type { AnswerValue, StoredDomainType } from '../../core/model';
 import { useLoadable, type Loadable } from '../../app/useLoadable';
 import {
   clearAnswer,
@@ -51,9 +51,10 @@ export function useDay(date: string = today()) {
       run(() =>
         value === null ? clearAnswer(date, questionId) : saveAnswer(date, questionId, value),
       ),
-    logSession: () => run(() => logSession(date)),
-    updateSession: (id: string, input: SessionInput) => run(() => updateSession(id, input)),
-    deleteSession: (id: string) => run(() => deleteSession(id)),
+    logSession: (domain: StoredDomainType) => run(() => logSession(domain, date)),
+    updateSession: (domain: StoredDomainType, id: string, input: SessionInput) =>
+      run(() => updateSession(domain, id, input)),
+    deleteSession: (domain: StoredDomainType, id: string) => run(() => deleteSession(domain, id)),
     reload,
   };
 }

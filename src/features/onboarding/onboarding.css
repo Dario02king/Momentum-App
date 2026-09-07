@@ -59,6 +59,20 @@
   gap: var(--space-6);
   padding-top: var(--space-6);
   min-height: 0;
+  /*
+   * The step is the scroller, not the list inside it.
+   *
+   * With one flat list of suggestions the list could scroll itself. Grouping
+   * the questions by category makes several lists on one step, and several
+   * independent scrollers is not a screen — the last question of the first
+   * group would sit under a footer it cannot scroll past.
+   */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Room for the card shadows, which the overflow would otherwise clip. */
+  margin: 0 calc(var(--space-2) * -1);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
 }
 
 .onboarding__title {
@@ -146,14 +160,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
   padding-bottom: var(--space-2);
-  /* Room for the card shadows, which would otherwise be clipped. */
-  margin: 0 calc(var(--space-2) * -1);
-  padding-left: var(--space-2);
-  padding-right: var(--space-2);
 }
 
 /* A soft card: the whole thing is the tap target. */
@@ -292,4 +299,47 @@
 .summary__mark--sports {
   background: var(--domain-sports-tint);
   color: var(--domain-sports-ink);
+}
+
+/*
+ * Question categories.
+ *
+ * The picker is grouped because the score is grouped: the daily value means
+ * within a category before it means across them, so a user choosing six
+ * questions from one shelf and none from another is making a decision about
+ * weighting whether or not they know it. Showing the shelves is how they get
+ * to know it.
+ */
+.category-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.category-group__title {
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.category-group__body {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  margin-top: -4px;
+}
+
+.onboarding__hint {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.summary__mark--running {
+  background: var(--domain-running-tint);
+  color: var(--domain-running-ink);
+}
+
+.summary__mark--food {
+  background: var(--domain-food-tint);
+  color: var(--domain-food-ink);
 }

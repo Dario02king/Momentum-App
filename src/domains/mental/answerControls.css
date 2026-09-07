@@ -97,34 +97,56 @@
 /* The unselected ramp: a soft tint per band, so the direction of the scale
    is visible before anything is chosen. */
 .answer-scale__value--poor {
-  background: var(--rose-tint);
+  background: var(--scale-poor-tint);
+}
+.answer-scale__value--fair {
+  background: var(--scale-fair-tint);
 }
 .answer-scale__value--okay {
-  background: var(--peach-tint);
+  background: var(--scale-okay-tint);
 }
 .answer-scale__value--good {
-  background: var(--sand-tint);
+  background: var(--scale-good-tint);
 }
 .answer-scale__value--veryGood {
-  background: var(--mint-tint);
+  background: var(--scale-veryGood-tint);
 }
 
-/* The selection fills with the band's readable weight. */
+/*
+ * The selection fills with the band's full strength, outlined in its own ink.
+ *
+ * The outline is not decoration. Yellow at a strength that still reads as
+ * yellow cannot clear 3:1 against a white card, so without the outline the
+ * selected 6 would be a pale wash rather than a control. Every band carries
+ * it, so the selected shape is the same shape all the way along the ramp.
+ */
+.answer-scale__value[aria-checked='true'] {
+  border-color: currentcolor;
+}
 .answer-scale__value--poor[aria-checked='true'] {
-  background: var(--rose-ink);
-  color: var(--text-on-accent);
+  background: var(--scale-poor-fill);
+  border-color: var(--scale-poor-ink);
+  color: var(--scale-poor-on);
+}
+.answer-scale__value--fair[aria-checked='true'] {
+  background: var(--scale-fair-fill);
+  border-color: var(--scale-fair-ink);
+  color: var(--scale-fair-on);
 }
 .answer-scale__value--okay[aria-checked='true'] {
-  background: var(--peach-ink);
-  color: var(--text-on-accent);
+  background: var(--scale-okay-fill);
+  border-color: var(--scale-okay-ink);
+  color: var(--scale-okay-on);
 }
 .answer-scale__value--good[aria-checked='true'] {
-  background: var(--sand-ink);
-  color: var(--text-on-accent);
+  background: var(--scale-good-fill);
+  border-color: var(--scale-good-ink);
+  color: var(--scale-good-on);
 }
 .answer-scale__value--veryGood[aria-checked='true'] {
-  background: var(--mint-ink);
-  color: var(--text-on-accent);
+  background: var(--scale-veryGood-fill);
+  border-color: var(--scale-veryGood-ink);
+  color: var(--scale-veryGood-on);
 }
 
 /* The qualitative reading. Colour is never the only carrier of meaning, so
@@ -136,14 +158,17 @@
 }
 
 .answer-scale__band--poor {
-  color: var(--rose-ink);
+  color: var(--scale-poor-ink);
+}
+.answer-scale__band--fair {
+  color: var(--scale-fair-ink);
 }
 .answer-scale__band--okay {
-  color: var(--peach-ink);
+  color: var(--scale-okay-ink);
 }
 .answer-scale__band--good {
-  color: var(--sand-ink);
+  color: var(--scale-good-ink);
 }
 .answer-scale__band--veryGood {
-  color: var(--mint-ink);
+  color: var(--scale-veryGood-ink);
 }

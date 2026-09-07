@@ -130,6 +130,57 @@ describe('history grid bands', () => {
   });
 });
 
+/**
+ * The fixed 1–10 mapping.
+ *
+ * Red, orange, yellow, green, dark green is a product decision about *hue*.
+ * Everything below is the accessibility half of it, which the decision does
+ * not settle and which cannot be checked by eye.
+ */
+describe('the 1-10 semantic bands', () => {
+  const BANDS = ['poor', 'fair', 'okay', 'good', 'veryGood'];
+
+  it.each(BANDS)('--scale-%s-ink is safe for text on white', (band) => {
+    expect(contrast(hex(`--scale-${band}-ink`), WHITE)).toBeGreaterThanOrEqual(BODY);
+  });
+
+  it.each(BANDS)('--scale-%s-ink reads on its own tint', (band) => {
+    expect(
+      contrast(hex(`--scale-${band}-ink`), hex(`--scale-${band}-tint`)),
+    ).toBeGreaterThanOrEqual(BODY);
+  });
+
+  it.each(BANDS)('--scale-%s-on reads on the band fill', (band) => {
+    // The number inside a selected bubble is the value itself. If it does not
+    // read, the control has no content.
+    expect(
+      contrast(hex(`--scale-${band}-on`), hex(`--scale-${band}-fill`)),
+    ).toBeGreaterThanOrEqual(BODY);
+  });
+
+  it.each(BANDS)('--scale-%s-ink outlines the fill against a card', (band) => {
+    // A yellow fill cannot clear 3:1 on white, so the outline is what makes
+    // the control a graphical object. It has to clear it on every band.
+    expect(contrast(hex(`--scale-${band}-ink`), WHITE)).toBeGreaterThanOrEqual(LARGE);
+  });
+
+  it('separates green from dark green by luminance, not only by hue', () => {
+    // 8 and 9 are one step apart on the scale and one hue apart in the
+    // palette. Without a luminance gap they are the same colour to a
+    // deuteranope, and the ramp would lose its top half.
+    expect(
+      contrast(hex('--scale-good-fill'), hex('--scale-veryGood-fill')),
+    ).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it('darkens as the band improves, so the ramp has a direction', () => {
+    const dark = ['--scale-good-fill', '--scale-veryGood-fill'].map((name) =>
+      luminance(hex(name)),
+    );
+    expect(dark[1]!).toBeLessThan(dark[0]!);
+  });
+});
+
 describe('surfaces', () => {
   it('separates the ground from a card', () => {
     // Subtle, but it has to be an actual difference — the card is what makes

@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react';
 import { today } from '../../core/clock';
 import { daysOfWeek, type DateKey } from '../../core/dates';
-import type { SportsSessionRecord } from '../../core/model';
+
 import { Button, Sheet } from '../../components';
 import { formatWeekdayShort } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
-import type { SessionInput } from '../../storage/services/checkInService';
+import type { SessionInput, TrainingSession } from '../../storage/services/checkInService';
 import './sessionSheet.css';
 
 /**
- * Detail for a logged session.
+ * Detail for a logged training session, whichever log it belongs to.
  *
  * Logging happens in one tap on the Today screen; everything in here is
  * optional and added afterwards, so a session never waits on a form.
+ *
+ * The fields follow the domain rather than the other way round. A run has a
+ * duration; a gym session's substance is its sets, which belong on the gym
+ * screen and not in a sheet reached from Today. Showing an empty duration
+ * box for a gym session would be asking for a number nothing reads.
  */
 export function SessionSheet({
   open,
@@ -22,21 +27,19 @@ export function SessionSheet({
   onDelete,
 }: {
   open: boolean;
-  session: SportsSessionRecord | null;
+  session: TrainingSession | null;
   onClose(): void;
   onSave(input: SessionInput): void;
   onDelete(): void;
 }) {
   const t = useT();
   const { language } = useI18n();
-  const [activityType, setActivityType] = useState('');
   const [note, setNote] = useState('');
   const [duration, setDuration] = useState('');
   const [date, setDate] = useState<DateKey>(today());
 
   useEffect(() => {
     if (!open) return;
-    setActivityType(session?.activityType ?? '');
     setNote(session?.note ?? '');
     setDuration(session?.durationMinutes ? String(session.durationMinutes) : '');
     setDate(session?.date ?? today());
@@ -57,7 +60,6 @@ export function SessionSheet({
             onClick={() =>
               onSave({
                 date,
-                activityType: activityType.trim() || null,
                 note: note.trim() || null,
                 durationMinutes:
                   Number.isFinite(parsedDuration) && parsedDuration > 0 ? parsedDuration : null,
@@ -99,33 +101,21 @@ export function SessionSheet({
         </div>
       </div>
 
-      <div>
-        <label className="field-label" htmlFor="session-type">
-          {t('sports.type')}
-        </label>
-        <input
-          id="session-type"
-          className="field"
-          value={activityType}
-          placeholder={t('sports.typePlaceholder')}
-          onChange={(event) => setActivityType(event.target.value)}
-          autoComplete="off"
-        />
-      </div>
-
-      <div>
-        <label className="field-label" htmlFor="session-duration">
-          {t('sports.duration')}
-        </label>
-        <input
-          id="session-duration"
-          className="field"
-          value={duration}
-          inputMode="numeric"
-          placeholder={t('sports.durationUnit')}
-          onChange={(event) => setDuration(event.target.value.replace(/[^0-9]/g, ''))}
-        />
-      </div>
+      {session?.domain === 'gym' ? null : (
+        <div>
+          <label className="field-label" htmlFor="session-duration">
+            {t('sports.duration')}
+          </label>
+          <input
+            id="session-duration"
+            className="field"
+            value={duration}
+            inputMode="numeric"
+            placeholder={t('sports.durationUnit')}
+            onChange={(event) => setDuration(event.target.value.replace(/[^0-9]/g, ''))}
+          />
+        </div>
+      )}
 
       <div>
         <label className="field-label" htmlFor="session-note">

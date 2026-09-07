@@ -2,17 +2,18 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Language } from '../core/model';
 import { StorageError, type StorageFailure } from '../storage/db';
 import { settingsRepository } from '../storage/repositories';
+import type { DomainType } from '../core/model';
 import {
   addQuestion,
   applyOnboarding,
   archiveQuestion,
   disableDomain,
-  enableMental,
-  enableSports,
+  disableDomainType,
+  enableDomain,
   loadConfiguration,
   pauseQuestion,
   resumeQuestion,
-  setSportsTarget,
+  setWeeklyTarget,
   updateQuestion,
   type AppConfiguration,
   type OnboardingSelection,
@@ -106,19 +107,19 @@ export function useMomentum() {
   );
 
   const areasActions: AreasActions = {
-    enableMental: () => run(() => enableMental()),
-    disableMental: () =>
+    enableDomain: (type: DomainType) => run(() => enableDomain(type)),
+    disableDomain: (type: DomainType) => run(() => disableDomainType(type)),
+    setWeeklyTarget: (type: DomainType, target: number) => run(() => setWeeklyTarget(type, target)),
+    /*
+     * One-way, deliberately. RC2's generic Sport domain can be switched off
+     * by a user who has finished with it, and there is nothing anywhere that
+     * switches it back on: it is stored history, not an area of the product.
+     */
+    disableLegacySport: () =>
       run(async () => {
         const configuration = await loadConfiguration();
-        if (configuration.mental) await disableDomain(configuration.mental.id);
+        if (configuration.legacySport) await disableDomain(configuration.legacySport.id);
       }),
-    enableSports: () => run(() => enableSports()),
-    disableSports: () =>
-      run(async () => {
-        const configuration = await loadConfiguration();
-        if (configuration.sports) await disableDomain(configuration.sports.id);
-      }),
-    setSportsTarget: (target: number) => run(() => setSportsTarget(target)),
     addQuestion: (draft) => run(() => addQuestion(draft)),
     updateQuestion: (id, draft) => run(() => updateQuestion(id, draft)),
     pauseQuestion: (id) => run(() => pauseQuestion(id)),

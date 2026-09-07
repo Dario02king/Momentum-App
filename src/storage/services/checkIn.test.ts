@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setClock } from '../../core/clock';
 import { closeDatabase, deleteDatabase } from '../db';
-import { answersRepository, sportsSessionsRepository } from '../repositories';
+import { answersRepository, gymSessionsRepository } from '../repositories';
 import { addQuestion, applyOnboarding, archiveQuestion, pauseQuestion } from './configurationService';
 import {
   EditWindowError,
@@ -36,10 +36,10 @@ afterEach(async () => {
 async function setup() {
   await applyOnboarding({
     questions: [
-      { text: 'Hast du dein Bett gemacht?', type: 'boolean' },
-      { text: 'Wie gut hast du geschlafen?', type: 'scale' },
+      { text: 'Hast du dein Bett gemacht?', type: 'boolean', category: 'eigene' },
+      { text: 'Wie gut hast du geschlafen?', type: 'scale', category: 'eigene' },
     ],
-    sportsTargetPerWeek: 3,
+    gymTargetPerWeek: 3,
   });
   const day = await loadDay();
   return {
@@ -68,11 +68,11 @@ describe('what is due today', () => {
   });
 
   it('reports a domain that is off as absent, not as empty', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
     const day = await loadDay();
     // Nothing is tracked at all — which is different from nothing being due.
     expect(day.mental).toBeNull();
-    expect(day.sports).toBeNull();
+    expect(day.training).toEqual([]);
     expect(day.empty).toBe(true);
   });
 
@@ -88,7 +88,7 @@ describe('what is due today', () => {
 
   it('a question added today is due today', async () => {
     await setup();
-    await addQuestion({ text: 'Neu', type: 'boolean' });
+    await addQuestion({ text: 'Neu', type: 'boolean', category: 'eigene' });
     expect((await loadDay()).mental?.items).toHaveLength(3);
   });
 });
@@ -207,100 +207,99 @@ describe('the three-day edit window', () => {
 describe('training sessions', () => {
   it('counts this week towards the target', async () => {
     await setup();
-    await logSession(TODAY);
-    await logSession(TODAY);
+    await logSession('gym', TODAY);
+    await logSession('gym', TODAY);
     const day = await loadDay();
-    expect(day.sports?.progress.completed).toBe(2);
-    expect(day.sports?.progress.target).toBe(3);
-    expect(day.sports?.progress.remaining).toBe(1);
-    expect(day.sports?.progress.met).toBe(false);
+    expect(day.training[0]?.progress.completed).toBe(2);
+    expect(day.training[0]?.progress.target).toBe(3);
+    expect(day.training[0]?.progress.remaining).toBe(1);
+    expect(day.training[0]?.progress.met).toBe(false);
   });
 
   it('allows several sessions on one day', async () => {
     await setup();
-    await logSession(TODAY);
-    await logSession(TODAY);
-    expect((await loadDay()).sports?.sessionsToday).toHaveLength(2);
+    await logSession('gym', TODAY);
+    await logSession('gym', TODAY);
+    expect((await loadDay())?.training[0]?.sessionsToday).toHaveLength(2);
   });
 
   it('does not count last week towards this week', async () => {
     await setup();
     // Sunday 30 March belongs to the previous Monday-to-Sunday week.
     freezeAt('2025-03-30');
-    await logSession('2025-03-30');
+    await logSession('gym', '2025-03-30');
     freezeAt(TODAY);
     const day = await loadDay();
-    expect(day.sports?.progress.completed).toBe(0);
-    expect((await sportsSessionsRepository.getAll())).toHaveLength(1);
+    expect(day.training[0]?.progress.completed).toBe(0);
+    expect((await gymSessionsRepository.getAll())).toHaveLength(1);
   });
 
-  it('adds detail to a session after logging it', async () => {
+  it('adds a note to a session after logging it', async () => {
     await setup();
-    const session = await logSession(TODAY);
-    await updateSession(session.id, { activityType: 'Laufen', note: 'Kurz', durationMinutes: 30 });
-    const updated = await sportsSessionsRepository.get(session.id);
-    expect(updated?.activityType).toBe('Laufen');
-    expect(updated?.durationMinutes).toBe(30);
+    const session = await logSession('gym', TODAY);
+    await updateSession('gym', session.id, { note: 'Kurz', durationMinutes: 30 });
+    const updated = await gymSessionsRepository.get(session.id);
+    expect(updated?.note).toBe('Kurz');
   });
 
   it('deletes a session within its own week', async () => {
     await setup();
-    const session = await logSession(TODAY);
-    await deleteSession(session.id);
-    expect((await loadDay()).sports?.progress.completed).toBe(0);
+    const session = await logSession('gym', TODAY);
+    await deleteSession('gym', session.id);
+    expect((await loadDay())?.training[0]?.progress.completed).toBe(0);
   });
 
   it('moves a session to the day it actually happened, within its week', async () => {
     await setup();
     // Logged on Wednesday, but the run was on Monday.
     freezeAt('2025-04-02');
-    const session = await logSession('2025-04-02');
-    await updateSession(session.id, { date: '2025-03-31', activityType: 'Laufen' });
+    const session = await logSession('gym', '2025-04-02');
+    await updateSession('gym', session.id, { date: '2025-03-31', note: 'Laufen' });
 
-    const moved = await sportsSessionsRepository.get(session.id);
+    const moved = await gymSessionsRepository.get(session.id);
     expect(moved?.date).toBe('2025-03-31');
     expect(moved?.weekKey).toBe('2025-W14');
     // Still one session in the same week, counted once.
-    expect((await loadDay('2025-04-02')).sports?.progress.completed).toBe(1);
+    expect((await loadDay('2025-04-02'))?.training[0]?.progress.completed).toBe(1);
   });
 
   it('refuses to move a session out of its week', async () => {
     await setup();
-    const session = await logSession(TODAY);
+    const session = await logSession('gym', TODAY);
     // Sunday 30 March belongs to the previous week.
-    await expect(updateSession(session.id, { date: '2025-03-30' })).rejects.toThrow(
+    await expect(updateSession('gym', session.id, { date: '2025-03-30' })).rejects.toThrow(
       EditWindowError,
     );
-    expect((await sportsSessionsRepository.get(session.id))?.date).toBe(TODAY);
+    expect((await gymSessionsRepository.get(session.id))?.date).toBe(TODAY);
   });
 
   it('refuses to change a session once its week has passed', async () => {
     await setup();
     freezeAt('2025-03-30');
-    const session = await logSession('2025-03-30');
+    const session = await logSession('gym', '2025-03-30');
 
     freezeAt(TODAY);
-    await expect(deleteSession(session.id)).rejects.toThrow(EditWindowError);
-    await expect(updateSession(session.id, { note: 'zu spät' })).rejects.toThrow(EditWindowError);
-    expect(await sportsSessionsRepository.get(session.id)).toBeDefined();
+    await expect(deleteSession('gym', session.id)).rejects.toThrow(EditWindowError);
+    await expect(updateSession('gym', session.id, { note: 'zu spät' })).rejects.toThrow(EditWindowError);
+    expect(await gymSessionsRepository.get(session.id)).toBeDefined();
   });
 
   it('refuses to log a session into a past week', async () => {
     await setup();
-    await expect(logSession('2025-03-30')).rejects.toThrow(EditWindowError);
+    await expect(logSession('gym', '2025-03-30')).rejects.toThrow(EditWindowError);
   });
 
   it('refuses to log when sports is not enabled', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
-    await expect(logSession(TODAY)).rejects.toThrow(InvalidAnswerError);
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
+    await expect(logSession('gym', TODAY)).rejects.toThrow(InvalidAnswerError);
   });
 
   it('meets the target and does not overcount beyond it', async () => {
     await setup();
-    for (let i = 0; i < 4; i += 1) await logSession(TODAY);
+    for (let i = 0; i < 4; i += 1) await logSession('gym', TODAY);
     const day = await loadDay();
-    expect(day.sports?.progress.met).toBe(true);
-    expect(day.sports?.progress.exceeded).toBe(true);
-    expect(day.sports?.progress.score).toBe(100);
+    expect(day.training[0]?.progress.met).toBe(true);
+    expect(day.training[0]?.progress.exceeded).toBe(true);
+    expect(day.training[0]?.progress.score).toBe(100);
   });
 });

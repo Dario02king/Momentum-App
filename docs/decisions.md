@@ -952,3 +952,78 @@ Remembering the day while walking the range removes it: two years of four
 domains now replays in about 60 ms, of which 25 ms is reading the answers.
 The four per-domain ledgers and the Boss aggregation together cost about 4 ms,
 so memoising day scores would buy nothing and is not being done.
+
+## D74 — Wellbeing questions are picked from categories, not from a list
+
+The daily score means within a category before it means across them (D17 of
+the brief), so choosing six questions from one shelf and none from another is
+a decision about weighting whether the user knows it or not. Showing the
+shelves is how they get to know it — in the picker, and again in Areas, where
+the questions are grouped the way the score groups them.
+
+"Eigene" is not one of the shelves offered. It is where a question the user
+writes lands, not a place with anything on it. A question written from scratch
+defaults to it and can be moved anywhere.
+
+## D75 — The 1–10 palette needs four values per band, not one
+
+The product decision is about hue: 1–4 red, 5 orange, 6 yellow, 7–8 green,
+9–10 dark green. The accessibility half of it is not settled by that, and
+cannot be checked by eye.
+
+One colour cannot do four jobs, so each band declares four: a `-fill` at full
+strength for a selected control, an `-on` that reads on that fill, an `-ink`
+that reads on white and on the band's own tint, and a `-tint` for the
+unselected ramp. `-on` is white for four of the five and near-black for
+yellow — a yellow dark enough to carry white text is not a yellow any more.
+
+Two consequences worth naming. A yellow fill cannot clear 3:1 against a white
+card, so a selected control is outlined in its own ink; that outline is what
+makes it a graphical object rather than a pale wash, and every band carries it
+so the selected shape is the same all the way along the ramp. And green and
+dark green are two steps of one hue, so they are separated by luminance as
+well — `contrast.test.ts` checks the gap, because hue alone would leave 8 and
+9 indistinguishable for a colour-blind reader and the ramp would lose its top
+half.
+
+Red and orange sit at similar luminance and are told apart by hue alone. That
+is inherent to the mapping asked for, and it is why the number is always
+present next to the colour.
+
+## D76 — Tapping a question in Verlauf opens the question, not Today
+
+Verlauf is where you look; Today is where you act. Someone who taps a question
+in a history view is asking how *that* has been going, and landing them on a
+check-in answers a question they did not ask. The drill-down is its own
+screen: the question, its category, the latest answer, the average, a chart,
+and the recent days as a list.
+
+Answering today is offered as a secondary action, and only while the question
+is actually being asked — a paused or archived question has no check-in to
+reach, and a button that leads nowhere is worse than no button.
+
+The values there are the answers themselves, 1 to 10 or yes and no, not the
+percentages the history grid works in. A percentage is the right unit for
+comparing a day against a week and the wrong one for reading back what you
+said.
+
+## D77 — Today shows one card per training domain
+
+Gym and Running are separate quotas, so a week that met one and missed the
+other has to read that way. The check-in service returns a list rather than a
+single Sport view, and each log — gym sessions, runs, and RC2's Sport log —
+sits behind the same small view type. Phases 4 and 5 add sets and distances
+behind that, not instead of it.
+
+The retired Sport card is read-only: it still shows the week it was scored in,
+and there is no button that adds anything to it.
+
+## D78 — Grouping the question picker made the step the scroller
+
+The picker used to be one flat list that scrolled itself. Grouped by category
+it is several lists on one step, and several independent scrollers is not a
+screen — the last question of the first group sat under a footer it could not
+scroll past. The step scrolls now and the lists inside it simply flow.
+
+Found by driving the flow in a browser rather than by reading the CSS, which
+is the only way this class of defect is ever found.

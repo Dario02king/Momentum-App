@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { SCORE_BANDS, type ScoreBandId } from '../../core/config/constants';
 import type { DateKey } from '../../core/dates';
-import { ChevronDownIcon } from '../../components/Icons';
+import { ChevronDownIcon, ChevronRightIcon } from '../../components/Icons';
 import { formatDayAndMonth } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
 import type { TranslationKey } from '../../i18n';
@@ -12,6 +12,8 @@ export interface HeatmapRow {
   values: (number | null)[];
   /** Rows nested under this one, revealed on tap. */
   children?: HeatmapRow[];
+  /** Set on a row that opens something of its own — a question's history. */
+  onOpen?: () => void;
 }
 
 const BAND_LABEL_KEYS: Record<ScoreBandId, TranslationKey> = {
@@ -92,6 +94,7 @@ function Row({
   const summaryId = `${uid}-summary`;
   const { average, recorded, total, missing } = summarise(row.values);
   const expandable = Boolean(row.children?.length);
+  const openable = !expandable && typeof row.onOpen === 'function';
   const expanded = open.has(row.key);
 
   const header = (
@@ -127,10 +130,30 @@ function Row({
           </span>
           <ChevronDownIcon size={16} className={expanded ? 'heatmap__chevron--open' : undefined} />
         </button>
+      ) : openable ? (
+        /*
+         * A question row opens that question's own history. It is a button
+         * rather than a tap target on the strip, because the strip is
+         * decorative — and its accessible name is the question plus its
+         * average, with the counts as the description, exactly like the
+         * expandable rows above. Two kinds of row, one way of reading them.
+         */
+        <button
+          type="button"
+          className="heatmap__header heatmap__header--tappable"
+          aria-describedby={summaryId}
+          onClick={row.onOpen}
+        >
+          <span className="heatmap__label">{row.label}</span>
+          <span className="heatmap__average">
+            {average === null ? t('score.none') : `${average} %`}
+          </span>
+          <ChevronRightIcon size={16} />
+        </button>
       ) : (
         <div className="heatmap__header">{header}</div>
       )}
-      {expandable ? (
+      {expandable || openable ? (
         <span className="visually-hidden" id={summaryId}>
           {t('heatmap.rowSummary', { recorded, total, missing })}
         </span>

@@ -1,0 +1,195 @@
+/*
+ * One question's own screen.
+ *
+ * It sits over Verlauf rather than replacing a tab, because it is a drill-down
+ * from something the user tapped: the way back is where they came from, not
+ * the tab bar.
+ */
+.question-detail {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-base);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+}
+
+.question-detail__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.question-detail__back {
+  margin-left: -12px;
+  padding-left: 12px;
+  padding-right: 12px;
+  flex: none;
+}
+
+.question-detail__category {
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-semibold);
+  color: var(--lilac-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.question-detail__title {
+  font-size: var(--type-title);
+  line-height: 1.25;
+}
+
+.question-detail__scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 calc(var(--safe-right) + var(--space-4)) calc(var(--safe-bottom) + var(--space-6))
+    calc(var(--safe-left) + var(--space-4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.question-detail__status {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  padding: 0 var(--space-2);
+}
+
+.question-detail__figures {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.question-detail__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.question-detail__figureLabel {
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.question-detail__figureValue {
+  font-size: var(--type-large-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.8px;
+  color: var(--text-primary);
+}
+
+.question-detail__figure--muted .question-detail__figureValue {
+  font-size: var(--type-title);
+  color: var(--text-secondary);
+}
+
+/* The 1–10 mapping, on the value that is literally a 1–10 answer. */
+.question-detail__figureValue--poor,
+.question-detail__rowValue--poor {
+  color: var(--scale-poor-ink);
+}
+.question-detail__figureValue--fair,
+.question-detail__rowValue--fair {
+  color: var(--scale-fair-ink);
+}
+.question-detail__figureValue--okay,
+.question-detail__rowValue--okay {
+  color: var(--scale-okay-ink);
+}
+.question-detail__figureValue--good,
+.question-detail__rowValue--good {
+  color: var(--scale-good-ink);
+}
+.question-detail__figureValue--veryGood,
+.question-detail__rowValue--veryGood {
+  color: var(--scale-veryGood-ink);
+}
+
+.question-detail__meta {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  margin-top: var(--space-3);
+}
+
+/*
+ * The chart. Height carries the value and colour reinforces it, the same
+ * division of labour as the history grid: hue alone would leave a 4 and a 7
+ * confusable for anyone who cannot separate red from green.
+ */
+.question-detail__chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 120px;
+}
+
+.question-detail__cell {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: var(--band-track);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 3px;
+}
+
+.question-detail__empty {
+  width: 100%;
+  height: 100%;
+  background: var(--band-none);
+}
+
+.question-detail__bar {
+  width: 100%;
+  border-radius: 3px;
+}
+
+.question-detail__bar--poor {
+  background: var(--scale-poor-fill);
+}
+.question-detail__bar--fair {
+  background: var(--scale-fair-fill);
+}
+.question-detail__bar--okay {
+  background: var(--scale-okay-fill);
+}
+.question-detail__bar--good {
+  background: var(--scale-good-fill);
+}
+.question-detail__bar--veryGood {
+  background: var(--scale-veryGood-fill);
+}
+
+.question-detail__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 40px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.question-detail__row:last-child {
+  border-bottom: none;
+}
+
+.question-detail__rowDay {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+.question-detail__rowValue {
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.question-detail__action {
+  padding-bottom: var(--space-4);
+}

@@ -34,7 +34,7 @@ function MainApp({
     <div className="app">
       <main className="app__content">
         {tab === 'today' ? <TodayScreen onGoToAreas={() => setTab('areas')} /> : null}
-        {tab === 'progress' ? <ProgressScreen /> : null}
+        {tab === 'progress' ? <ProgressScreen onGoToToday={() => setTab('today')} /> : null}
         {tab === 'rank' ? <RankScreen /> : null}
         {tab === 'areas' ? (
           <AreasScreen configuration={configuration} actions={actions} />

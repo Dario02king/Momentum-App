@@ -11,12 +11,24 @@ import {
   applyOnboarding,
   archiveQuestion,
   loadConfiguration,
-  setSportsTarget,
+  setWeeklyTarget,
+  weeklyTargetOfDomain,
 } from './configurationService';
 import { logSession, saveAnswer } from './checkInService';
 import { loadHistory } from './historyService';
 import { loadProgression } from './ratingService';
 import { exportBackup, exportBackupFile, importBackup, inspectBackup } from './backupService';
+
+/**
+ * The weekly-quota domain these suites exercise is Gym.
+ *
+ * RC2 had one generic Sport domain; iteration 2 has two independent ones, and
+ * the rules under test here — the target, the week window, what a met week is
+ * worth — belong to any weekly quota rather than to a particular sport. Gym
+ * stands in for all of them.
+ */
+const setGymTarget = (target: number) => setWeeklyTarget('gym', target);
+
 
 function freezeAt(day: string, hour = 9): void {
   const [y, m, d] = day.split('-').map(Number) as [number, number, number];
@@ -50,13 +62,13 @@ async function recordDays(count: number, from = ORIGIN) {
     for (const question of questions) {
       await saveAnswer(date, question.id, question.type === 'scale' ? 8 : true);
     }
-    if (index % 3 === 0) await logSession(date).catch(() => undefined);
+    if (index % 3 === 0) await logSession('gym', date).catch(() => undefined);
   }
 }
 
 describe('the exported file', () => {
   it('is named for the day and is readable JSON', async () => {
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: 3 });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: 3 });
     const file = await exportBackupFile();
     expect(file.fileName).toBe('momentum-backup-2025-01-06.json');
     expect(() => JSON.parse(file.contents)).not.toThrow();
@@ -64,7 +76,7 @@ describe('the exported file', () => {
   });
 
   it('states both versions it depends on', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
     const backup = await exportBackup();
     expect(backup.format).toBe('momentum-backup');
     expect(backup.formatVersion).toBe(BACKUP_FORMAT_VERSION);
@@ -72,7 +84,7 @@ describe('the exported file', () => {
   });
 
   it('carries source data and no derived values', async () => {
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: 2 });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: 2 });
     await recordDays(5);
     const backup = await exportBackup();
     // Exhaustive on purpose: adding a collection to the backup should be a
@@ -115,7 +127,7 @@ describe('round trips', () => {
   }
 
   it('restores an empty, freshly onboarded profile', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
     const { before, after } = await roundTrip();
     expect(JSON.parse(after).data).toEqual(JSON.parse(before).data);
   });
@@ -123,10 +135,10 @@ describe('round trips', () => {
   it('restores a Mental-only profile', async () => {
     await applyOnboarding({
       questions: [
-        { text: 'A', type: 'boolean' },
-        { text: 'B', type: 'scale' },
+        { text: 'A', type: 'boolean', category: 'eigene' },
+        { text: 'B', type: 'scale', category: 'eigene' },
       ],
-      sportsTargetPerWeek: null,
+      gymTargetPerWeek: null,
     });
     await recordDays(10);
     const { before, after } = await roundTrip();
@@ -134,10 +146,10 @@ describe('round trips', () => {
   });
 
   it('restores a Sports-only profile', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: 4 });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: 4 });
     for (const offset of [0, 2, 4, 8, 9]) {
       freezeAt(addDays(ORIGIN, offset));
-      await logSession(addDays(ORIGIN, offset));
+      await logSession('gym', addDays(ORIGIN, offset));
     }
     const { before, after } = await roundTrip();
     expect(JSON.parse(after).data).toEqual(JSON.parse(before).data);
@@ -146,10 +158,10 @@ describe('round trips', () => {
   it('restores a long-running mixed profile', async () => {
     await applyOnboarding({
       questions: [
-        { text: 'A', type: 'boolean' },
-        { text: 'B', type: 'scale' },
+        { text: 'A', type: 'boolean', category: 'eigene' },
+        { text: 'B', type: 'scale', category: 'eigene' },
       ],
-      sportsTargetPerWeek: 3,
+      gymTargetPerWeek: 3,
     });
     await recordDays(60);
     const { before, after } = await roundTrip();
@@ -158,13 +170,13 @@ describe('round trips', () => {
 
   it('restores archived questions and changed targets', async () => {
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: 2,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: 2,
     });
     await recordDays(6);
     freezeAt(addDays(ORIGIN, 10));
-    const added = await addQuestion({ text: 'B', type: 'scale' });
-    await setSportsTarget(5);
+    const added = await addQuestion({ text: 'B', type: 'scale', category: 'eigene' });
+    await setGymTarget(5);
     freezeAt(addDays(ORIGIN, 14));
     await archiveQuestion(added.id);
 
@@ -173,12 +185,12 @@ describe('round trips', () => {
 
     const configuration = await loadConfiguration();
     expect(configuration.questions.some((question) => question.status === 'archived')).toBe(true);
-    expect(configuration.sports?.type === 'sports' && configuration.sports.settings.targetPerWeek)
+    expect(weeklyTargetOfDomain(configuration.domains.gym))
       .toBe(5);
   });
 
   it('exporting twice around an import gives the same file', async () => {
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: 3 });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: 3 });
     await recordDays(20);
     const first = await exportBackup();
     await wipe();
@@ -193,10 +205,10 @@ describe('historical integrity survives a restore', () => {
   it('replays exactly the same ratings after export, wipe and import', async () => {
     await applyOnboarding({
       questions: [
-        { text: 'A', type: 'boolean' },
-        { text: 'B', type: 'scale' },
+        { text: 'A', type: 'boolean', category: 'eigene' },
+        { text: 'B', type: 'scale', category: 'eigene' },
       ],
-      sportsTargetPerWeek: 3,
+      gymTargetPerWeek: 3,
     });
     await recordDays(45);
     freezeAt(addDays(ORIGIN, 50));
@@ -227,7 +239,7 @@ describe('historical integrity survives a restore', () => {
 
 describe('a bad file changes nothing', () => {
   async function existingProfile() {
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: 3 });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: 3 });
     await recordDays(5);
     return text();
   }
@@ -310,25 +322,25 @@ describe('a bad file changes nothing', () => {
 
 describe('importing over an existing profile', () => {
   it('replaces rather than merges', async () => {
-    await applyOnboarding({ questions: [{ text: 'Alt', type: 'boolean' }], sportsTargetPerWeek: 3 });
+    await applyOnboarding({ questions: [{ text: 'Alt', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: 3 });
     await recordDays(4);
     const saved = await text();
 
     await wipe();
     freezeAt(addDays(ORIGIN, 30));
-    await applyOnboarding({ questions: [{ text: 'Neu', type: 'scale' }], sportsTargetPerWeek: 6 });
+    await applyOnboarding({ questions: [{ text: 'Neu', type: 'scale', category: 'eigene' }], gymTargetPerWeek: 6 });
     await recordDays(3, addDays(ORIGIN, 30));
 
     await importBackup(saved);
     const configuration = await loadConfiguration();
     // Nothing of the replaced profile survives.
     expect(configuration.questions.map((question) => question.text)).toEqual(['Alt']);
-    expect(configuration.sports?.type === 'sports' && configuration.sports.settings.targetPerWeek)
+    expect(weeklyTargetOfDomain(configuration.domains.gym))
       .toBe(3);
   });
 
   it('is idempotent when the same backup is imported twice', async () => {
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: 3 });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: 3 });
     await recordDays(8);
     const saved = await text();
 
@@ -344,12 +356,12 @@ describe('importing over an existing profile', () => {
   });
 
   it('restores the settings that were in the backup', async () => {
-    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean' }], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [{ text: 'A', type: 'boolean', category: 'eigene' }], gymTargetPerWeek: null });
     await settingsRepository.setLanguage('en');
     const saved = await text();
 
     await wipe();
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
     await settingsRepository.setLanguage('de');
 
     await importBackup(saved);

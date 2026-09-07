@@ -84,8 +84,8 @@ describe('when the stored data is newer than the app', () => {
 describe('reopening an existing database', () => {
   it('keeps every record across a close and reopen', async () => {
     await applyOnboarding({
-      questions: [{ text: 'A', type: 'boolean' }],
-      sportsTargetPerWeek: 3,
+      questions: [{ text: 'A', type: 'boolean', category: 'eigene' }],
+      gymTargetPerWeek: 3,
     });
     const question = (await questionsRepository.listActive())[0]!;
     await saveAnswer('2025-01-06', question.id, true);
@@ -104,7 +104,7 @@ describe('reopening an existing database', () => {
 
 describe('when a write fails', () => {
   it('rejects rather than reporting a success that did not happen', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
 
     // A value that cannot be stored: the write fails inside the transaction.
     const unstorable = { id: 'broken', cycle: () => undefined } as unknown as never;
@@ -125,7 +125,7 @@ describe('when a write fails', () => {
   });
 
   it('rolls the whole transaction back, not only the failing write', async () => {
-    await applyOnboarding({ questions: [], sportsTargetPerWeek: null });
+    await applyOnboarding({ questions: [], gymTargetPerWeek: null });
     const stamp = new Date().toISOString();
     const good = {
       id: 'dom-good',

@@ -132,6 +132,14 @@ export function weeklyTargetsIn(
   return targets;
 }
 
+/** One domain's weekly quota in a past snapshot, or `null` if it had none. */
+export function weeklyTargetIn(
+  snapshot: AppConfigSnapshot,
+  type: StoredDomainType,
+): number | null {
+  return weeklyTargetsIn(snapshot).find((entry) => entry.domain === type)?.target ?? null;
+}
+
 /* ── Activation ────────────────────────────────────────────────────────── */
 
 /**

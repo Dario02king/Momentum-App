@@ -1,22 +1,30 @@
 import { useEffect, useState } from 'react';
-import type { QuestionRecord, QuestionType } from '../../core/model';
+import { QUESTION_CATEGORIES, type QuestionCategory, type QuestionRecord, type QuestionType } from '../../core/model';
 import { Button, Segmented, Sheet } from '../../components';
 import { ArchiveIcon, PauseIcon, PlayIcon } from '../../components/Icons';
 import { useT } from '../../i18n/I18nProvider';
+import { CATEGORY_LABEL_KEYS } from './questionLibrary';
 import './questionSheet.css';
 
 export interface QuestionSheetSubmit {
   text: string;
   type: QuestionType;
+  category: QuestionCategory;
 }
 
 /**
- * Create and edit a Mental Wellbeing question.
+ * Create and edit a Wellbeing question.
  *
  * There is no rhythm control and there never will be: an active question is
  * asked once a day, every day. The only lifecycle choices are pause, resume
  * and archive — and archiving is spelled out as keeping history, because
  * users assume a bin icon means deletion.
+ *
+ * The category is a real choice rather than a label, because it decides how
+ * the answer is weighed: the daily score means within a category before it
+ * means across them, so filing four questions under Alltag does not make
+ * Alltag four times as important. A question written from scratch defaults to
+ * "Eigene", which is true by definition until the user says otherwise.
  */
 export function QuestionSheet({
   open,
@@ -39,12 +47,14 @@ export function QuestionSheet({
   const t = useT();
   const [text, setText] = useState('');
   const [type, setType] = useState<QuestionType>('boolean');
+  const [category, setCategory] = useState<QuestionCategory>('eigene');
   const [confirmingArchive, setConfirmingArchive] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setText(question?.text ?? '');
     setType(question?.type ?? 'boolean');
+    setCategory(question?.category ?? 'eigene');
     setConfirmingArchive(false);
   }, [open, question]);
 
@@ -61,7 +71,7 @@ export function QuestionSheet({
           variant="primary"
           block
           disabled={trimmed.length === 0}
-          onClick={() => onSubmit({ text: trimmed, type })}
+          onClick={() => onSubmit({ text: trimmed, type, category })}
         >
           {isEdit ? t('common.save') : t('common.add')}
         </Button>
@@ -97,6 +107,25 @@ export function QuestionSheet({
         <p className="question-sheet__hint">
           {type === 'scale' ? t('question.typeScaleHint') : t('question.typeBooleanHint')}
         </p>
+      </div>
+
+      <div>
+        <span className="field-label">{t('question.categoryLabel')}</span>
+        <div className="question-sheet__categories" role="radiogroup" aria-label={t('question.categoryLabel')}>
+          {QUESTION_CATEGORIES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={category === option}
+              className="question-sheet__category"
+              onClick={() => setCategory(option)}
+            >
+              {t(CATEGORY_LABEL_KEYS[option])}
+            </button>
+          ))}
+        </div>
+        <p className="question-sheet__hint">{t('question.categoryHint')}</p>
       </div>
 
       {isEdit && question ? (

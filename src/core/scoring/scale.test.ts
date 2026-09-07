@@ -10,15 +10,17 @@ import {
 describe('scale bands', () => {
   it('reads the whole range the way the specification defines it', () => {
     expect(SCALE_VALUES).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // The fixed mapping, value by value: 1–4 red, 5 orange, 6 yellow,
+    // 7–8 green, 9–10 dark green.
     expect(SCALE_VALUES.map(scaleBandOf)).toEqual([
       'poor',
       'poor',
       'poor',
       'poor',
-      'okay',
+      'fair',
       'okay',
       'good',
-      'veryGood',
+      'good',
       'veryGood',
       'veryGood',
     ]);
@@ -26,11 +28,13 @@ describe('scale bands', () => {
 
   it('treats each band start as inclusive and each end as exclusive', () => {
     expect(scaleBandOf(4.9)).toBe('poor');
-    expect(scaleBandOf(5)).toBe('okay');
+    expect(scaleBandOf(5)).toBe('fair');
+    expect(scaleBandOf(5.9)).toBe('fair');
+    expect(scaleBandOf(6)).toBe('okay');
     expect(scaleBandOf(6.9)).toBe('okay');
     expect(scaleBandOf(7)).toBe('good');
-    expect(scaleBandOf(7.9)).toBe('good');
-    expect(scaleBandOf(8)).toBe('veryGood');
+    expect(scaleBandOf(8.9)).toBe('good');
+    expect(scaleBandOf(9)).toBe('veryGood');
     expect(scaleBandOf(10)).toBe('veryGood');
   });
 
