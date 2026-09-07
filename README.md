@@ -31,8 +31,8 @@ The app is built in reviewed stages. Current status:
 | 2 | Onboarding, domain and question configuration | done |
 | 3 | Today screen and daily check-in | done |
 | 4 | Progress screen: heatmap and trend curve | done |
-| 5 | Rating engine, rank ladder, rank badges | in review |
-| 6 | Sports domain: weekly target tracking | not started |
+| 5 | Rating engine, rank ladder, rank badges | done |
+| 6 | Sports domain: weekly target tracking | in review |
 | 7 | Backup export/import, PWA behaviour, service worker updates | not started |
 | 8 | Product review pass and fixes | not started |
 

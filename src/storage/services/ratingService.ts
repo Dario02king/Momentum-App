@@ -1,5 +1,5 @@
 import { today } from '../../core/clock';
-import type { DateKey } from '../../core/dates';
+import { weekKeyOf, type DateKey } from '../../core/dates';
 import { computeRating, type DayState, type RatingPoint } from '../../core/rating';
 import {
   rankHistory,
@@ -57,6 +57,8 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
   const origin = await progressionOrigin();
   const history = await loadHistory(origin, reference, reference);
 
+  const sessionsByWeek = new Map(history.weeks.map((week) => [week.weekKey, week.sessions]));
+
   /*
    * The rating folds over reconstructed daily *state*, not just a score.
    *
@@ -65,19 +67,33 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
    * reported decides how much it counts — none of which can be recovered
    * from the number alone.
    */
-  const ratingDays: DayState[] = history.days.map((day, index) => ({
-    date: day.date,
-    status: day.status,
-    score: day.score,
-    recordedScore: day.recordedScore,
-    dueItems: day.dueItems,
-    answeredItems: day.answeredItems,
-    recorded: history.activity[index] ?? false,
-    // A complete check-in means every due item answered. With no mental
-    // questions at all there is nothing to complete, so a sports-only day
-    // does not silently earn a check-in streak.
-    complete: day.dueItems > 0 && day.answeredItems === day.dueItems,
-  }));
+  const ratingDays: DayState[] = history.days.map((day, index) => {
+    const hadDailyObligation = day.dueItems > 0;
+    /*
+     * Inactivity means the user was away, not that a particular day was
+     * quiet. A weekly target is met over a week, so a rest day inside a week
+     * that has training is not absence — decaying it would punish exactly the
+     * pattern the target asks for. A day with daily questions due is judged
+     * on its own, because there the obligation really is daily.
+     */
+    const recorded =
+      (history.activity[index] ?? false) ||
+      (!hadDailyObligation && (sessionsByWeek.get(weekKeyOf(day.date)) ?? 0) > 0);
+
+    return {
+      date: day.date,
+      status: day.status,
+      score: day.score,
+      recordedScore: day.recordedScore,
+      dueItems: day.dueItems,
+      answeredItems: day.answeredItems,
+      recorded,
+      // A complete check-in means every due item answered. With no mental
+      // questions at all there is nothing to complete, so a sports-only day
+      // does not silently earn a check-in streak.
+      complete: hadDailyObligation && day.answeredItems === day.dueItems,
+    };
+  });
 
   const rating = computeRating(ratingDays);
   const series = rating.points.map((point) => ({ date: point.date, rating: point.rating }));

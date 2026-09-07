@@ -1,0 +1,28 @@
+/* The seven days of the session's own week. Days still to come are shown but
+   disabled, so the week reads as a whole rather than being truncated. */
+.session-days {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.session-days__day {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--touch-min);
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
+  color: var(--text-secondary);
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-semibold);
+  transition: background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.session-days__day[aria-checked='true'] {
+  background: var(--domain-sports-mid);
+  color: var(--text-on-accent);
+}
+
+.session-days__day:disabled {
+  opacity: 0.35;
+}

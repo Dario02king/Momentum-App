@@ -135,6 +135,7 @@ export const en: Translations = {
   'sports.log': 'Log a session',
   'sports.session': 'Session',
   'sports.sessionCount': '{count} today',
+  'sports.day': 'Day',
   'sports.type': 'Type',
   'sports.typePlaceholder': 'Running, strength, …',
   'sports.note': 'Note',

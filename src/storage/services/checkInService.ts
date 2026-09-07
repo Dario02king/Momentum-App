@@ -207,6 +207,8 @@ export interface SessionInput {
   activityType?: string | null;
   note?: string | null;
   durationMinutes?: number | null;
+  /** Moving a session within its own week — the day it actually happened. */
+  date?: DateKey;
 }
 
 /** A session may be logged for any day of the week it belongs to. */
@@ -245,7 +247,12 @@ export async function updateSession(
   const session = await sportsSessionsRepository.get(id);
   if (!session) return undefined;
   assertSessionWeekEditable(session.date, reference);
+  // A session may be moved to the day it actually happened, as long as that
+  // day is in the same week — the week is what the target counts.
+  const date = input.date ?? session.date;
+  if (date !== session.date) assertSessionWeekEditable(date, reference);
   return sportsSessionsRepository.update(id, {
+    date,
     activityType: input.activityType ?? null,
     note: input.note ?? null,
     durationMinutes: input.durationMinutes ?? null,

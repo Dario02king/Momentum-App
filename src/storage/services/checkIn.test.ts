@@ -250,6 +250,30 @@ describe('training sessions', () => {
     expect((await loadDay()).sports?.progress.completed).toBe(0);
   });
 
+  it('moves a session to the day it actually happened, within its week', async () => {
+    await setup();
+    // Logged on Wednesday, but the run was on Monday.
+    freezeAt('2025-04-02');
+    const session = await logSession('2025-04-02');
+    await updateSession(session.id, { date: '2025-03-31', activityType: 'Laufen' });
+
+    const moved = await sportsSessionsRepository.get(session.id);
+    expect(moved?.date).toBe('2025-03-31');
+    expect(moved?.weekKey).toBe('2025-W14');
+    // Still one session in the same week, counted once.
+    expect((await loadDay('2025-04-02')).sports?.progress.completed).toBe(1);
+  });
+
+  it('refuses to move a session out of its week', async () => {
+    await setup();
+    const session = await logSession(TODAY);
+    // Sunday 30 March belongs to the previous week.
+    await expect(updateSession(session.id, { date: '2025-03-30' })).rejects.toThrow(
+      EditWindowError,
+    );
+    expect((await sportsSessionsRepository.get(session.id))?.date).toBe(TODAY);
+  });
+
   it('refuses to change a session once its week has passed', async () => {
     await setup();
     freezeAt('2025-03-30');

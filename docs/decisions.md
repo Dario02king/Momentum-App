@@ -444,3 +444,30 @@ zero because the user answered "no" and a zero because nothing was recorded
 are deliberately treated differently, and how much of a day was reported
 decides how much it counts — none of which can be recovered from a number
 alone. The distinction is part of the deterministic input by design.
+
+## D37 — A rest day inside a trained week is not inactivity
+
+Found in the stage 6 verification pass, on the configuration least exercised
+until then: Sports with no Mental Wellbeing questions at all.
+
+A weekly target is met over a week. Training Monday to Wednesday and resting
+Thursday to Sunday *is* a three-a-week target being met — but the rating was
+treating those four rest days as absence and decaying them, punishing exactly
+the pattern the target asks for.
+
+Inactivity now means the user was away, not that a particular day was quiet:
+a day counts as recorded when something was recorded on it, or when there was
+no daily obligation that day and the week it belongs to has training. A day
+with questions due is still judged on its own, because there the obligation
+really is daily. A week with no training at all still decays.
+
+## D38 — A session can be moved to the day it happened, within its week
+
+§17 makes a session editable within its week, and the day is part of the
+session. Without this, forgetting to log Monday's run until Wednesday left no
+truthful option: the only path was to log it as Wednesday.
+
+The sheet offers the seven days of the session's own week, with days still to
+come disabled. Moving beyond the week is refused by the same rule that
+governs every other edit to a session, so the week a target counts over
+cannot be rewritten after the fact.

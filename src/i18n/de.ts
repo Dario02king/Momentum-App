@@ -138,6 +138,7 @@ export const de = {
   'sports.log': 'Training eintragen',
   'sports.session': 'Training',
   'sports.sessionCount': '{count} heute',
+  'sports.day': 'Tag',
   'sports.type': 'Art',
   'sports.typePlaceholder': 'Laufen, Kraft, …',
   'sports.note': 'Notiz',
