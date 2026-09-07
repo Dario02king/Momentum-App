@@ -228,7 +228,9 @@ export function RankBadge({
       height={(size / 120) * 140}
       viewBox="0 0 120 140"
       fill="none"
-      role="img"
+      /* The rank's name is always beside it in text, so the emblem is
+         decorative. `role="img"` alongside that only claims a name it has
+         no way to supply. */
       aria-hidden="true"
       className={`badge-svg ${animate ? 'badge-svg--reveal' : ''}`.trim()}
     >

@@ -744,3 +744,25 @@ any heading they were unnamed regions that a screen reader could neither
 navigate to nor skip. `Section` can now render its heading visually hidden,
 which structures the document without adding chrome. The shell also gained
 the `main` landmark it never had.
+
+## D60 — Hit areas grow; the design does not
+
+An iOS switch is 51×31, a segmented option 40 tall inside a 44px track, and
+a sheet's close button 30×30. All three are smaller than the 44px this
+project sets as its own minimum, and all three are that size deliberately —
+they are the native proportions.
+
+Growing the boxes would change the design. Growing the *targets* costs
+nothing: an invisible `::before` extends each to 44px, over areas that hold
+nothing tappable. The pixels are unchanged and the thumb has the room the
+project promised.
+
+Measured by hit-testing rather than by the elements' own boxes, because an
+element's rectangle says nothing about where a tap actually lands.
+
+## D61 — A decorative image claims no name
+
+The rank badge carried `role="img"` and `aria-hidden="true"` at once. The
+`aria-hidden` wins, so nothing was broken, but the pair is a contradiction:
+an image role promises a name the badge has no way to supply, and does not
+need to — the rank's name is always in text beside it.
