@@ -5,26 +5,43 @@ import type { DayStatus } from '../scoring/dayScore';
 /**
  * The rating engine (§13).
  *
- * An internal 0–1000 number that drives the current rank. Three properties
+ * An internal 0–1000 number that drives the current rank. Four properties
  * matter more than the exact arithmetic:
  *
- * 1. **It is a pure fold over history.** The rating for any past date is
- *    recomputed from the day scores that were valid then, so it cannot move
- *    because of a later configuration change. Nothing is stored and replayed;
- *    replaying is the only way it is ever produced.
- * 2. **Movement is gradual by construction.** A single bad day moves the
- *    rating by a few points against tier widths of well over a hundred, so
- *    one day can never cost a tier.
+ * 1. **It is a pure fold over reconstructed history.** The rating for any
+ *    past date is recomputed from the daily state that was valid then, so it
+ *    cannot move because of a later configuration change. Nothing is stored
+ *    and replayed; replaying is the only way it is ever produced.
+ * 2. **Every movement inherits the half-life.** The streak bonus is part of
+ *    what the average tracks rather than a separate figure added on top, so
+ *    gaining or losing a streak moves the rating gradually like everything
+ *    else — and a bad day cannot keep pulling the rating down for days
+ *    afterwards while performance has already recovered.
  * 3. **Absence is forgiven, not punished twice.** A day with nothing recorded
  *    does not feed a zero into the average; it decays gently and the decay is
  *    capped per episode, so a week away cannot cost several tiers.
+ * 4. **Reporting part of a day is never worse than reporting none of it.**
+ *    A day counts in proportion to how much of it was reported, and it counts
+ *    on what was reported — not divided by what was due.
  */
 
-export interface RatingDay {
+/**
+ * One day of reconstructed state — not merely a number.
+ *
+ * The distinction between a zero because the user answered "no" and a zero
+ * because nothing was recorded is deliberate and load-bearing, so it is part
+ * of the input rather than something the fold could infer from the score.
+ */
+export interface DayState {
   date: DateKey;
   status: DayStatus;
-  /** Overall daily score 0–100, or `null` for a neutral or open day. */
+  /** Score over items **due** (§11): a missed item is a miss. For history. */
   score: number | null;
+  /** Score over the items actually **reported**. What the rating tracks. */
+  recordedScore: number | null;
+  /** Items due and items answered, which set the day's weight. */
+  dueItems: number;
+  answeredItems: number;
   /** Whether anything at all was recorded that day. */
   recorded: boolean;
   /** Whether every due item was answered — what a streak counts. */
@@ -33,13 +50,12 @@ export interface RatingDay {
 
 export interface RatingPoint {
   date: DateKey;
-  /** The rating a user would see on this day, including the streak bonus. */
   rating: number;
-  /** The underlying moving average, before the streak bonus. */
-  base: number;
   streak: number;
-  /** The bonus actually applied, which eases towards what the streak earns. */
+  /** What the current streak is worth to the target, capped by design. */
   streakBonus: number;
+  /** How much of the day was reported, from 0 to 1. */
+  weight: number;
   /** Points removed by inactivity decay on this day. */
   decay: number;
   /** True while the calibration period protects the rating from falling. */
@@ -60,7 +76,7 @@ export interface RatingResult {
 const clamp = (value: number) => Math.min(RATING.MAX, Math.max(RATING.MIN, value));
 
 /**
- * How much of the gap to the target a single day closes.
+ * How much of the gap to the target a full day closes.
  * Derived from the half-life so the constant stays meaningful when tuned.
  */
 export function smoothingFactor(halfLifeDays: number = RATING.HALF_LIFE_DAYS): number {
@@ -68,9 +84,9 @@ export function smoothingFactor(halfLifeDays: number = RATING.HALF_LIFE_DAYS): n
 }
 
 /**
- * Streak bonus with diminishing returns: the first day adds about
- * `STREAK_BONUS_PER_DAY`, and the total approaches — but never reaches — the
- * cap. A streak can therefore never be farmed into a rank.
+ * What a streak is worth, with diminishing returns: the first day is worth
+ * about `STREAK_BONUS_PER_DAY`, and the total approaches — but never reaches
+ * — the cap. A streak can therefore never be farmed into a rank.
  */
 export function streakBonus(streak: number): number {
   if (streak <= 0) return 0;
@@ -86,12 +102,25 @@ export function decayForDay(consecutiveInactiveDays: number): number {
   return LARGE_PER_DAY;
 }
 
-export function computeRating(days: RatingDay[]): RatingResult {
+/**
+ * How much a day counts, from 0 to 1.
+ *
+ * A day where two of six questions were answered is a quarter of a day's
+ * worth of evidence, and moves the rating by a quarter as much. This is what
+ * stops honest partial progress from costing more than silence: reporting
+ * two good answers out of six now nudges the rating *up*, where dividing by
+ * items due would have counted it as a 33% day and pulled it sharply down.
+ */
+export function dayWeight(day: DayState): number {
+  if (day.dueItems <= 0) return 1;
+  return Math.min(1, Math.max(0, day.answeredItems / day.dueItems));
+}
+
+export function computeRating(days: DayState[]): RatingResult {
   const alpha = smoothingFactor();
   const points: RatingPoint[] = [];
 
-  let base: number = RATING.START;
-  let bonus = 0;
+  let rating: number = RATING.START;
   let streak = 0;
   let bestStreak = 0;
   let peak: number = RATING.START;
@@ -102,18 +131,19 @@ export function computeRating(days: RatingDay[]): RatingResult {
 
   for (const day of days) {
     const calibrating = dayIndex < RATING.CALIBRATION_DAYS;
-    const previousBase = base;
+    const previous = rating;
     let decay = 0;
+    let weight = 0;
 
     if (day.status !== 'scored') {
       // Neutral or open: nothing was expected, or it can still be answered.
       // Neither moves the rating, and neither breaks a streak.
       points.push({
         date: day.date,
-        rating: clamp(base + bonus),
-        base,
+        rating,
         streak,
-        streakBonus: bonus,
+        streakBonus: streakBonus(streak),
+        weight: 0,
         decay: 0,
         calibrating,
         skipped: true,
@@ -136,33 +166,44 @@ export function computeRating(days: RatingDay[]): RatingResult {
       const remaining = Math.max(0, RATING.DECAY.MAX_PER_EPISODE - episodeDecay);
       decay = Math.min(step, remaining);
       episodeDecay += decay;
-      base = clamp(base - decay);
+      rating = clamp(rating - decay);
       streak = 0;
     } else {
       inactiveRun = 0;
       episodeDecay = 0;
-      const target = (day.score ?? 0) * 10;
-      base = clamp(base + alpha * (target - base));
+      /*
+       * The bonus is earned by the run up to this day, so the day is judged
+       * with the streak it was carried into. Cancelling it on the very day it
+       * breaks would make an honestly reported partial day score fractionally
+       * worse than saying nothing at all — a small gap, but pointing the
+       * wrong way.
+       */
+      const carried = streakBonus(streak);
       streak = day.complete ? streak + 1 : 0;
       bestStreak = Math.max(bestStreak, streak);
+      weight = dayWeight(day);
+      /*
+       * The streak is part of the target rather than an amount added on
+       * afterwards. Losing a streak therefore costs at most `alpha` of its
+       * worth per day, the same gradual movement as everything else, instead
+       * of a cliff that could demote a user at a tier boundary.
+       */
+      const target = clamp((day.recordedScore ?? 0) * 10 + carried);
+      rating = clamp(rating + alpha * weight * (target - rating));
     }
 
     // During calibration the rating may rise but never fall: early data is
     // noisy and the user is still learning what their questions mean.
-    if (calibrating && base < previousBase) base = previousBase;
+    if (calibrating && rating < previous) rating = previous;
 
-    // The bonus eases towards what the streak has earned, in both
-    // directions, so neither gaining nor losing a streak is a cliff.
-    bonus += RATING.STREAK_BONUS_SMOOTHING * (streakBonus(streak) - bonus);
-    const rating = clamp(base + bonus);
     peak = Math.max(peak, rating);
 
     points.push({
       date: day.date,
       rating,
-      base,
       streak,
-      streakBonus: bonus,
+      streakBonus: streakBonus(streak),
+      weight,
       decay,
       calibrating,
       skipped: false,

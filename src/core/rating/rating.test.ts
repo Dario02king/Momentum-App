@@ -1,30 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { RANKS, RANK_DEMOTION_HYSTERESIS, RATING } from '../config/constants';
+import { RANKS, RATING } from '../config/constants';
 import { addDays } from '../dates';
-import { computeRating, decayForDay, smoothingFactor, streakBonus, type RatingDay } from './index';
+import { computeRating, decayForDay, smoothingFactor, streakBonus, type DayState } from './index';
 
 const START = '2025-01-01';
 
 function days(
   count: number,
-  build: (index: number) => Partial<RatingDay>,
+  build: (index: number) => Partial<DayState>,
   start = START,
-): RatingDay[] {
-  return Array.from({ length: count }, (_, index) => ({
-    date: addDays(start, index),
-    status: 'scored' as const,
-    score: 0,
-    recorded: true,
-    complete: true,
-    ...build(index),
-  }));
+): DayState[] {
+  return Array.from({ length: count }, (_, index) => {
+    const overrides = build(index);
+    const score = overrides.score ?? 0;
+    return {
+      date: addDays(start, index),
+      status: 'scored' as const,
+      score,
+      // Fully reported unless a test says otherwise.
+      recordedScore: score,
+      dueItems: 3,
+      answeredItems: 3,
+      recorded: true,
+      complete: true,
+      ...overrides,
+    };
+  });
 }
 
 /** A run of perfect, fully answered days. */
 const perfect = (count: number) => days(count, () => ({ score: 100 }));
 /** A run of days on which nothing at all was recorded. */
 const absent = (count: number, start = START) =>
-  days(count, () => ({ score: 0, recorded: false, complete: false }), start);
+  days(
+    count,
+    () => ({ score: 0, recordedScore: null, answeredItems: 0, recorded: false, complete: false }),
+    start,
+  );
 
 describe('starting position', () => {
   it('starts at 250, not at zero and not at the midpoint', () => {
@@ -46,9 +58,9 @@ describe('core movement', () => {
     expect(alpha).toBeCloseTo(0.0483, 3);
     const result = computeRating(perfect(14));
     // From 250 towards 1000, half the gap is roughly 625 before the bonus.
-    const base = result.points[13]!.base;
-    expect(base).toBeGreaterThan(590);
-    expect(base).toBeLessThan(660);
+    const settled = result.points[13]!.rating;
+    expect(settled).toBeGreaterThan(590);
+    expect(settled).toBeLessThan(680);
   });
 
   it('rises towards a sustained score and settles near it', () => {
@@ -99,8 +111,7 @@ describe('the calibration period', () => {
     // at the starting value, and the rating sits above it only because the
     // check-ins themselves were completed — a streak counts turning up, not
     // the answers given.
-    expect(result.points[RATING.CALIBRATION_DAYS - 1]!.base).toBe(RATING.START);
-    expect(result.current).toBeGreaterThanOrEqual(RATING.START);
+    expect(result.current).toBe(RATING.START);
     expect(result.currentStreak).toBe(RATING.CALIBRATION_DAYS);
   });
 
@@ -121,7 +132,7 @@ describe('the calibration period', () => {
     ];
     const result = computeRating(history);
     expect(result.points[32]!.calibrating).toBe(true);
-    expect(result.points[32]!.base).toBe(RATING.START);
+    expect(result.points[32]!.rating).toBe(RATING.START);
   });
 });
 
@@ -143,42 +154,29 @@ describe('the streak bonus', () => {
     expect(streakBonus(0)).toBe(0);
   });
 
-  it('resets the streak on a partly answered day, easing the bonus down', () => {
+  it('resets the streak on a day that was not completed', () => {
     const history = [
       ...perfect(10),
-      ...days(6, () => ({ score: 50, complete: false }), addDays(START, 10)),
+      ...days(2, () => ({ score: 50, complete: false }), addDays(START, 10)),
     ];
     const result = computeRating(history);
     expect(result.points[9]!.streak).toBe(10);
     expect(result.points[10]!.streak).toBe(0);
-
-    // The bonus is given up gradually rather than in one step, so a single
-    // incomplete check-in cannot move the rating by the whole cap.
-    const earned = result.points[9]!.streakBonus;
-    expect(result.points[10]!.streakBonus).toBeLessThan(earned);
-    expect(result.points[10]!.streakBonus).toBeGreaterThan(0);
-    expect(earned - result.points[10]!.streakBonus).toBeLessThan(RATING.STREAK_BONUS_CAP / 2);
-    // And it does keep falling towards nothing.
-    expect(result.points[15]!.streakBonus).toBeLessThan(result.points[10]!.streakBonus);
+    expect(result.points[10]!.streakBonus).toBe(0);
   });
 
-  it('never lets one incomplete day cost a rank at a tier boundary', () => {
+  it('gives up a lost streak gradually, never in one step', () => {
     /*
-     * The failure this pins down was visible on a real profile: a long streak
-     * at the top of a tier, one incomplete check-in, and the rating fell by
-     * the whole bonus at once — demoting and then re-promoting days later.
+     * The streak is part of what the average tracks, not a figure added on
+     * top, so losing one costs at most `alpha` of its worth per day.
      */
-    const boundary = RANKS.find((rank) => rank.id === 'legend')!.min;
     const history = [
-      ...days(200, () => ({ score: 97 })),
-      ...days(1, () => ({ score: 97, complete: false }), addDays(START, 200)),
+      ...days(200, () => ({ score: 60 })),
+      ...days(1, () => ({ score: 60, complete: false }), addDays(START, 200)),
     ];
     const result = computeRating(history);
-    const before = result.points[199]!.rating;
-    const after = result.points[200]!.rating;
-
-    expect(before).toBeGreaterThan(boundary);
-    expect(before - after).toBeLessThan(RANK_DEMOTION_HYSTERESIS);
+    const drop = result.points[199]!.rating - result.points[200]!.rating;
+    expect(drop).toBeLessThan(smoothingFactor() * RATING.STREAK_BONUS_CAP + 1);
   });
 
   it('remembers the best streak after the current one breaks', () => {
@@ -219,17 +217,9 @@ describe('inactivity', () => {
   it('caps the decay for a single long absence', () => {
     const settled = days(120, () => ({ score: 85 }));
     const result = computeRating([...settled, ...absent(120, addDays(START, 120))]);
-    // The cap governs decay, which acts on the moving average.
-    const baseBefore = result.points[119]!.base;
-    const baseAfter = result.points[239]!.base;
-    expect(baseBefore - baseAfter).toBeLessThanOrEqual(RATING.DECAY.MAX_PER_EPISODE + 1e-9);
-
-    // The visible drop is larger, because an ended streak also gives up its
-    // bonus — but four months away still costs less than one tier.
-    const narrowestTier = Math.min(
-      ...RANKS.slice(1).map((rank, index) => rank.min - RANKS[index]!.min),
-    );
-    expect(result.points[119]!.rating - result.current).toBeLessThan(narrowestTier);
+    const before = result.points[119]!.rating;
+    const after = result.points[239]!.rating;
+    expect(before - after).toBeLessThanOrEqual(RATING.DECAY.MAX_PER_EPISODE + 1e-9);
   });
 
   it('stops decaying once the episode cap is spent', () => {

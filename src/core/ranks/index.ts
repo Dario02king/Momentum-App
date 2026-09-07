@@ -1,4 +1,9 @@
-import { RANKS, RANK_DEMOTION_HYSTERESIS, type RankId } from '../config/constants';
+import {
+  RANKS,
+  RANK_DEMOTION_HYSTERESIS,
+  RANK_DEMOTION_SUSTAIN_DAYS,
+  type RankId,
+} from '../config/constants';
 
 /**
  * The rank ladder (§15).
@@ -80,36 +85,66 @@ export interface RankChange {
 }
 
 /**
- * Walks a rating series and reports the crossings, applying hysteresis as it
- * goes so the log matches what the user actually saw.
+ * Walks a rating series and reports the crossings, so the log matches what
+ * the user actually saw.
+ *
+ * Promotion is immediate: reaching a rank is an achievement the moment it
+ * happens. Demotion is deliberately harder — the rating must sit below the
+ * hysteresis buffer for several scored days running. A dip that recovers
+ * within a couple of days was never a change in standing, and this is what
+ * makes "a single bad day must never cost a tier" hold for the whole tail of
+ * that day rather than only for the day itself.
  */
-export function rankHistory(series: { date: string; rating: number }[]): {
+export function rankHistory(
+  series: { date: string; rating: number }[],
+  sustainDays: number = RANK_DEMOTION_SUSTAIN_DAYS,
+): {
   changes: RankChange[];
   current: Rank;
   peak: Rank;
 } {
   let current: Rank | null = null;
   let peak: Rank = RANK_LIST[0]!;
+  let daysBelow = 0;
   const changes: RankChange[] = [];
 
   for (const point of series) {
-    const next = rankWithHysteresis(point.rating, current?.id ?? null);
     if (current === null) {
-      current = next;
-      peak = next;
+      current = rankForRating(point.rating);
+      peak = current;
       continue;
     }
-    if (next.index !== current.index) {
+
+    const natural = rankForRating(point.rating);
+
+    if (natural.index > current.index) {
       changes.push({
         date: point.date,
-        kind: next.index > current.index ? 'promotion' : 'demotion',
+        kind: 'promotion',
         from: current.id,
-        to: next.id,
+        to: natural.id,
         rating: point.rating,
       });
-      current = next;
+      current = natural;
+      daysBelow = 0;
+    } else if (point.rating < current.min - RANK_DEMOTION_HYSTERESIS) {
+      daysBelow += 1;
+      if (daysBelow >= sustainDays) {
+        changes.push({
+          date: point.date,
+          kind: 'demotion',
+          from: current.id,
+          to: natural.id,
+          rating: point.rating,
+        });
+        current = natural;
+        daysBelow = 0;
+      }
+    } else {
+      // Back inside the buffer: the dip did not become a demotion.
+      daysBelow = 0;
     }
-    // Peak never decreases, whatever the rating does afterwards.
+
     if (current.index > peak.index) peak = current;
   }
 

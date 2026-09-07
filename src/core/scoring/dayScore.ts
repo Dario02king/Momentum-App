@@ -60,9 +60,26 @@ export interface DomainScore {
 export interface DayScore {
   date: DateKey;
   status: DayStatus;
-  /** The overall score, or `null` for a neutral or open day. */
+  /**
+   * The overall score, or `null` for a neutral or open day.
+   *
+   * On a closed day this divides by the items that were **due**, so an
+   * unanswered item is a miss. That is the honest reading for history.
+   */
   score: number | null;
+  /**
+   * The same day scored over the items the user actually **reported**.
+   *
+   * History wants "you missed two of three". The rating wants "of what you
+   * told me, how did it go" — because dividing by items due conflates not
+   * doing a thing with not saying so, and would make honestly logging partial
+   * progress cost more than staying silent.
+   */
+  recordedScore: number | null;
   domains: DomainScore[];
+  /** How much of the day was reported, for weighting the rating. */
+  dueItems: number;
+  answeredItems: number;
   /** Per-question percentages, for the Progress drill-down. */
   questionScores: Map<string, number>;
 }
@@ -81,9 +98,16 @@ export function itemPercent(type: QuestionType, value: boolean | number): number
 function scoreMental(
   input: MentalDayInput,
   countUnansweredAsMissed: boolean,
-): { score: number | null; answered: number; questionScores: Map<string, number> } {
+): {
+  score: number | null;
+  recorded: number | null;
+  answered: number;
+  questionScores: Map<string, number>;
+} {
   const questionScores = new Map<string, number>();
-  if (input.due.length === 0) return { score: null, answered: 0, questionScores };
+  if (input.due.length === 0) {
+    return { score: null, recorded: null, answered: 0, questionScores };
+  }
 
   let total = 0;
   let answered = 0;
@@ -96,11 +120,12 @@ function scoreMental(
     answered += 1;
   }
 
+  const recorded = answered === 0 ? null : total / answered;
   if (answered === 0 && !countUnansweredAsMissed) {
-    return { score: null, answered, questionScores };
+    return { score: null, recorded, answered, questionScores };
   }
   const denominator = countUnansweredAsMissed ? input.due.length : answered;
-  return { score: total / denominator, answered, questionScores };
+  return { score: total / denominator, recorded, answered, questionScores };
 }
 
 /**
@@ -120,16 +145,22 @@ function scoreSports(input: SportsDayInput): number | null {
 export function scoreDay(input: DayInput): DayScore {
   const closed = input.editState === 'closed';
   const domains: DomainScore[] = [];
+  const recordedDomains: (number | null)[] = [];
   let questionScores = new Map<string, number>();
 
   let mentalHasDue = false;
   let mentalIncomplete = false;
+  let dueItems = 0;
+  let answeredItems = 0;
 
   if (input.mental) {
     mentalHasDue = input.mental.due.length > 0;
     const result = scoreMental(input.mental, closed);
     questionScores = result.questionScores;
     mentalIncomplete = mentalHasDue && result.answered < input.mental.due.length;
+    dueItems = input.mental.due.length;
+    answeredItems = result.answered;
+    recordedDomains.push(result.recorded);
     domains.push({
       domain: 'mental',
       score: result.score,
@@ -139,23 +170,48 @@ export function scoreDay(input: DayInput): DayScore {
   }
 
   if (input.sports) {
+    const sports = scoreSports(input.sports);
+    recordedDomains.push(sports);
     domains.push({
       domain: 'sports',
-      score: scoreSports(input.sports),
+      score: sports,
       itemsDue: input.sports.target,
       itemsAnswered: input.sports.sessionsInWeek,
     });
   }
 
+  const recordedScored = recordedDomains.filter((value): value is number => value !== null);
+  const recordedScore = recordedScored.length
+    ? recordedScored.reduce((sum, value) => sum + value, 0) / recordedScored.length
+    : null;
+
   const nothingDue = !mentalHasDue && input.sports === null;
   if (nothingDue) {
-    return { date: input.date, status: 'neutral', score: null, domains, questionScores };
+    return {
+      date: input.date,
+      status: 'neutral',
+      score: null,
+      recordedScore,
+      domains,
+      dueItems,
+      answeredItems,
+      questionScores,
+    };
   }
 
   // Still inside the edit window with work outstanding: the day is open, and
   // an open day is never counted against the user.
   if (!closed && mentalIncomplete) {
-    return { date: input.date, status: 'open', score: null, domains, questionScores };
+    return {
+      date: input.date,
+      status: 'open',
+      score: null,
+      recordedScore,
+      domains,
+      dueItems,
+      answeredItems,
+      questionScores,
+    };
   }
 
   /**
@@ -169,11 +225,23 @@ export function scoreDay(input: DayInput): DayScore {
       date: input.date,
       status: closed && mentalHasDue ? 'scored' : 'neutral',
       score: closed && mentalHasDue ? 0 : null,
+      recordedScore,
       domains,
+      dueItems,
+      answeredItems,
       questionScores,
     };
   }
 
   const overall = scored.reduce((sum, domain) => sum + (domain.score ?? 0), 0) / scored.length;
-  return { date: input.date, status: 'scored', score: overall, domains, questionScores };
+  return {
+    date: input.date,
+    status: 'scored',
+    score: overall,
+    recordedScore,
+    domains,
+    dueItems,
+    answeredItems,
+    questionScores,
+  };
 }

@@ -323,6 +323,8 @@ deliberately forgiving.
 
 ## D29 — The streak bonus eases in both directions
 
+*Superseded by D33, which removes the separate bonus entirely.*
+
 Found on a real seeded profile, not in the tests: the rank history showed
 Legend → Champion → Legend within days. A broken streak was giving up its
 whole bonus in one step, so at a tier boundary a single incomplete check-in
@@ -369,3 +371,76 @@ The rank itself stays derived. What is stored is only `acknowledgedRankId` —
 that the user has *seen* a rank — so the one orchestrated animation §6 allows
 plays on promotion and not on every visit to the screen. Reduced-motion
 users get the same information with no animation at all.
+
+## D33 — The streak is part of what the rating tracks (supersedes D29)
+
+The eased-bonus fix from D29 stopped the immediate cliff but left a tail: one
+bad day broke the streak, and the bonus kept unwinding for three more days
+while every one of those days was perfect. Measured on a settled profile just
+inside Legend, the rating fell 958 → 925.9 → 921.4 → 919.7 and stayed below
+the demotion line — so the bad day did cost the tier, days later.
+
+The streak bonus is no longer a figure added to the rating. It is part of the
+**target** the moving average tracks, so a lost streak decays at the same
+half-life as everything else. The same measurement now falls once, on the day
+itself, and rises monotonically afterwards; what remains of the tail is the
+carried bonus lapsing for a single day, worth 0.17 points.
+
+`STREAK_BONUS_SMOOTHING` is gone with it — the fix removed a constant rather
+than adding one.
+
+A day is judged with the streak it was **carried into**, since that is what
+the run up to it earned. Cancelling the bonus on the very day it breaks made
+an honestly reported partial day come out fractionally worse than saying
+nothing — a small gap, but pointing the wrong way.
+
+## D34 — Demotion must be sustained; promotion is immediate
+
+Reaching a rank is an achievement the moment it happens, so promotion is
+instant. A demotion now requires the rating to sit below the hysteresis
+buffer for `RANK_DEMOTION_SUSTAIN_DAYS` scored days running.
+
+This is what makes "a single bad day must never cost a tier" hold for the
+whole tail of that day rather than only for the day itself: a dip that
+recovers within a couple of days was never a change in standing. The
+protection is not an inability to fall — sustained poor performance still
+demotes, and that is tested.
+
+## D35 — A day counts on what was reported, in proportion to how much was
+
+The sharpest incentive problem found in stage 5. From a settled rating of
+900, answering **one of three questions "yes"** — real partial progress —
+cost **27 points**, while recording nothing cost **zero**. Logging an honest
+partial day was materially worse than pretending to have been away.
+
+The cause was using §11's score, which divides by items *due*, as the
+rating's input. That is right for history, where an unanswered item is a
+miss, but wrong for the rating, because it conflates not doing a thing with
+not saying so.
+
+The rating now uses `recordedScore` — the score over items actually reported
+— weighted by `answeredItems / dueItems`. The same day now moves the rating
+**+1.6** instead of −27, more of the day reported moves it more, and the cost
+of a bad day scales continuously with how much was reported, so there is no
+cliff that would reward leaving one question permanently blank.
+
+**The residual, stated plainly.** Reporting a failure still costs more than
+silence: one of three answered "no" costs about 14 points where silence costs
+0 to 1.5. That difference is inherent to §13 — an unrecorded day is forgiven
+precisely because the user may simply have been away, while a reported "no"
+is information. It cannot be removed without either punishing holidays or
+ignoring reported failure. What is guaranteed instead: the gap is under a
+fifth of a tier, it shrinks continuously to nothing as less of the day is
+reported, and silence still forfeits XP, the streak, and shows as a missed
+day in the history.
+
+## D36 — The rating folds over reconstructed daily state, not a score series
+
+*Wording and architecture point raised by the product owner.*
+
+`DayState` carries status, the §11 score, the recorded score, items due and
+answered, whether anything was recorded, and whether the day was completed. A
+zero because the user answered "no" and a zero because nothing was recorded
+are deliberately treated differently, and how much of a day was reported
+decides how much it counts — none of which can be recovered from a number
+alone. The distinction is part of the deterministic input by design.

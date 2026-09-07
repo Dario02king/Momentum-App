@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { RANKS, RANK_DEMOTION_HYSTERESIS } from '../config/constants';
+import {
+  RANKS,
+  RANK_DEMOTION_HYSTERESIS,
+  RANK_DEMOTION_SUSTAIN_DAYS,
+} from '../config/constants';
 import {
   RANK_LIST,
   nextRank,
@@ -99,20 +103,39 @@ describe('rank history', () => {
     expect(current.id).toBe('elite');
   });
 
-  it('logs a demotion only after the buffer is cleared', () => {
-    const { changes } = rankHistory(series([420, 405, 400, 380]));
+  it('logs a demotion once the drop is both deep enough and sustained', () => {
+    const { changes } = rankHistory(series([420, 405, 380, 375, 370, 365]));
     expect(changes.map((change) => change.kind)).toEqual(['demotion']);
     expect(changes[0]?.to).toBe('contender');
   });
 
+  it('does not demote for a dip that recovers', () => {
+    // Two days below the buffer, then back inside it.
+    const { changes, current } = rankHistory(series([420, 380, 375, 405, 415, 430]));
+    expect(changes).toEqual([]);
+    expect(current.id).toBe('elite');
+  });
+
+  it('needs the drop to persist for the configured number of days', () => {
+    const below = Array.from({ length: RANK_DEMOTION_SUSTAIN_DAYS - 1 }, () => 380);
+    expect(rankHistory(series([420, ...below])).changes).toEqual([]);
+    expect(rankHistory(series([420, ...below, 380])).changes).toHaveLength(1);
+  });
+
+  it('restarts the count after a recovery, so dips do not accumulate', () => {
+    // Below, below, back inside, below, below — never three in a row.
+    const { changes } = rankHistory(series([420, 380, 375, 412, 380, 375, 412]));
+    expect(changes).toEqual([]);
+  });
+
   it('keeps the peak rank when the rating falls back', () => {
-    const { current, peak } = rankHistory(series([250, 720, 300, 200]));
+    const { current, peak } = rankHistory(series([250, 720, 300, 250, 200, 180, 160]));
     expect(peak.id).toBe('master');
     expect(current.index).toBeLessThan(peak.index);
   });
 
   it('never lets the peak decrease across a long series', () => {
-    const ratings = [250, 400, 650, 300, 880, 120, 700];
+    const ratings = [250, 400, 650, 300, 300, 300, 880, 120, 120, 120, 700];
     const { peak } = rankHistory(series(ratings));
     expect(peak.id).toBe('champion');
 

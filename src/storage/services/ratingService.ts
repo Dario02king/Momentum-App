@@ -1,6 +1,6 @@
 import { today } from '../../core/clock';
 import type { DateKey } from '../../core/dates';
-import { computeRating, type RatingPoint } from '../../core/rating';
+import { computeRating, type DayState, type RatingPoint } from '../../core/rating';
 import {
   rankHistory,
   rankForRating,
@@ -42,15 +42,6 @@ export interface Progression {
   history: History;
 }
 
-function mentalCounts(history: History, index: number) {
-  const day = history.days[index]!;
-  const mental = day.domains.find((domain) => domain.domain === 'mental');
-  return {
-    due: mental?.itemsDue ?? 0,
-    answered: mental?.itemsAnswered ?? 0,
-  };
-}
-
 /** The first day anything was configured; before it, nothing is scored. */
 export async function progressionOrigin(): Promise<DateKey> {
   const [snapshots, settings] = await Promise.all([
@@ -66,19 +57,27 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
   const origin = await progressionOrigin();
   const history = await loadHistory(origin, reference, reference);
 
-  const ratingDays = history.days.map((day, index) => {
-    const counts = mentalCounts(history, index);
-    return {
-      date: day.date,
-      status: day.status,
-      score: day.score,
-      recorded: history.activity[index] ?? false,
-      // A complete check-in means every due item answered. With no mental
-      // questions at all there is nothing to complete, so a sports-only day
-      // does not silently earn a check-in streak.
-      complete: counts.due > 0 && counts.answered === counts.due,
-    };
-  });
+  /*
+   * The rating folds over reconstructed daily *state*, not just a score.
+   *
+   * A zero because the user answered "no" and a zero because nothing was
+   * recorded are treated differently on purpose, and how much of the day was
+   * reported decides how much it counts — none of which can be recovered
+   * from the number alone.
+   */
+  const ratingDays: DayState[] = history.days.map((day, index) => ({
+    date: day.date,
+    status: day.status,
+    score: day.score,
+    recordedScore: day.recordedScore,
+    dueItems: day.dueItems,
+    answeredItems: day.answeredItems,
+    recorded: history.activity[index] ?? false,
+    // A complete check-in means every due item answered. With no mental
+    // questions at all there is nothing to complete, so a sports-only day
+    // does not silently earn a check-in streak.
+    complete: day.dueItems > 0 && day.answeredItems === day.dueItems,
+  }));
 
   const rating = computeRating(ratingDays);
   const series = rating.points.map((point) => ({ date: point.date, rating: point.rating }));
@@ -95,6 +94,7 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
     })),
   );
 
+
   const trainingStreak = sportsStreak(
     history.weeks
       .filter((week) => week.target !== null)
@@ -102,14 +102,11 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
   );
 
   const lifetimeXp = computeXp(
-    history.days.map((day, index) => {
-      const counts = mentalCounts(history, index);
-      return {
-        answeredItems: counts.answered,
-        complete: counts.due > 0 && counts.answered === counts.due,
-        counts: day.status === 'scored',
-      };
-    }),
+    history.days.map((day) => ({
+      answeredItems: day.answeredItems,
+      complete: day.dueItems > 0 && day.answeredItems === day.dueItems,
+      counts: day.status === 'scored',
+    })),
     history.weeks.map((week) => ({
       sessions: week.sessions,
       met: week.met,
