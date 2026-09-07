@@ -209,7 +209,31 @@ export interface QuestionConfigSnapshot {
   text: string;
   type: QuestionType;
   status: QuestionStatus;
+  /**
+   * Absent on every snapshot written before category scoring existed.
+   *
+   * Those days are scored by the flat model, which never looks at a category,
+   * so the absence costs nothing — and reading it as "Eigene" where anything
+   * does look would be inventing a fact rather than recovering one.
+   */
+  category?: QuestionCategory;
 }
+
+/**
+ * How a day's Wellbeing score is computed (D18).
+ *
+ * - `flat`         — the mean over every answered question, divided by the
+ *                    questions due. What RC2 and iteration 2 up to phase 2 did.
+ * - `categoryMean` — the mean within each category, then the equal-weighted
+ *                    mean of those. Six questions about the household cannot
+ *                    outweigh the one that asks how the user feels.
+ *
+ * It is written into the config snapshot rather than inferred, because the
+ * replay has to know which arithmetic a *past* day was lived under and no
+ * amount of looking at the shape of the data can tell it that. A snapshot
+ * with no `model` was written before the change and is `flat`.
+ */
+export type ScoringModel = 'flat' | 'categoryMean';
 
 export type DomainConfigSnapshot = {
   [T in StoredDomainType]: {
@@ -252,6 +276,8 @@ export interface AppConfigSnapshot {
     editWindowDays: number;
     scaleMin: number;
     scaleMax: number;
+    /** Absent means `flat`: the snapshot predates category scoring. */
+    model?: ScoringModel;
   };
   /** Absent on every snapshot RC2 wrote. Absence means the RC2 era. */
   boss?: BossConfigSnapshot;

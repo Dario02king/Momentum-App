@@ -14,6 +14,7 @@ import type {
   QuestionCategory,
   QuestionStatus,
   QuestionType,
+  ScoringModel,
   StoredDomainType,
 } from '../../core/model';
 import type { WeekKey } from '../../core/dates';
@@ -125,7 +126,25 @@ function mentalDueOn(config: AppConfigSnapshot): DueQuestion[] {
   if (!domain || !domain.enabled) return [];
   return config.questions
     .filter((question) => question.domainId === domain.id && question.status === 'active')
-    .map((question) => ({ id: question.id, type: question.type }));
+    .map((question) => ({
+      id: question.id,
+      type: question.type,
+      // A snapshot older than category scoring carries no category. Those
+      // days are scored flat, which never reads it; "eigene" is a placeholder
+      // that nothing looks at rather than a claim about the question.
+      category: question.category ?? ('eigene' as const),
+    }));
+}
+
+/**
+ * Which arithmetic a day was lived under.
+ *
+ * Read from the day's own snapshot and never from today's configuration —
+ * that is the whole of the forward-only rule. A snapshot with no model was
+ * written before the change and is flat, which is what those days were.
+ */
+function scoringModelOf(config: AppConfigSnapshot): ScoringModel {
+  return config.scoring.model ?? 'flat';
 }
 
 export async function loadHistory(
@@ -231,7 +250,13 @@ export async function loadHistory(
     return scoreDay({
       date,
       editState: dayEditState(date, reference),
-      mental: config ? { due, answers: answersByDate.get(date) ?? new Map() } : null,
+      mental: config
+        ? {
+            due,
+            answers: answersByDate.get(date) ?? new Map(),
+            model: scoringModelOf(config),
+          }
+        : null,
       weekly,
     });
   });

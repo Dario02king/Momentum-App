@@ -58,31 +58,11 @@
   margin-top: 4px;
 }
 
-.rank-hero__progress {
-  width: 100%;
-  max-width: 260px;
+.rank-progress {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.rank-hero__track {
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.14);
-  overflow: hidden;
-}
-
-.rank-hero__fill {
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, #8f7ff0, #7ce0ff);
-  transition: width var(--duration-base) var(--ease-standard);
-}
-
-.rank-hero__next {
-  font-size: var(--type-footnote);
-  color: rgba(255, 255, 255, 0.62);
+  width: 100%;
 }
 
 .rank-hero__note {
@@ -318,4 +298,128 @@
 .rank-change__date {
   font-size: var(--type-footnote);
   color: var(--text-secondary);
+}
+
+
+/* ── One progress bar, used everywhere ──────────────────────────────────── */
+
+.rank-progress__track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.rank-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #8f7ff0, #62b4f7);
+  transition: width var(--duration-base) var(--ease-standard);
+}
+
+.rank-progress__caption {
+  font-size: var(--type-footnote);
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+
+/* On a light card the track and the caption need the light-theme values. */
+.rank-progress--compact .rank-progress__track,
+.domain-rank .rank-progress__track {
+  background: var(--band-track);
+  height: 6px;
+}
+
+.rank-progress--compact .rank-progress__caption,
+.domain-rank .rank-progress__caption {
+  color: var(--text-secondary);
+  text-align: right;
+  font-size: var(--type-caption);
+}
+
+.rank-progress--compact {
+  width: 108px;
+  flex: none;
+  gap: 4px;
+}
+
+.rank-hero__kicker {
+  font-size: var(--type-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.rank-section__explain {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  padding-bottom: var(--space-2);
+}
+
+/* ── Domain ranks: same family, plainly subordinate ─────────────────────── */
+
+.domain-rank {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.domain-rank:last-child {
+  border-bottom: none;
+}
+
+.domain-rank__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.domain-rank__name {
+  font-size: var(--type-subhead);
+  color: var(--text-primary);
+}
+
+.domain-rank__rank {
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+}
+
+/* ── The ladder ─────────────────────────────────────────────────────────── */
+
+.ladder-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 52px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.ladder-row:last-child {
+  border-bottom: none;
+}
+
+.ladder-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ladder-row__name {
+  font-size: var(--type-subhead);
+  color: var(--text-primary);
+}
+
+.ladder-row--locked .ladder-row__name {
+  color: var(--text-secondary);
+}
+
+.ladder-row__from {
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }

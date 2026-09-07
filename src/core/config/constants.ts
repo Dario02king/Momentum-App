@@ -180,5 +180,14 @@ export const BOSS = {
   WEIGHT_STEP: 0.5,
 } as const;
 
+/**
+ * The Wellbeing scoring model this build writes into new config snapshots.
+ *
+ * Changing it changes what *future* days mean and nothing else: every day
+ * already lived resolves to the snapshot it was lived under, which records
+ * the model it was scored by.
+ */
+export const SCORING_MODEL = 'categoryMean' as const;
+
 /** Onboarding recommends three to five questions. */
 export const RECOMMENDED_QUESTION_COUNT = { min: 3, max: 5 } as const;

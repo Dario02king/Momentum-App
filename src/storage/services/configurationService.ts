@@ -14,6 +14,7 @@ import type {
   QuestionType,
   SettingsRecord,
 } from '../../core/model';
+import { normaliseWeights, type BossWeights } from '../../core/boss';
 import { ensureCurrentSnapshot } from '../configService';
 import {
   domainsRepository,
@@ -153,6 +154,43 @@ export async function setWeeklyTarget(
   targetPerWeek: number,
 ): Promise<DomainRecord> {
   return enableDomain(type, targetPerWeek);
+}
+
+/**
+ * The relative parts the user has set for each domain, and the shares they
+ * work out to.
+ *
+ * The user sets *importance*, not a budget: being asked to make four numbers
+ * total exactly 100 is a spreadsheet. The parts are what they touch; the
+ * percentages are arithmetic, shown live so nothing is normalised behind
+ * their back.
+ */
+export interface BossWeighting {
+  domain: DomainType;
+  /** What the user set. Higher means more. */
+  parts: number;
+  /** The share of the Boss it works out to, 0 to 1. */
+  share: number;
+}
+
+export function bossWeightingOf(configuration: AppConfiguration): BossWeighting[] {
+  const enabled = configuration.activation.enabled;
+  const raw = configuration.settings.bossWeights ?? {};
+  const shares = normaliseWeights(raw, enabled);
+  return enabled.map((domain) => ({
+    domain,
+    parts: raw[domain] ?? 1,
+    share: shares[domain] ?? 0,
+  }));
+}
+
+/**
+ * Writes the weighting and appends a snapshot, which is what makes the change
+ * apply from today forward and never to a day already lived.
+ */
+export async function setBossWeights(weights: BossWeights): Promise<void> {
+  await settingsRepository.update({ bossWeights: weights });
+  await ensureCurrentSnapshot();
 }
 
 /** Enables Wellbeing, which is where questions live. */

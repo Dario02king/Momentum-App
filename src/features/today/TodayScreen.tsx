@@ -8,6 +8,7 @@ import { formatDayAndMonth, formatTime, formatWeekday } from '../../i18n/format'
 import { useI18n, useT } from '../../i18n/I18nProvider';
 import type { TrainingSession } from '../../storage/services/checkInService';
 import type { TranslationKey } from '../../i18n';
+import { BossSummary } from './BossSummary';
 import { CheckInItem } from './CheckInItem';
 import { useDay } from './useDay';
 import './today.css';
@@ -29,7 +30,13 @@ const TRAINING_COPY: Record<StoredDomainType, { title: TranslationKey; log: Tran
  * Training is a list rather than one card: Gym and Running are separate
  * quotas, so a week that met one and missed the other has to read that way.
  */
-export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
+export function TodayScreen({
+  onGoToAreas,
+  onGoToRank,
+}: {
+  onGoToAreas(): void;
+  onGoToRank?(): void;
+}) {
   const t = useT();
   const { language } = useI18n();
   const date = currentDay();
@@ -78,6 +85,16 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
 
       <div className="today__scroll">
         {state.refreshFailed ? <StaleNotice onRetry={reload} /> : null}
+
+        {/*
+          The Boss Rank, and nothing more than the Boss Rank.
+          
+          Today is for acting. The one thing a global standing earns here is
+          the answer to "where am I" in a glance — badge, name, how far to the
+          next one — and a way through to the screen where the weighting and
+          the history live. Anything more turns a check-in into a dashboard.
+        */}
+        {onGoToRank ? <BossSummary onOpen={onGoToRank} /> : null}
 
         {day.empty ? (
           <Card>

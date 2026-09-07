@@ -319,4 +319,30 @@ export const en: Translations = {
   'questionDetail.value': 'Answer',
   'questionDetail.open': 'Open the history for this question',
 
+  /* Iteration 2, phase 3 — Boss Rank, domain ranks, weights and mystery. */
+  'rank.boss': 'Boss Rank',
+  'rank.boss.explain': 'Your areas together, weighted the way you set them.',
+  'rank.boss.toNext': '{points} to {rank}',
+  'rank.boss.maxed': 'Top rank reached',
+  'rank.domains': 'Areas',
+  'rank.domains.explain': 'Each area has a rank of its own.',
+  'rank.domain.notStarted': 'Not started yet',
+  'rank.ladder': 'Every rank',
+  'rank.ladder.earned': 'Reached',
+  'rank.ladder.locked': 'Not reached yet',
+  'rank.ladder.from': 'From {points}',
+  'rank.weights': 'Weighting',
+  'rank.weights.explain':
+    'How much each area counts towards the Boss Rank. The shares are worked out to 100 %.',
+  'rank.weights.total': '{percent} % together',
+  'rank.weights.share': '{percent} %',
+  'rank.weights.parts': '{count} parts',
+  'rank.weights.partOne': '1 part',
+  'rank.weights.more': 'More {domain}',
+  'rank.weights.less': 'Less {domain}',
+  'rank.weights.forward': 'Changes apply from today. Your history stays as it was.',
+  'rank.weights.none': 'Switch an area on to change the weighting.',
+  'today.boss.title': 'Boss Rank',
+  'today.boss.open': 'Open rank',
+
 };

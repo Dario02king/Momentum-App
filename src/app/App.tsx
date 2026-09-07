@@ -6,6 +6,7 @@ import { TodayScreen } from '../features/today/TodayScreen';
 import { OnboardingFlow } from '../features/onboarding/OnboardingFlow';
 import { I18nProvider, useT } from '../i18n/I18nProvider';
 import { Button } from '../components';
+import type { BossWeights } from '../core/boss';
 import type { StorageFailure } from '../storage/db';
 import { registerServiceWorker, type UpdateHandle } from './serviceWorker';
 import { TabBar, type TabId } from './TabBar';
@@ -17,12 +18,14 @@ import './appShell.css';
 function MainApp({
   configuration,
   actions,
+  onSetBossWeights,
   update,
   actionFailed,
   onDismissFailure,
 }: {
   configuration: AppConfiguration;
   actions: AreasActions;
+  onSetBossWeights(weights: BossWeights): void;
   update: UpdateHandle | null;
   actionFailed: boolean;
   onDismissFailure(): void;
@@ -33,9 +36,13 @@ function MainApp({
   return (
     <div className="app">
       <main className="app__content">
-        {tab === 'today' ? <TodayScreen onGoToAreas={() => setTab('areas')} /> : null}
+        {tab === 'today' ? (
+          <TodayScreen onGoToAreas={() => setTab('areas')} onGoToRank={() => setTab('rank')} />
+        ) : null}
         {tab === 'progress' ? <ProgressScreen onGoToToday={() => setTab('today')} /> : null}
-        {tab === 'rank' ? <RankScreen /> : null}
+        {tab === 'rank' ? (
+          <RankScreen configuration={configuration} onSetBossWeights={onSetBossWeights} />
+        ) : null}
         {tab === 'areas' ? (
           <AreasScreen configuration={configuration} actions={actions} />
         ) : null}
@@ -114,8 +121,16 @@ function UpdateBanner({ onApply }: { onApply(): void }) {
 }
 
 export function App() {
-  const { state, areasActions, finishOnboarding, setLanguage, refresh, actionFailed, dismissActionFailure } =
-    useMomentum();
+  const {
+    state,
+    areasActions,
+    setBossWeights,
+    finishOnboarding,
+    setLanguage,
+    refresh,
+    actionFailed,
+    dismissActionFailure,
+  } = useMomentum();
   const [update, setUpdate] = useState<UpdateHandle | null>(null);
 
   useEffect(() => {
@@ -138,6 +153,7 @@ export function App() {
         <MainApp
           configuration={state.configuration}
           actions={areasActions}
+          onSetBossWeights={setBossWeights}
           update={update}
           actionFailed={actionFailed}
           onDismissFailure={dismissActionFailure}

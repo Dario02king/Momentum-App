@@ -323,6 +323,32 @@ export const de = {
   'questionDetail.day': 'Tag',
   'questionDetail.value': 'Antwort',
   'questionDetail.open': 'Verlauf dieser Frage öffnen',
+
+  /* Iteration 2, phase 3 — Boss Rank, domain ranks, weights and mystery. */
+  'rank.boss': 'Boss-Rang',
+  'rank.boss.explain': 'Deine Bereiche zusammen, nach deiner Gewichtung.',
+  'rank.boss.toNext': 'Noch {points} bis {rank}',
+  'rank.boss.maxed': 'Höchster Rang erreicht',
+  'rank.domains': 'Bereiche',
+  'rank.domains.explain': 'Jeder Bereich hat seinen eigenen Rang.',
+  'rank.domain.notStarted': 'Noch nicht gestartet',
+  'rank.ladder': 'Alle Ränge',
+  'rank.ladder.earned': 'Erreicht',
+  'rank.ladder.locked': 'Noch nicht erreicht',
+  'rank.ladder.from': 'Ab {points}',
+  'rank.weights': 'Gewichtung',
+  'rank.weights.explain':
+    'Wie stark jeder Bereich in den Boss-Rang zählt. Die Anteile werden auf 100 % gerechnet.',
+  'rank.weights.total': 'Zusammen {percent} %',
+  'rank.weights.share': '{percent} %',
+  'rank.weights.parts': '{count} Teile',
+  'rank.weights.partOne': '1 Teil',
+  'rank.weights.more': 'Mehr {domain}',
+  'rank.weights.less': 'Weniger {domain}',
+  'rank.weights.forward': 'Änderungen gelten ab heute. Dein bisheriger Verlauf bleibt, wie er war.',
+  'rank.weights.none': 'Schalte einen Bereich ein, um die Gewichtung zu ändern.',
+  'today.boss.title': 'Boss-Rang',
+  'today.boss.open': 'Rang öffnen',
 } as const;
 
 export type TranslationKey = keyof typeof de;

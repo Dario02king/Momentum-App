@@ -206,19 +206,50 @@ const LEAVES = [
   { x: 36, y: 130, angle: 40 },
 ];
 
+/**
+ * A rank the user has not reached yet.
+ *
+ * The silhouette stays — that is what makes the ladder browsable, and the
+ * shape is the honest part of the promise. Everything that makes an earned
+ * emblem *rich* is withheld: the metal goes to three neutral greys, the aura
+ * to nothing, the central mark to the same grey as the body, and a frosted
+ * veil is laid over the whole thing.
+ *
+ * The veil is drawn, not filtered. A Gaussian blur would soften it more
+ * convincingly and cost real paint time on a screen showing eight badges at
+ * once — and it would take the silhouette with it, which is the one thing
+ * that has to survive. Diagonal hairlines over a pale scrim read as frosted
+ * glass at 148px and as a grey plate at 32px, which is what each size needs.
+ */
+function toMystery(spec: Spec): Spec {
+  return {
+    ...spec,
+    metal: ['#e4e5ea', '#b9bcc6', '#8b8f9b'],
+    rim: '#9ea2ad',
+    glow: '#c7cad3',
+    aura: 0,
+    accent: '#cfd2da',
+  };
+}
+
 export function RankBadge({
   rankId,
   size = 132,
   animate = false,
+  mystery = false,
 }: {
   rankId: RankId;
   size?: number;
   animate?: boolean;
+  /** The rank has not been reached. Shown, but not revealed. */
+  mystery?: boolean;
 }) {
   const uid = useId().replace(/:/g, '');
-  const spec = SPECS[rankId];
+  const spec = mystery ? toMystery(SPECS[rankId]) : SPECS[rankId];
   const id = (name: string) => `${name}-${uid}`;
-  const detailed = size >= DETAIL;
+  // Ornament that would read as detail is left out of a mystery badge at any
+  // size: what is withheld is the richness, not the shape.
+  const detailed = size >= DETAIL && !mystery;
   const isLegend = rankId === 'legend';
   const wing = spec.wings === 0 ? null : WINGS[spec.wings];
 
@@ -232,7 +263,9 @@ export function RankBadge({
          decorative. `role="img"` alongside that only claims a name it has
          no way to supply. */
       aria-hidden="true"
-      className={`badge-svg ${animate ? 'badge-svg--reveal' : ''}`.trim()}
+      className={`badge-svg ${animate ? 'badge-svg--reveal' : ''} ${
+        mystery ? 'badge-svg--mystery' : ''
+      }`.trim()}
     >
       <defs>
         <linearGradient id={id('metal')} x1="0.15" y1="0" x2="0.75" y2="1">
@@ -394,6 +427,29 @@ export function RankBadge({
               <path d="M74 8 L80 26 L68 26 Z" />
             </>
           )}
+        </g>
+      )}
+
+      {/*
+        The veil. Last, so it lies over everything, and drawn rather than
+        filtered — see `toMystery`. The hairlines run at 35° so they never
+        line up with the crest's own edges.
+      */}
+      {mystery && (
+        <g>
+          <defs>
+            <pattern
+              id={id('frost')}
+              width="7"
+              height="7"
+              patternUnits="userSpaceOnUse"
+              patternTransform="rotate(35)"
+            >
+              <rect width="7" height="2.6" fill="#ffffff" opacity="0.85" />
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width="120" height="140" fill="#eceef3" opacity="0.5" />
+          <rect x="0" y="0" width="120" height="140" fill={`url(#${id('frost')})`} opacity="0.4" />
         </g>
       )}
     </svg>

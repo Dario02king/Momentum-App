@@ -141,7 +141,7 @@ rating of every promotion.
 | 0 | this document, `.github/fixtures/` | **done** |
 | 1 | `core/model`, `storage/db.ts` (migration 2), `core/domains/*`, `core/ledger/*`, `core/boss/*`, `core/decay/*`, `core/migration/legacySport.ts`, `storage/repositories/*`, `storage/services/bossService.ts`, `storage/services/legacySportService.ts` | **review stop** ← we are here |
 | 2 | `features/onboarding/*`, `domains/mental/*`, `features/progress/QuestionDetail.tsx`, `styles/tokens.css` (1–10 bands), `storage/services/configurationService.ts`, `checkInService.ts` | **review stop** ← we are here |
-| 3 | `features/ranking/*` (mystery states, Boss UI), `core/ranks` (progress-bar single source of truth + regression tests) | |
+| 3 | `features/ranking/*` (Boss UI, domain ranks, weights, mystery), `core/ranks/progress.ts`, `features/today/BossSummary.tsx` | **review stop** ← we are here |
 | 4 | `features/gym/*` (new), `components/BodyRenderer/*` (new), `core/gym/performance.ts` (D24/D26) | **review stop** |
 | 5 | `features/running/*` (new), `core/running/*`, `RunSource` adapter shape | |
 | 6 | `features/food/*` (new), `core/food/*`, `FoodRepository` | **review stop** |
@@ -234,11 +234,26 @@ rating of every promotion.
 
 ### Deliberately not in Phase 2
 
-- **D18's category means are not in the scoring path yet.** The category is
-  stored, shown, grouped and tested; `dayScore` still means over questions
-  rather than over categories. Changing the arithmetic changes every existing
-  user's history, so it belongs with the rest of the scoring work rather than
-  in a screen-building phase — and it wants its own regression against the
-  fixtures.
+- ~~**D18's category means are not in the scoring path yet.**~~ **Done before
+  phase 3**: the two-level mean is live, the model is recorded per snapshot
+  (D79), and `scoringModel.test.ts` proves the pre-transition history does not
+  move.
 - Gym sets, run distances and Food remain Phases 4–6. Today logs a session or
   a run in one tap; what a session *contains* comes later.
+
+## Phase 3 as built
+
+- **One progress calculation** (`core/ranks/progress.ts`). Fill, percentage,
+  remaining points and the copy all come out of the same call on the same
+  rank. Boundary tests cover every threshold, one either side of it, the top
+  of the ladder and a rank held by hysteresis.
+- **Boss Rank** is the hero on the Rank screen and a single tappable card on
+  Today — badge, rank, bar, what is left, and a way through. Today stays a
+  check-in.
+- **Domain ranks** use the same badge family at a third the size, one line
+  each, with their own bar. A domain that has not started says so instead of
+  showing a rank it has not earned.
+- **Weights** are steppers in parts with live percentages, an explicit total
+  and a line saying the change is forward only.
+- **Mystery ranks** keep name, threshold and silhouette; the emblem is
+  withheld and the veil is drawn rather than filtered.

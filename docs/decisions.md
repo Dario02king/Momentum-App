@@ -1027,3 +1027,95 @@ scroll past. The step scrolls now and the lists inside it simply flow.
 
 Found by driving the flow in a browser rather than by reading the CSS, which
 is the only way this class of defect is ever found.
+
+## D79 — The scoring model is recorded in the snapshot, never inferred
+
+D18 changes the arithmetic of a Wellbeing day: the mean within each category,
+then the equal-weighted mean of those. That makes "which arithmetic was this
+day scored by" a fact about the day, and no amount of looking at the shape of
+the data can recover it — a January day and a December day hold identical
+records and mean different things.
+
+So `AppConfigSnapshot.scoring.model` says which. Every snapshot this build
+writes says `categoryMean`; a snapshot with no model was written before the
+change and is `flat`, which is what those days were. The snapshot also had to
+start carrying each question's **category**, so a past day is scored by the
+categories in force then rather than by wherever the question sits today.
+
+The change is forward-only by the same mechanism as everything else: the new
+snapshot takes effect from the day it is written.
+
+## D80 — What an unanswered question means under category scoring
+
+The two numbers a day produces answer different questions, and they treat an
+absent category differently on purpose.
+
+- **`recordedScore`**, which the rating tracks, is the mean of the categories
+  that have an answer. A category with nothing answered has no data and leaves
+  the denominator with it. It never contributes a zero it did not earn.
+- **`score`**, which history shows, divides each category by the questions
+  **due** in it on a closed day. A category where nothing was answered
+  contributes 0, because those items were genuinely missed. That is the flat
+  model's own rule applied per category, not a new one.
+
+The consequence worth naming: for a user who answers one category and skips
+two, the history number is harsher than the flat model was — three categories
+where only Mental was answered read (0 + 0 + 80) / 3 rather than 80 × 4 / 7.
+Equal weighting cuts both ways, and that is what equal weighting means.
+
+"Eigene" is a category like any other. A custom question counts towards
+whichever category it is currently in, with no hidden weighting either way.
+
+## D81 — One authoritative rank progress calculation
+
+The Rank screen filled its bar from the rank it was **displaying** and wrote
+the sentence underneath from the rank the rating **naturally falls in**. Those
+are the same rank almost always, and different exactly where it matters: in
+the hysteresis buffer, where a user is held at a rank the rating has slipped
+below. There the bar read empty while the copy said "12 points to Master" —
+the rank they were already holding.
+
+`rankProgress(value, displayed)` now derives the floor, the ceiling, the
+fraction, the percentage and the remaining points together, from one rank.
+Three states are handled explicitly rather than left to the formula: the top
+of the ladder measures across the rest of the range and counts down to
+nothing; a rating below the displayed floor reads empty and counts to the rank
+above; and with no rank held, the rank the rating falls in is used.
+
+`displayedRankProgress` rounds once before deriving anything. A rating of
+671.6 shows as 672 and leaves `ceil(700 − 671.6) = 29` points, so the screen
+read "672 / 1000" and "29 to Master" — two right answers that read as one
+wrong one to anyone who subtracts. Rounding first costs a fifth of a pixel of
+fill and makes the three numbers agree.
+
+## D82 — Boss weights are set in parts, shown in percentages
+
+Percentages that must total exactly 100 are a spreadsheet: every adjustment
+forces a compensating one somewhere else, and on a phone that is four sliders
+fighting each other. The user sets **parts** — "gym matters twice as much as
+food" — and the share is arithmetic.
+
+The arithmetic is not hidden, which is the other half of the rule. Each row
+shows its parts and the percentage they work out to, the total is stated
+underneath, and it is always 100 because it cannot be anything else. There is
+no save button and no invalid state to save.
+
+Whole percentages are apportioned by largest remainder rather than by dumping
+the rounding on the last row, so the one row that reads 34 where three areas
+share 100 is the one that was closest to it.
+
+## D83 — Mystery is withheld richness, not a disabled state
+
+An unearned rank keeps its name, its threshold and its **silhouette** — the
+silhouette is what makes the ladder browsable and is the honest part of the
+promise. What it does not get is the emblem: the metal goes to three neutral
+greys, the aura to nothing, the central mark to the body's own grey, and the
+ornament that only appears above 56px is left out at every size.
+
+The veil over it is drawn, not filtered. A Gaussian blur would soften it more
+convincingly, cost real paint time on a screen showing eight badges at once,
+and take the silhouette with it. Diagonal hairlines over a pale scrim read as
+frosted glass at 148px and as a grey plate at 32px, which is what each size
+needs.
+
+The state is a word beside the badge, never the badge alone.

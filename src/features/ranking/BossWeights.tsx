@@ -1,0 +1,144 @@
+import { BOSS } from '../../core/config/constants';
+import type { BossWeights as BossWeightMap } from '../../core/boss';
+import type { DomainType } from '../../core/model';
+import { Card, EmptyState } from '../../components';
+import { MinusIcon, PlusIcon } from '../../components/Icons';
+import { useT } from '../../i18n/I18nProvider';
+import type { TranslationKey } from '../../i18n';
+import type { BossWeighting } from '../../storage/services/configurationService';
+import './bossWeights.css';
+
+/**
+ * How much each area counts towards the Boss Rank.
+ *
+ * The control is **parts, not percentages**. Percentages that have to total
+ * exactly 100 are a spreadsheet: every adjustment forces a compensating one
+ * somewhere else, and on a phone that is four sliders fighting each other.
+ * Parts are what the user actually means — "gym matters twice as much as
+ * food" — and the share is arithmetic.
+ *
+ * The arithmetic is not hidden, which is the other half of the rule. Each row
+ * shows its parts *and* the percentage they work out to, the total is stated
+ * underneath, and it is always 100 % because it cannot be anything else. There
+ * is no save button and no invalid state to save: every reachable combination
+ * of parts resolves.
+ *
+ * Changing this appends a config snapshot, so it applies from today forward
+ * and cannot reach a day already lived. The screen says so.
+ */
+
+const DOMAIN_NAMES: Record<DomainType, TranslationKey> = {
+  mental: 'domain.wellbeing',
+  gym: 'domain.gym',
+  running: 'domain.running',
+  food: 'domain.food',
+};
+
+const MIN_PARTS = 1;
+const MAX_PARTS = 10;
+
+export function BossWeights({
+  weighting,
+  onChange,
+}: {
+  weighting: BossWeighting[];
+  onChange(weights: BossWeightMap): void;
+}) {
+  const t = useT();
+
+  if (weighting.length === 0) {
+    return (
+      <Card>
+        <EmptyState title={t('rank.weights')} body={t('rank.weights.none')} />
+      </Card>
+    );
+  }
+
+  const set = (domain: DomainType, parts: number) => {
+    const next: BossWeightMap = {};
+    for (const entry of weighting) {
+      next[entry.domain] = entry.domain === domain ? parts : entry.parts;
+    }
+    onChange(next);
+  };
+
+  /*
+   * Whole percentages that add to exactly 100.
+   *
+   * Three equal shares are 33.33 each, and three 33s are 99. The missing
+   * points go to the rows with the largest fractional part — the standard
+   * largest-remainder apportionment — rather than to whichever row happens to
+   * be last, so the one row that reads 34 is the one that was closest to it.
+   * A column that totals 99 would undermine the whole control.
+   */
+  const exact = weighting.map((entry) => entry.share * 100);
+  const percents = exact.map((value) => Math.floor(value));
+  let drift = 100 - percents.reduce((sum, value) => sum + value, 0);
+  const order = exact
+    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+    .sort((a, b) => b.remainder - a.remainder);
+  for (const { index } of order) {
+    if (drift <= 0) break;
+    percents[index] = (percents[index] ?? 0) + 1;
+    drift -= 1;
+  }
+
+  return (
+    <Card>
+      <p className="boss-weights__explain">{t('rank.weights.explain')}</p>
+
+      {weighting.map((entry, index) => {
+        const name = t(DOMAIN_NAMES[entry.domain]);
+        return (
+          <div key={entry.domain} className="boss-weights__row">
+            <span className="boss-weights__body">
+              <span className="boss-weights__name">{name}</span>
+              <span className="boss-weights__parts">
+                {entry.parts === 1
+                  ? t('rank.weights.partOne')
+                  : t('rank.weights.parts', { count: entry.parts })}
+              </span>
+            </span>
+
+            <span
+              className={`boss-weights__share boss-weights__share--${entry.domain}`}
+              /* The number is the outcome of the two buttons beside it, so it
+                 is announced when it changes rather than read only on focus. */
+              aria-live="polite"
+            >
+              {t('rank.weights.share', { percent: percents[index] ?? 0 })}
+            </span>
+
+            <span className="boss-weights__stepper">
+              <button
+                type="button"
+                className="boss-weights__step"
+                aria-label={t('rank.weights.less', { domain: name })}
+                disabled={entry.parts <= MIN_PARTS}
+                onClick={() => set(entry.domain, entry.parts - 1)}
+              >
+                <MinusIcon size={18} />
+              </button>
+              <button
+                type="button"
+                className="boss-weights__step"
+                aria-label={t('rank.weights.more', { domain: name })}
+                disabled={entry.parts >= MAX_PARTS}
+                onClick={() => set(entry.domain, entry.parts + 1)}
+              >
+                <PlusIcon size={18} />
+              </button>
+            </span>
+          </div>
+        );
+      })}
+
+      <p className="boss-weights__total">
+        {t('rank.weights.total', { percent: 100 })}
+        {/* No domain can be squeezed out entirely, however low it is set. */}
+        {weighting.length > 1 ? ` · ${Math.round(BOSS.MIN_WEIGHT * 100)} % min` : ''}
+      </p>
+      <p className="boss-weights__forward">{t('rank.weights.forward')}</p>
+    </Card>
+  );
+}

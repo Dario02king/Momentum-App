@@ -1,4 +1,4 @@
-import { EDIT_WINDOW_DAYS, SCALE_MAX, SCALE_MIN } from './constants';
+import { EDIT_WINDOW_DAYS, SCALE_MAX, SCALE_MIN, SCORING_MODEL } from './constants';
 import type {
   AppConfigSnapshot,
   DomainConfigSnapshot,
@@ -26,6 +26,10 @@ function toQuestionSnapshot(question: QuestionRecord): QuestionConfigSnapshot {
     text: question.text,
     type: question.type,
     status: question.status,
+    // The category is part of the arithmetic now, so a past day has to be
+    // able to read the category the question was in *then*. Moving a question
+    // to another shelf today cannot reach back.
+    category: question.category,
   };
 }
 
@@ -71,6 +75,15 @@ export function buildConfigSnapshot(
       editWindowDays: EDIT_WINDOW_DAYS,
       scaleMin: SCALE_MIN,
       scaleMax: SCALE_MAX,
+      /*
+       * Recorded, never inferred (D18).
+       *
+       * Every snapshot this build writes says which arithmetic it was written
+       * under, so the replay can score a January day the way January was
+       * scored without consulting anything current. A snapshot with no model
+       * predates the change and is flat, which is what those days were.
+       */
+      model: SCORING_MODEL,
     },
   };
 }

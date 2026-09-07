@@ -1,5 +1,5 @@
 import type { DateKey, DayEditState } from '../dates';
-import type { StoredDomainType, QuestionType } from '../model';
+import type { QuestionCategory, QuestionType, ScoringModel, StoredDomainType } from '../model';
 import { scaleValueToPercent } from './scale';
 
 /**
@@ -23,6 +23,8 @@ export type DayStatus = 'neutral' | 'open' | 'scored';
 export interface DueQuestion {
   id: string;
   type: QuestionType;
+  /** The category the question was in *on this day*, from that day's snapshot. */
+  category: QuestionCategory;
 }
 
 export interface MentalDayInput {
@@ -30,6 +32,13 @@ export interface MentalDayInput {
   due: DueQuestion[];
   /** Answers keyed by question id. Missing means unanswered. */
   answers: Map<string, boolean | number>;
+  /**
+   * The arithmetic this day was lived under, read from its own snapshot.
+   *
+   * Never today's model: a day already scored keeps the model it was scored
+   * by, which is what makes the change forward-only.
+   */
+  model: ScoringModel;
 }
 
 /**
@@ -100,42 +109,120 @@ export function itemPercent(type: QuestionType, value: boolean | number): number
   return scaleValueToPercent(Number(value));
 }
 
-/**
- * Mental Wellbeing for one day: the sum of answered-item percentages divided
- * by the number of items **due**, not the number answered. On a closed day
- * an unanswered item is a miss and drags the day down, which is the point.
- */
-function scoreMental(
-  input: MentalDayInput,
-  countUnansweredAsMissed: boolean,
-): {
+interface MentalResult {
   score: number | null;
   recorded: number | null;
   answered: number;
   questionScores: Map<string, number>;
-} {
+}
+
+/**
+ * Wellbeing for one day (§11, D18).
+ *
+ * Two numbers come out of this, and they answer different questions:
+ *
+ * - **`score`** is for history. On a closed day it divides by the items that
+ *   were **due**, so an unanswered item is a miss and drags the day down.
+ * - **`recorded`** is for the rating. It divides by the items actually
+ *   **answered**, because dividing by items due conflates not doing a thing
+ *   with not saying so, and would make honestly logging partial progress cost
+ *   more than staying silent.
+ *
+ * ### `flat`
+ *
+ * One mean over every question. What RC2 and iteration 2 up to phase 2 did,
+ * and what every day scored under those builds keeps.
+ *
+ * ### `categoryMean`
+ *
+ * The mean **within** each category, then the equal-weighted mean of those.
+ * Six questions about the household cannot outweigh the one that asks how the
+ * user actually feels, and adding a seventh cannot quietly change what the
+ * others are worth.
+ *
+ * The two numbers treat an absent category differently, and deliberately:
+ *
+ * - For **`recorded`**, a category with nothing answered has no data and
+ *   leaves the denominator with it. It never contributes a zero it did not
+ *   earn — which is the whole reason the rating uses this number.
+ * - For **`score`** on a closed day, every category with something due
+ *   participates, and one where nothing was answered contributes 0, because
+ *   those items were genuinely missed. That is the flat model's own rule,
+ *   applied per category rather than changed.
+ *
+ * The second is harsher than the flat model for a user who answers one
+ * category and skips the others — three categories where only Mental was
+ * answered read (0 + 0 + 80) / 3 rather than 80 × 4 / 7. That is the
+ * arithmetic equal weighting asks for, in both directions.
+ */
+function scoreMental(input: MentalDayInput, countUnansweredAsMissed: boolean): MentalResult {
   const questionScores = new Map<string, number>();
   if (input.due.length === 0) {
     return { score: null, recorded: null, answered: 0, questionScores };
   }
 
-  let total = 0;
+  /** Every due question's percentage, or `undefined` where unanswered. */
+  const percents = new Map<string, number>();
   let answered = 0;
   for (const question of input.due) {
     const value = input.answers.get(question.id);
     if (value === undefined) continue;
     const percent = itemPercent(question.type, value);
     questionScores.set(question.id, percent);
-    total += percent;
+    percents.set(question.id, percent);
     answered += 1;
   }
 
-  const recorded = answered === 0 ? null : total / answered;
+  if (input.model === 'flat') {
+    const total = [...percents.values()].reduce((sum, value) => sum + value, 0);
+    const recorded = answered === 0 ? null : total / answered;
+    if (answered === 0 && !countUnansweredAsMissed) {
+      return { score: null, recorded, answered, questionScores };
+    }
+    const denominator = countUnansweredAsMissed ? input.due.length : answered;
+    return { score: total / denominator, recorded, answered, questionScores };
+  }
+
+  // Grouped in the order the categories appear, which keeps the arithmetic
+  // independent of how the questions happen to be sorted.
+  const groups = new Map<QuestionCategory, DueQuestion[]>();
+  for (const question of input.due) {
+    const list = groups.get(question.category);
+    if (list) list.push(question);
+    else groups.set(question.category, [question]);
+  }
+
+  const recordedMeans: number[] = [];
+  const dueMeans: number[] = [];
+  for (const questions of groups.values()) {
+    let total = 0;
+    let count = 0;
+    for (const question of questions) {
+      const percent = percents.get(question.id);
+      if (percent === undefined) continue;
+      total += percent;
+      count += 1;
+    }
+    // Nothing answered in this category: no data for the rating, and a genuine
+    // miss for history on a closed day.
+    if (count > 0) recordedMeans.push(total / count);
+    dueMeans.push(total / questions.length);
+  }
+
+  const recorded =
+    recordedMeans.length === 0
+      ? null
+      : recordedMeans.reduce((sum, value) => sum + value, 0) / recordedMeans.length;
+
   if (answered === 0 && !countUnansweredAsMissed) {
     return { score: null, recorded, answered, questionScores };
   }
-  const denominator = countUnansweredAsMissed ? input.due.length : answered;
-  return { score: total / denominator, recorded, answered, questionScores };
+
+  const score = countUnansweredAsMissed
+    ? dueMeans.reduce((sum, value) => sum + value, 0) / dueMeans.length
+    : recorded;
+
+  return { score, recorded, answered, questionScores };
 }
 
 /**

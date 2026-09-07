@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { QuestionCategory, ScoringModel } from '../model';
 import { itemPercent, scoreDay, type DayInput, type WeeklyDayInput } from './dayScore';
 
 /**
@@ -21,11 +22,29 @@ function day(
   };
 }
 
+/**
+ * The existing cases all predate categories, so they run under the flat
+ * model — which is exactly the point: they are the regression that proves the
+ * old arithmetic still produces the old numbers.
+ */
 function mental(
-  due: { id: string; type: 'boolean' | 'scale' }[],
+  due: { id: string; type: 'boolean' | 'scale'; category?: QuestionCategory }[],
+  answers: Record<string, boolean | number> = {},
+  model: ScoringModel = 'flat',
+) {
+  return {
+    due: due.map((question) => ({ category: 'eigene' as QuestionCategory, ...question })),
+    answers: new Map(Object.entries(answers)),
+    model,
+  };
+}
+
+/** The same, under the two-level mean. */
+function grouped(
+  due: { id: string; type: 'boolean' | 'scale'; category: QuestionCategory }[],
   answers: Record<string, boolean | number> = {},
 ) {
-  return { due, answers: new Map(Object.entries(answers)) };
+  return mental(due, answers, 'categoryMean');
 }
 
 describe('one answered item as a percentage', () => {
@@ -243,5 +262,189 @@ describe('the overall daily score', () => {
 
   it('is neutral when both domains are off', () => {
     expect(scoreDay(day()).status).toBe('neutral');
+  });
+});
+
+describe('the two-level mean (D18)', () => {
+  /** The worked example from the decision, to the point. */
+  const example = grouped(
+    [
+      { id: 'a1', type: 'scale', category: 'alltag' },
+      { id: 'a2', type: 'scale', category: 'alltag' },
+      { id: 'g1', type: 'scale', category: 'gesundheit' },
+      { id: 'm1', type: 'scale', category: 'mental' },
+      { id: 'm2', type: 'scale', category: 'mental' },
+      { id: 'm3', type: 'scale', category: 'mental' },
+      { id: 'm4', type: 'scale', category: 'mental' },
+    ],
+    { a1: 8, a2: 6, g1: 5, m1: 9, m2: 7, m3: 8, m4: 8 },
+  );
+
+  it('means within a category, then across categories', () => {
+    // Alltag 7, Gesundheit 5, Mental 8 → 6.67, scored ×10 as a percentage.
+    const score = scoreDay(day({ mental: example }));
+    expect(score.score).toBeCloseTo(66.667, 3);
+  });
+
+  it('is not the flat mean of every question', () => {
+    // (8+6+5+9+7+8+8)/7 = 7.286, which would overweight Mental for having
+    // four questions in it.
+    const score = scoreDay(day({ mental: example }));
+    expect(score.score).not.toBeCloseTo(72.857, 3);
+  });
+
+  it('does not change what a category is worth when a question is added', () => {
+    const before = scoreDay(
+      day({
+        mental: grouped(
+          [
+            { id: 'a1', type: 'scale', category: 'alltag' },
+            { id: 'm1', type: 'scale', category: 'mental' },
+          ],
+          { a1: 10, m1: 6 },
+        ),
+      }),
+    ).score;
+    // A second Alltag question at the same level as the first: the category
+    // mean is unchanged, so the day is unchanged.
+    const after = scoreDay(
+      day({
+        mental: grouped(
+          [
+            { id: 'a1', type: 'scale', category: 'alltag' },
+            { id: 'a2', type: 'scale', category: 'alltag' },
+            { id: 'm1', type: 'scale', category: 'mental' },
+          ],
+          { a1: 10, a2: 10, m1: 6 },
+        ),
+      }),
+    ).score;
+    expect(after).toBeCloseTo(before ?? -1, 10);
+  });
+
+  it('treats "Eigene" as a category of its own', () => {
+    // Not a bucket that is folded into something else, and not weighted
+    // differently for being the user's own writing.
+    const score = scoreDay(
+      day({
+        mental: grouped(
+          [
+            { id: 'm1', type: 'scale', category: 'mental' },
+            { id: 'e1', type: 'scale', category: 'eigene' },
+          ],
+          { m1: 10, e1: 4 },
+        ),
+      }),
+    );
+    expect(score.score).toBeCloseTo(70, 10);
+  });
+
+  it('gives a custom question the weight of whichever category it is in', () => {
+    // Moved into Mental, it shares Mental's slice rather than adding one.
+    const own = scoreDay(
+      day({
+        mental: grouped(
+          [
+            { id: 'm1', type: 'scale', category: 'mental' },
+            { id: 'e1', type: 'scale', category: 'eigene' },
+          ],
+          { m1: 10, e1: 4 },
+        ),
+      }),
+    ).score;
+    const moved = scoreDay(
+      day({
+        mental: grouped(
+          [
+            { id: 'm1', type: 'scale', category: 'mental' },
+            { id: 'e1', type: 'scale', category: 'mental' },
+          ],
+          { m1: 10, e1: 4 },
+        ),
+      }),
+    ).score;
+    expect(own).toBeCloseTo(70, 10);
+    expect(moved).toBeCloseTo(70, 10);
+    // Same here by coincidence of the numbers; the shapes differ.
+    expect(
+      scoreDay(
+        day({
+          mental: grouped(
+            [
+              { id: 'm1', type: 'scale', category: 'mental' },
+              { id: 'm2', type: 'scale', category: 'mental' },
+              { id: 'e1', type: 'scale', category: 'eigene' },
+            ],
+            { m1: 10, m2: 10, e1: 4 },
+          ),
+        }),
+      ).score,
+    ).toBeCloseTo(70, 10);
+  });
+});
+
+describe('what an unanswered question means under category scoring', () => {
+  const due = [
+    { id: 'a1', type: 'scale' as const, category: 'alltag' as const },
+    { id: 'a2', type: 'scale' as const, category: 'alltag' as const },
+    { id: 'm1', type: 'scale' as const, category: 'mental' as const },
+  ];
+
+  it('is a miss on a closed day, inside its own category', () => {
+    // Alltag: one of two answered at 8 → 4. Mental: 10. Day: 7.
+    const score = scoreDay(day({ mental: grouped(due, { a1: 8, m1: 10 }) }));
+    expect(score.score).toBeCloseTo(70, 10);
+  });
+
+  it('never becomes a zero in the number the rating tracks', () => {
+    // The rating divides by what was answered: Alltag 8, Mental 10 → 9.
+    const score = scoreDay(day({ mental: grouped(due, { a1: 8, m1: 10 }) }));
+    expect(score.recordedScore).toBeCloseTo(90, 10);
+  });
+
+  it('leaves a category with nothing answered out of the rating entirely', () => {
+    // Alltag has no data at all. The rating sees Mental alone, not a zero.
+    const score = scoreDay(day({ mental: grouped(due, { m1: 10 }) }));
+    expect(score.recordedScore).toBeCloseTo(100, 10);
+  });
+
+  it('still counts that category as missed in the history number', () => {
+    // History says what happened: two Alltag questions were due and neither
+    // was answered, so Alltag is a zero and the day reads (0 + 100) / 2.
+    const score = scoreDay(day({ mental: grouped(due, { m1: 10 }) }));
+    expect(score.score).toBeCloseTo(50, 10);
+  });
+
+  it('has no score at all on an open day with nothing recorded', () => {
+    const score = scoreDay(day({ editState: 'open', mental: grouped(due, {}) }));
+    expect(score.status).toBe('open');
+    expect(score.score).toBeNull();
+    expect(score.recordedScore).toBeNull();
+  });
+
+  it('scores an open day on what was reported, over its categories', () => {
+    const score = scoreDay(day({ editState: 'open', mental: grouped(due, { a1: 8, m1: 10 }) }));
+    expect(score.status).toBe('open');
+    expect(score.recordedScore).toBeCloseTo(90, 10);
+  });
+});
+
+describe('the flat model, which every earlier day keeps', () => {
+  const due = [
+    { id: 'a1', type: 'scale' as const, category: 'alltag' as const },
+    { id: 'a2', type: 'scale' as const, category: 'alltag' as const },
+    { id: 'm1', type: 'scale' as const, category: 'mental' as const },
+  ];
+
+  it('still divides by every question due, ignoring categories', () => {
+    // (80 + 0 + 100) / 3 — the arithmetic these days were lived under.
+    const score = scoreDay(day({ mental: mental(due, { a1: 8, m1: 10 }) }));
+    expect(score.score).toBeCloseTo(60, 10);
+  });
+
+  it('gives a different answer from the category model, which is the point', () => {
+    const flat = scoreDay(day({ mental: mental(due, { a1: 8, m1: 10 }) })).score;
+    const grouped2 = scoreDay(day({ mental: grouped(due, { a1: 8, m1: 10 }) })).score;
+    expect(flat).not.toBeCloseTo(grouped2 ?? -1, 3);
   });
 });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Language } from '../core/model';
 import { StorageError, type StorageFailure } from '../storage/db';
 import { settingsRepository } from '../storage/repositories';
+import type { BossWeights } from '../core/boss';
 import type { DomainType } from '../core/model';
 import {
   addQuestion,
@@ -13,6 +14,7 @@ import {
   loadConfiguration,
   pauseQuestion,
   resumeQuestion,
+  setBossWeights,
   setWeeklyTarget,
   updateQuestion,
   type AppConfiguration,
@@ -132,6 +134,9 @@ export function useMomentum() {
   return {
     state,
     areasActions,
+    // Boss weights are scoring-relevant configuration, so this goes through
+    // the same path as everything else: write, append a snapshot, reload.
+    setBossWeights: (weights: BossWeights) => run(() => setBossWeights(weights)),
     finishOnboarding,
     setLanguage,
     refresh,
