@@ -4,85 +4,207 @@ import type { RankId } from '../../core/config/constants';
 /**
  * The rank badges (§15).
  *
- * Original geometry, drawn here rather than borrowed: a shield that gains
- * framing, facets, ornament and light as the ladder rises, and a Legend mark
- * that deliberately abandons the shield altogether.
+ * One emblem family, built from layers that accumulate as the ladder rises:
+ * a crest whose *silhouette* changes tier by tier, then wing plates, a
+ * wreath, a starburst, a crown — and at the very top a form that leaves the
+ * crest behind altogether.
  *
- * These are the one place in Momentum allowed to be loud, and they only work
- * because everything around them is calm — so the drama lives entirely
- * inside this component and the dark surface it sits on.
+ * Three constraints shaped every decision here.
+ *
+ * **Identity has to survive 38px.** These render in the hero at 148 and in
+ * the standings at 38, so what separates one rank from the next is outline,
+ * dominant colour and one bold central mark — never fine ornament. Below
+ * `DETAIL` the smallest elements are dropped rather than rendered into mud.
+ *
+ * **Colour has to reach the body.** An earlier pass washed the crest face
+ * with a light inner bevel and every rank came out the same silver. The
+ * bevel is a stroke now, not a fill, and the metal gradient keeps its
+ * saturated mid-tone across most of the face.
+ *
+ * **No filters.** Depth comes from geometry: a shadow underlay, a diagonal
+ * metal gradient, a clipped specular sweep and a shaded lower body. Gaussian
+ * blurs would buy a little softness for a lot of paint cost on a screen that
+ * can show a dozen badges at once.
  */
 
-const SHIELD = 'M60 10 L104 28 V70 C104 98 85 118 60 128 C35 118 16 98 16 70 V28 Z';
+/** Below this rendered size, ornament that cannot read is left out. */
+const DETAIL = 56;
 
-interface Palette {
-  /** Light, mid and shadow tones of the metal. */
+interface Spec {
+  /** Light, mid and shadow tones of the metal. The mid tone is the identity. */
   metal: [string, string, string];
-  accent: string;
   rim: string;
   glow: string;
-  /** 0 for none, 1 for the strongest treatment on the ladder. */
-  glowStrength: number;
+  /** 0 = no aura, 1 = the strongest on the ladder. */
+  aura: number;
+  /** The central mark's colour. */
+  accent: string;
+  core: string;
+  /** 0 none · 1 blade · 2 pair · 3 full wing. */
+  wings: 0 | 1 | 2 | 3;
+  /** Points in the starburst behind the crest; 0 for none. */
+  burst: number;
+  wreath: boolean;
+  /** 0 none · 1 single spike · 2 three spikes. */
+  crown: 0 | 1 | 2;
+  emblem: 'pip' | 'chevron' | 'chevrons' | 'star' | 'starRing' | 'gem' | 'prism';
 }
 
-const PALETTES: Record<RankId, Palette> = {
+/*
+ * The silhouettes. Each is a different outline rather than the same shield
+ * with more drawn on it, because at 38px the outline is most of what a user
+ * actually distinguishes: a flat-topped hex, a classic shield, a downward
+ * spearhead, then three crests that grow shoulders and width.
+ */
+const CORES = {
+  plain: 'M60 26 L90 44 V74 C90 94 77 108 60 115 C43 108 30 94 30 74 V44 Z',
+  shield: 'M60 22 L95 40 V75 C95 97 80 113 60 121 C40 113 25 97 25 75 V40 Z',
+  spear: 'M60 20 L97 39 V68 L60 124 L23 68 V39 Z',
+  crest: 'M60 12 L69 27 L97 39 V72 C97 95 81 113 60 123 C39 113 23 95 23 72 V39 L51 27 Z',
+  wide: 'M60 8 L71 24 L101 36 V71 C101 95 84 115 60 126 C36 115 19 95 19 71 V36 L49 24 Z',
+  broad: 'M60 6 L73 22 L104 33 V69 C104 94 85 117 60 129 C35 117 16 94 16 69 V33 L47 22 Z',
+  regal: 'M60 4 L75 20 L107 31 V67 C107 93 87 118 60 131 C33 118 13 93 13 67 V31 L45 20 Z',
+} as const;
+
+const SPECS: Record<RankId, Spec> = {
   rookie: {
-    metal: ['#cfd4dc', '#9aa2ae', '#6d7480'],
-    accent: '#e8ebef',
-    rim: '#7e8692',
-    glow: '#aab2be',
-    glowStrength: 0.12,
+    metal: ['#eef1f5', '#9aa4b3', '#4e5764'],
+    rim: '#6b7482',
+    glow: '#aab3c0',
+    aura: 0,
+    accent: '#f7f9fc',
+    core: CORES.plain,
+    wings: 0,
+    burst: 0,
+    wreath: false,
+    crown: 0,
+    emblem: 'pip',
   },
   challenger: {
-    metal: ['#d8e3ee', '#94a8bd', '#5f7286'],
-    accent: '#eaf2fa',
-    rim: '#6d8299',
-    glow: '#7ea6cc',
-    glowStrength: 0.2,
+    metal: ['#dcecff', '#4f8fd6', '#1c3f68'],
+    rim: '#2f6099',
+    glow: '#68a8ea',
+    aura: 0.18,
+    accent: '#f0f7ff',
+    core: CORES.shield,
+    wings: 0,
+    burst: 0,
+    wreath: false,
+    crown: 0,
+    emblem: 'chevron',
   },
   contender: {
-    metal: ['#cfe0e6', '#79a2b0', '#41616e'],
-    accent: '#e6f5f9',
-    rim: '#4d7381',
-    glow: '#5fa8bd',
-    glowStrength: 0.3,
+    metal: ['#d6f6ee', '#25a58e', '#0b544a'],
+    rim: '#12776a',
+    glow: '#3fd0b4',
+    aura: 0.28,
+    accent: '#ebfffb',
+    core: CORES.spear,
+    wings: 1,
+    burst: 0,
+    wreath: false,
+    crown: 0,
+    emblem: 'chevrons',
   },
   elite: {
-    metal: ['#dcd6f7', '#9c8ee0', '#5f4fa8'],
-    accent: '#f0ecff',
-    rim: '#6c5cc4',
-    glow: '#8f7ff0',
-    glowStrength: 0.42,
+    metal: ['#e8dfff', '#7154dd', '#2f1f75'],
+    rim: '#4f36b4',
+    glow: '#9b7cf7',
+    aura: 0.42,
+    accent: '#f6f2ff',
+    core: CORES.crest,
+    wings: 1,
+    burst: 0,
+    wreath: false,
+    crown: 1,
+    emblem: 'star',
   },
   veteran: {
-    metal: ['#f0d9b8', '#c8994f', '#8a6427'],
-    accent: '#fbeed6',
-    rim: '#9b7433',
-    glow: '#d8a44f',
-    glowStrength: 0.5,
+    metal: ['#ffe6c6', '#c2762f', '#5f3410'],
+    rim: '#8d5119',
+    glow: '#e0a061',
+    aura: 0.54,
+    accent: '#fff3e0',
+    core: CORES.wide,
+    wings: 2,
+    burst: 0,
+    wreath: true,
+    crown: 1,
+    emblem: 'star',
   },
   master: {
-    metal: ['#ffe9ae', '#e0b53d', '#9b7511'],
-    accent: '#fff6d4',
-    rim: '#b98f1c',
-    glow: '#f2c445',
-    glowStrength: 0.66,
+    metal: ['#fff4c8', '#dfa312', '#6f4c04'],
+    rim: '#a3730a',
+    glow: '#facf3f',
+    aura: 0.7,
+    accent: '#fffbe2',
+    core: CORES.broad,
+    wings: 3,
+    burst: 16,
+    wreath: true,
+    crown: 1,
+    emblem: 'starRing',
   },
   champion: {
-    metal: ['#fff2d0', '#ecc463', '#a97c1c'],
-    accent: '#fffaf0',
-    rim: '#c79a2b',
-    glow: '#ffd76a',
-    glowStrength: 0.82,
+    // Platinum-gold rather than a brighter yellow: at 38px Champion has to
+    // separate from Master by more than saturation, so the body cools and
+    // the centre turns crimson.
+    metal: ['#fffdf0', '#e9d284', '#5f4a0c'],
+    rim: '#7d6413',
+    glow: '#ffe08a',
+    aura: 0.86,
+    accent: '#fff9df',
+    core: CORES.regal,
+    wings: 3,
+    burst: 20,
+    wreath: true,
+    crown: 2,
+    emblem: 'gem',
   },
   legend: {
-    metal: ['#eafcff', '#7fe4f0', '#3f7fd0'],
+    // A cold, deep core so the top of the ladder has weight as well as
+    // shine; it also keeps Legend readable on the light standings list.
+    metal: ['#e6fbff', '#3ba7e0', '#141c52'],
+    rim: '#63d3f5',
+    glow: '#63e0ff',
+    aura: 1,
     accent: '#ffffff',
-    rim: '#8ad9ff',
-    glow: '#7ce0ff',
-    glowStrength: 1,
+    // Legend is radial, not a crest; its field is drawn rather than a path.
+    core: '',
+    wings: 0,
+    burst: 24,
+    wreath: false,
+    crown: 0,
+    emblem: 'prism',
   },
 };
+
+function starPoints(cx: number, cy: number, radius: number, points = 5, inner = 0.42): string {
+  return Array.from({ length: points * 2 }, (_, index) => {
+    const angle = (Math.PI / points) * index - Math.PI / 2;
+    const r = index % 2 === 0 ? radius : radius * inner;
+    return `${(cx + Math.cos(angle) * r).toFixed(2)},${(cy + Math.sin(angle) * r).toFixed(2)}`;
+  }).join(' ');
+}
+
+/*
+ * Wings are layered blades rather than one outline: overlapping plates still
+ * read as a wing when they are four pixels tall, where feather detail does
+ * not. Drawn on the left; the right side is the same shape mirrored.
+ */
+const WINGS: Record<1 | 2 | 3, string[]> = {
+  1: ['M30 50 L7 57 L30 68 Z'],
+  2: ['M30 44 L2 48 L30 62 Z', 'M30 60 L8 70 L30 78 Z'],
+  3: ['M28 36 L0 38 L28 54 Z', 'M28 52 L1 60 L28 70 Z', 'M28 68 L7 80 L28 86 Z'],
+};
+
+/** Where the wreath's leaves sit along the arc, and how each is turned. */
+const LEAVES = [
+  { x: 8, y: 72, angle: -32 },
+  { x: 9, y: 92, angle: -8 },
+  { x: 19, y: 112, angle: 16 },
+  { x: 36, y: 130, angle: 40 },
+];
 
 export function RankBadge({
   rankId,
@@ -93,9 +215,12 @@ export function RankBadge({
   size?: number;
   animate?: boolean;
 }) {
-  const uid = useId().replace(/[:]/g, '');
-  const palette = PALETTES[rankId];
+  const uid = useId().replace(/:/g, '');
+  const spec = SPECS[rankId];
   const id = (name: string) => `${name}-${uid}`;
+  const detailed = size >= DETAIL;
+  const isLegend = rankId === 'legend';
+  const wing = spec.wings === 0 ? null : WINGS[spec.wings];
 
   return (
     <svg
@@ -108,241 +233,341 @@ export function RankBadge({
       className={`badge-svg ${animate ? 'badge-svg--reveal' : ''}`.trim()}
     >
       <defs>
-        <linearGradient id={id('metal')} x1="0" y1="0" x2="0.35" y2="1">
-          <stop offset="0%" stopColor={palette.metal[0]} />
-          <stop offset="48%" stopColor={palette.metal[1]} />
-          <stop offset="100%" stopColor={palette.metal[2]} />
+        <linearGradient id={id('metal')} x1="0.15" y1="0" x2="0.75" y2="1">
+          <stop offset="0%" stopColor={spec.metal[0]} />
+          <stop offset="18%" stopColor={spec.metal[1]} />
+          <stop offset="62%" stopColor={spec.metal[1]} />
+          <stop offset="100%" stopColor={spec.metal[2]} />
         </linearGradient>
-        {/* A narrow bright band across the upper third reads as a polished
-            surface catching light, which flat fills never do. */}
-        <linearGradient id={id('sheen')} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#fff" stopOpacity="0" />
-          <stop offset="42%" stopColor="#fff" stopOpacity={0.16 + palette.glowStrength * 0.3} />
-          <stop offset="58%" stopColor="#fff" stopOpacity="0" />
+        <linearGradient id={id('wing')} x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={spec.metal[1]} />
+          <stop offset="100%" stopColor={spec.metal[2]} />
         </linearGradient>
-        <radialGradient id={id('halo')} cx="0.5" cy="0.45" r="0.55">
-          <stop offset="0%" stopColor={palette.glow} stopOpacity={palette.glowStrength * 0.55} />
-          <stop offset="100%" stopColor={palette.glow} stopOpacity="0" />
+        <radialGradient id={id('aura')} cx="0.5" cy="0.48" r="0.5">
+          <stop offset="48%" stopColor={spec.glow} stopOpacity={spec.aura * 0.42} />
+          <stop offset="100%" stopColor={spec.glow} stopOpacity="0" />
         </radialGradient>
-        <linearGradient id={id('gem')} x1="0" y1="0" x2="0.4" y2="1">
-          <stop offset="0%" stopColor={palette.accent} />
-          <stop offset="100%" stopColor={palette.glow} />
+        <linearGradient id={id('gem')} x1="0.2" y1="0" x2="0.8" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="45%" stopColor={spec.glow} />
+          <stop offset="100%" stopColor={spec.metal[2]} />
         </linearGradient>
+        <linearGradient id={id('jewel')} x1="0.25" y1="0" x2="0.75" y2="1">
+          <stop offset="0%" stopColor="#ff9d8f" />
+          <stop offset="42%" stopColor="#d9314a" />
+          <stop offset="100%" stopColor="#67091f" />
+        </linearGradient>
+        {!isLegend && (
+          <clipPath id={id('clip')}>
+            <path d={spec.core} />
+          </clipPath>
+        )}
       </defs>
 
-      {/* Halo: present for everyone, but only meaningful high up the ladder. */}
-      <ellipse cx="60" cy="66" rx="58" ry="62" fill={`url(#${id('halo')})`} />
+      {/* The field behind: an aura for every tier that has earned one. */}
+      {spec.aura > 0 && <ellipse cx="60" cy="66" rx="60" ry="64" fill={`url(#${id('aura')})`} />}
 
-      {rankId === 'legend' ? (
-        <LegendMark id={id} palette={palette} />
+      {/* A starburst, not scattered rays: one filled shape holds together at
+          any size where it is visible at all. */}
+      {spec.burst > 0 && (
+        <g>
+          <polygon
+            points={starPoints(60, 68, 58, spec.burst, 0.66)}
+            fill={spec.glow}
+            opacity={detailed ? 0.34 : 0.42}
+          />
+          {detailed && (
+            <polygon
+              points={starPoints(60, 68, 52, spec.burst / 2, 0.55)}
+              fill={spec.glow}
+              opacity="0.5"
+            />
+          )}
+        </g>
+      )}
+
+      {/* Wings: the silhouette's outward growth. */}
+      {wing && (
+        <g>
+          {[0, 1].map((side) => (
+            <g key={side} transform={side ? 'scale(-1 1) translate(-120 0)' : undefined}>
+              {wing.map((blade, index) => (
+                <path
+                  key={index}
+                  d={blade}
+                  fill={`url(#${id('wing')})`}
+                  stroke={spec.rim}
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                />
+              ))}
+            </g>
+          ))}
+        </g>
+      )}
+
+      {isLegend ? (
+        <LegendCore id={id} spec={spec} detailed={detailed} />
       ) : (
         <>
-          {/* Rays behind the shield, from Master upwards. */}
-          {(rankId === 'master' || rankId === 'champion') && (
-            <g opacity={rankId === 'champion' ? 0.75 : 0.5}>
-              {Array.from({ length: 12 }, (_, index) => {
-                const angle = (index / 12) * Math.PI * 2;
-                const inner = rankId === 'champion' ? 46 : 44;
-                const outer = rankId === 'champion' ? 62 : 56;
-                return (
-                  <line
-                    key={index}
-                    x1={60 + Math.cos(angle) * inner}
-                    y1={68 + Math.sin(angle) * inner}
-                    x2={60 + Math.cos(angle) * outer}
-                    y2={68 + Math.sin(angle) * outer}
-                    stroke={palette.glow}
-                    strokeWidth={index % 3 === 0 ? 3 : 1.4}
-                    strokeLinecap="round"
-                    opacity={index % 3 === 0 ? 0.8 : 0.45}
-                  />
-                );
-              })}
+          {/* Shadow underlay: depth without a filter. */}
+          <path d={spec.core} fill={spec.metal[2]} opacity="0.5" transform="translate(0 3.5)" />
+          <path d={spec.core} fill={`url(#${id('metal')})`} stroke={spec.rim} strokeWidth="2.4" />
+
+          {/* Form: a specular sweep and a shaded lower body, both clipped to
+              the crest so the edges stay crisp. */}
+          <g clipPath={`url(#${id('clip')})`}>
+            <path d="M-10 -10 L86 -10 L14 96 L-10 96 Z" fill="#ffffff" opacity="0.24" />
+            <path d="M-10 150 L130 150 L130 92 L-10 122 Z" fill={spec.metal[2]} opacity="0.34" />
+          </g>
+
+          {/* Inner bevel: a stroked edge, so the body keeps its colour. */}
+          <path
+            d={spec.core}
+            transform="translate(60 70) scale(0.84) translate(-60 -70)"
+            fill="none"
+            stroke={spec.metal[0]}
+            strokeWidth="1.4"
+            opacity="0.55"
+          />
+
+          <Emblem spec={spec} id={id} detailed={detailed} />
+        </>
+      )}
+
+      {/* The wreath, in front and hugging the crest's outer contour — behind
+          it, all that showed was stray leaf ticks. */}
+      {spec.wreath && (
+        <g fill="none" strokeLinecap="round">
+          <path
+            d="M12 66 C10 96 30 124 60 137"
+            stroke={spec.metal[2]}
+            strokeWidth="6"
+            opacity="0.55"
+          />
+          <path
+            d="M108 66 C110 96 90 124 60 137"
+            stroke={spec.metal[2]}
+            strokeWidth="6"
+            opacity="0.55"
+          />
+          <path d="M12 66 C10 96 30 124 60 137" stroke={spec.metal[1]} strokeWidth="4.4" />
+          <path d="M108 66 C110 96 90 124 60 137" stroke={spec.metal[1]} strokeWidth="4.4" />
+          <g stroke={spec.metal[0]} strokeWidth="1.6" opacity="0.8">
+            <path d="M12 66 C10 96 30 124 60 137" />
+            <path d="M108 66 C110 96 90 124 60 137" />
+          </g>
+          {detailed && (
+            <g fill={spec.metal[1]} stroke={spec.metal[0]} strokeWidth="0.9">
+              {LEAVES.flatMap(({ x, y, angle }) => [
+                <ellipse
+                  key={`l${y}`}
+                  cx={x}
+                  cy={y}
+                  rx="7.5"
+                  ry="3.4"
+                  transform={`rotate(${angle - 90} ${x} ${y})`}
+                />,
+                <ellipse
+                  key={`r${y}`}
+                  cx={120 - x}
+                  cy={y}
+                  rx="7.5"
+                  ry="3.4"
+                  transform={`rotate(${90 - angle} ${120 - x} ${y})`}
+                />,
+              ])}
             </g>
           )}
+        </g>
+      )}
 
-          {/* Outer frame: absent, thin, double or ornate. */}
-          {rankId !== 'rookie' && (
-            <path
-              d={SHIELD}
-              transform="translate(60 69) scale(1.09) translate(-60 -69)"
-              fill="none"
-              stroke={palette.rim}
-              strokeWidth={rankId === 'veteran' || rankId === 'champion' ? 3 : 1.6}
-              opacity={0.75}
-            />
-          )}
-          {(rankId === 'veteran' || rankId === 'master' || rankId === 'champion') && (
-            <path
-              d={SHIELD}
-              transform="translate(60 69) scale(1.17) translate(-60 -69)"
-              fill="none"
-              stroke={palette.rim}
-              strokeWidth="1.2"
-              opacity={0.45}
-            />
-          )}
-
-          {/* Side flanges add mass from Veteran up. */}
-          {(rankId === 'veteran' || rankId === 'master' || rankId === 'champion') && (
+      {/* The crown, last and on top: the clearest signal of the ladder's end. */}
+      {spec.crown > 0 && (
+        <g fill={spec.accent} stroke={spec.rim} strokeWidth="1.2" strokeLinejoin="round">
+          <path d="M60 0 L66 24 L54 24 Z" />
+          {spec.crown === 2 && (
             <>
-              <path
-                d="M14 52 L2 62 L14 76 Z"
-                fill={`url(#${id('metal')})`}
-                stroke={palette.rim}
-                strokeWidth="1"
-              />
-              <path
-                d="M106 52 L118 62 L106 76 Z"
-                fill={`url(#${id('metal')})`}
-                stroke={palette.rim}
-                strokeWidth="1"
-              />
+              <path d="M46 8 L52 26 L40 26 Z" />
+              <path d="M74 8 L80 26 L68 26 Z" />
             </>
           )}
-
-          <path d={SHIELD} fill={`url(#${id('metal')})`} stroke={palette.rim} strokeWidth="2" />
-          <path d={SHIELD} fill={`url(#${id('sheen')})`} />
-
-          {/* Inner bevel: the dimensional step that appears at Contender. */}
-          {rankId !== 'rookie' && rankId !== 'challenger' && (
-            <path
-              d={SHIELD}
-              transform="translate(60 69) scale(0.8) translate(-60 -69)"
-              fill="none"
-              stroke={palette.accent}
-              strokeWidth="1.4"
-              opacity="0.55"
-            />
-          )}
-
-          {/* Centre mark, growing in complexity with the rank. */}
-          {rankId === 'rookie' && <circle cx="60" cy="68" r="9" fill={palette.accent} opacity="0.8" />}
-
-          {rankId === 'challenger' && (
-            <>
-              <path
-                d="M46 62 L60 74 L74 62"
-                fill="none"
-                stroke={palette.accent}
-                strokeWidth="5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="30" cy="36" r="3" fill={palette.accent} opacity="0.8" />
-              <circle cx="90" cy="36" r="3" fill={palette.accent} opacity="0.8" />
-            </>
-          )}
-
-          {rankId === 'contender' && (
-            <>
-              <path
-                d="M44 58 L60 72 L76 58"
-                fill="none"
-                stroke={palette.accent}
-                strokeWidth="5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M44 76 L60 90 L76 76"
-                fill="none"
-                stroke={palette.accent}
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.7"
-              />
-            </>
-          )}
-
-          {(rankId === 'elite' || rankId === 'veteran' || rankId === 'master') && (
-            <Star cx={60} cy={rankId === 'master' ? 62 : 66} r={rankId === 'elite' ? 17 : 15} fill={palette.accent} />
-          )}
-
-          {rankId === 'veteran' && (
-            <>
-              <path d="M40 92 L60 102 L80 92" fill="none" stroke={palette.accent} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
-              <path d="M44 102 L60 110 L76 102" fill="none" stroke={palette.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-            </>
-          )}
-
-          {rankId === 'master' && (
-            <>
-              {/* Laurel arcs — the first ornament that is not a chevron. */}
-              <path d="M34 76 C34 96 46 108 60 112" fill="none" stroke={palette.accent} strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
-              <path d="M86 76 C86 96 74 108 60 112" fill="none" stroke={palette.accent} strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
-              <circle cx="60" cy="92" r="4" fill={palette.accent} opacity="0.9" />
-            </>
-          )}
-
-          {rankId === 'champion' && (
-            <>
-              {/* A cut jewel rather than a flat mark. */}
-              <path d="M60 44 L78 62 L60 96 L42 62 Z" fill={`url(#${id('gem')})`} stroke={palette.accent} strokeWidth="1.4" />
-              <path d="M42 62 H78" stroke={palette.accent} strokeWidth="1" opacity="0.85" />
-              <path d="M60 44 V96" stroke={palette.accent} strokeWidth="0.9" opacity="0.5" />
-              <path d="M60 44 L51 62 L60 96" fill="#fff" opacity="0.18" />
-              <Star cx={31} cy={44} r={5} fill={palette.accent} />
-              <Star cx={89} cy={44} r={5} fill={palette.accent} />
-              <Star cx={60} cy={116} r={4} fill={palette.accent} />
-            </>
-          )}
-        </>
+        </g>
       )}
     </svg>
   );
 }
 
-function Star({ cx, cy, r, fill }: { cx: number; cy: number; r: number; fill: string }) {
-  const points = Array.from({ length: 10 }, (_, index) => {
-    const angle = (Math.PI / 5) * index - Math.PI / 2;
-    const radius = index % 2 === 0 ? r : r * 0.42;
-    return `${(cx + Math.cos(angle) * radius).toFixed(2)},${(cy + Math.sin(angle) * radius).toFixed(2)}`;
-  }).join(' ');
-  return <polygon points={points} fill={fill} />;
+function Emblem({
+  spec,
+  id,
+  detailed,
+}: {
+  spec: Spec;
+  id: (name: string) => string;
+  detailed: boolean;
+}) {
+  const { emblem, accent } = spec;
+
+  if (emblem === 'pip') {
+    return <circle cx="60" cy="72" r="10.5" fill={accent} opacity="0.92" />;
+  }
+
+  if (emblem === 'chevron') {
+    return (
+      <path
+        d="M45 65 L60 79 L75 65"
+        fill="none"
+        stroke={accent}
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    );
+  }
+
+  if (emblem === 'chevrons') {
+    return (
+      <g fill="none" stroke={accent} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M44 56 L60 70 L76 56" strokeWidth="7" />
+        <path d="M44 74 L60 88 L76 74" strokeWidth="6" opacity="0.72" />
+      </g>
+    );
+  }
+
+  if (emblem === 'star' || emblem === 'starRing') {
+    return (
+      <g>
+        {emblem === 'starRing' && detailed && (
+          <circle
+            cx="60"
+            cy="68"
+            r="25"
+            fill="none"
+            stroke={accent}
+            strokeWidth="1.8"
+            opacity="0.55"
+          />
+        )}
+        <polygon points={starPoints(60, 68, 19)} fill={accent} />
+        {detailed && (
+          <polygon points={starPoints(59, 67, 19)} fill="#ffffff" opacity="0.3" />
+        )}
+      </g>
+    );
+  }
+
+  if (emblem === 'gem') {
+    return (
+      <g>
+        <path
+          d="M60 44 L79 64 L60 98 L41 64 Z"
+          fill={`url(#${id('jewel')})`}
+          stroke={accent}
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
+        <path d="M41 64 H79" stroke={accent} strokeWidth="1.3" opacity="0.85" />
+        <path d="M60 44 L50 64 L60 98 Z" fill="#ffffff" opacity="0.2" />
+        {detailed && (
+          <>
+            <polygon points={starPoints(31, 44, 5.5)} fill={accent} />
+            <polygon points={starPoints(89, 44, 5.5)} fill={accent} />
+          </>
+        )}
+      </g>
+    );
+  }
+
+  return null;
 }
 
 /**
- * Legend abandons the shield entirely — an eight-point prism inside a broken
- * orbit. Nothing else on the ladder shares its silhouette, which is the
- * point: it should not read as "one more shield, but shinier".
+ * Legend abandons the crest.
+ *
+ * Every other rank is a shield that grew; this is a radiant core inside a
+ * broken orbit. The difference is one of kind rather than degree — the top
+ * of the ladder should not read as "one more shield, but shinier".
  */
-function LegendMark({ id, palette }: { id: (name: string) => string; palette: Palette }) {
+function LegendCore({
+  id,
+  spec,
+  detailed,
+}: {
+  id: (name: string) => string;
+  spec: Spec;
+  detailed: boolean;
+}) {
+  const points = detailed ? 12 : 8;
+
   return (
     <g>
-      <circle cx="60" cy="68" r="52" fill="none" stroke={palette.rim} strokeWidth="1.2" opacity="0.5" />
-      <circle
-        cx="60"
-        cy="68"
-        r="45"
-        fill="none"
-        stroke={palette.glow}
-        strokeWidth="2.5"
-        opacity="0.85"
-        strokeDasharray="52 18"
-        strokeLinecap="round"
-      />
-      {Array.from({ length: 8 }, (_, index) => {
-        const angle = (index / 8) * Math.PI * 2 - Math.PI / 2;
-        return (
+      {/* The orbit, deliberately incomplete — and dropped when it would be
+          two pixels of dashed line. */}
+      {detailed && (
+        <>
           <circle
-            key={index}
-            cx={60 + Math.cos(angle) * 45}
-            cy={68 + Math.sin(angle) * 45}
-            r={index % 2 === 0 ? 3.2 : 1.8}
-            fill={palette.accent}
+            cx="60"
+            cy="68"
+            r="52"
+            fill="none"
+            stroke={spec.rim}
+            strokeWidth="1.2"
+            opacity="0.4"
           />
-        );
-      })}
+          <circle
+            cx="60"
+            cy="68"
+            r="46"
+            fill="none"
+            stroke={spec.glow}
+            strokeWidth="3.2"
+            opacity="0.9"
+            strokeDasharray="52 22"
+            strokeLinecap="round"
+          />
+          {Array.from({ length: 4 }, (_, index) => {
+            const angle = (index / 4) * Math.PI * 2 - Math.PI / 4;
+            return (
+              <circle
+                key={index}
+                cx={60 + Math.cos(angle) * 46}
+                cy={68 + Math.sin(angle) * 46}
+                r="3.6"
+                fill={spec.accent}
+              />
+            );
+          })}
+        </>
+      )}
 
-      {/* The prism: four kite facets meeting at the centre. */}
-      <path d="M60 20 L82 68 L60 116 L38 68 Z" fill={`url(#${id('metal')})`} stroke={palette.accent} strokeWidth="1.6" />
-      <path d="M16 68 L60 46 L104 68 L60 90 Z" fill={`url(#${id('gem')})`} opacity="0.9" stroke={palette.accent} strokeWidth="1.2" />
-      <path d="M60 20 L60 116" stroke={palette.accent} strokeWidth="0.9" opacity="0.55" />
-      <path d="M16 68 H104" stroke={palette.accent} strokeWidth="0.9" opacity="0.45" />
-      <path d="M60 46 L82 68 L60 90 L38 68 Z" fill="#fff" opacity="0.22" />
-      <circle cx="60" cy="68" r="6" fill={palette.accent} />
+      {/* A radiant core: the silhouette no other rank has. */}
+      <polygon
+        points={starPoints(60, 68, 40, points, 0.46)}
+        fill={spec.metal[2]}
+        opacity="0.55"
+        transform="translate(0 3.5)"
+      />
+      <polygon
+        points={starPoints(60, 68, 40, points, 0.46)}
+        fill={`url(#${id('metal')})`}
+        stroke={spec.rim}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <polygon points={starPoints(60, 68, 29, points, 0.5)} fill="#ffffff" opacity="0.18" />
+
+      {/* The prism at the centre. */}
+      <polygon
+        points="60,40 78,68 60,96 42,68"
+        fill={`url(#${id('gem')})`}
+        stroke={spec.accent}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M42 68 H78" stroke={spec.accent} strokeWidth="1.1" opacity="0.85" />
+      <path d="M60 40 L51 68 L60 96 Z" fill="#ffffff" opacity="0.26" />
+      <circle cx="60" cy="68" r="5.5" fill={spec.accent} />
     </g>
   );
 }

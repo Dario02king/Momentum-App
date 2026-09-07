@@ -534,3 +534,36 @@ A hand-maintained list drifts the first time a filename changes, and the
 symptom is an installed app serving half of an old build. The build plugin
 takes the list from the bundle, so the possibility is removed rather than
 managed.
+
+## D45 — Rank badges differ by silhouette first, ornament last
+
+Every badge is read at 38px far more often than at 148px, so the things
+that separate one rank from the next are the outline, the dominant hue and
+one bold central mark. Ornament — wings, wreath, starburst, crown — is an
+accumulating signal of rarity, not the thing that identifies a rank. Below
+56px the smallest of it is dropped rather than rendered into mud.
+
+Depth is layered geometry, not filters: a shadow underlay, a diagonal metal
+gradient, a clipped specular sweep and a shaded lower body. The Rank screen
+can show a dozen badges at once, and a Gaussian blur on each would cost far
+more paint than the softness is worth.
+
+An earlier pass washed the crest face with a light inner bevel, and every
+rank came out the same silver — the rim carried the hue and the body did
+not. The bevel is a stroke now, and the metal gradient holds its saturated
+mid-tone across most of the face.
+
+## D46 — Legend is a different kind of object, not a shinier shield
+
+Every other rank is a crest that grew. Legend is a radiant core inside a
+broken orbit, with no crest at all. Making the top of the ladder differ in
+degree — one more shield, more gold — leaves it looking like Champion with
+the contrast turned up; differing in kind is what makes it read as the end
+of the ladder at any size.
+
+## D47 — Rank history shows the emblem that was reached
+
+The history list used bare ↑/↓ glyphs, so the one place that shows the
+ladder as a sequence showed none of it. Each entry now carries the badge of
+the rank reached, with the direction kept as a separate glyph on its corner
+— colour is never the only carrier of promotion versus demotion.

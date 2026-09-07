@@ -270,16 +270,31 @@
   font-size: var(--type-subhead);
 }
 
+/* The emblem that was reached, with the direction as a chip on its corner. */
+.rank-change__badge {
+  position: relative;
+  width: 32px;
+  height: 37px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .rank-change__mark {
-  width: 30px;
-  height: 30px;
+  position: absolute;
+  right: -6px;
+  bottom: -1px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  font-size: var(--type-footnote);
+  font-size: 11px;
   font-weight: var(--weight-bold);
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--surface-primary);
 }
 
 .rank-change__mark--promotion {

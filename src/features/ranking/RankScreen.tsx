@@ -170,11 +170,15 @@ export function RankScreen() {
                 .slice(0, 6)
                 .map((change) => (
                   <div key={`${change.date}-${change.to}`} className="rank-change">
-                    <span
-                      className={`rank-change__mark rank-change__mark--${change.kind}`}
-                      aria-hidden="true"
-                    >
-                      {change.kind === 'promotion' ? '↑' : '↓'}
+                    {/* The badge that was reached, with the direction kept as
+                        a separate glyph — colour is never the only carrier. */}
+                    <span className="rank-change__badge" aria-hidden="true">
+                      <RankBadge rankId={change.to} size={32} />
+                      <span
+                        className={`rank-change__mark rank-change__mark--${change.kind}`}
+                      >
+                        {change.kind === 'promotion' ? '↑' : '↓'}
+                      </span>
                     </span>
                     <span className="rank-change__body">
                       <span>{rankById(change.to).name}</span>
