@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import type { Language } from '../core/model';
 import { createTranslator, DEFAULT_LANGUAGE, localeOf, type Translator } from './index';
 
@@ -24,6 +24,14 @@ export function I18nProvider({
     () => ({ language, t: createTranslator(language), locale: localeOf(language), setLanguage }),
     [language, setLanguage],
   );
+
+  // The document's language, not just the strings'. `lang` was fixed at "de"
+  // in the HTML, so switching to English left a screen reader pronouncing
+  // English words with German phonetics.
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 

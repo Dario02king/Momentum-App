@@ -40,10 +40,17 @@ The app is built in reviewed stages. Current status:
 | 5 | Rating engine, rank ladder, rank badges | done |
 | 6 | Sports domain: weekly target tracking | done |
 | 7 | Backup export/import, PWA behaviour, service worker updates | done |
-| 8 | Product review pass and fixes | in progress |
+| 8 | Product review pass and fixes | done |
+
+Stage 8 closed with a combined walkthrough of the §25 acceptance questions,
+a copy review and a §6 design-conformance review against the real app. The
+build at that point is the **V1 release candidate**.
 
 Decisions taken during the build that the specification did not settle are
-recorded in [`docs/decisions.md`](docs/decisions.md).
+recorded in [`docs/decisions.md`](docs/decisions.md). Two of them override
+the specification at the product owner's direction: D13 replaces §6's
+"dark interface only" with a single light theme, and D16 gives the rank
+badge its own dark hero inside that light screen.
 
 ## Architecture
 

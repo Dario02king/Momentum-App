@@ -57,6 +57,18 @@
   gap: var(--space-2);
 }
 
+/*
+ * At the narrowest supported width, five 44px targets plus four 8px gaps
+ * come to 252px inside a 240px card, and the overflow was being clipped —
+ * the right-hand edge of 5 and of 10 simply disappeared. The gap gives way
+ * before the tap target does: 4px leaves 236px, which fits.
+ */
+@media (max-width: 359px) {
+  .answer-scale__row {
+    gap: var(--space-1);
+  }
+}
+
 .answer-scale__value {
   aspect-ratio: 1;
   min-height: var(--touch-min);

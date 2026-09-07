@@ -766,3 +766,35 @@ The rank badge carried `role="img"` and `aria-hidden="true"` at once. The
 `aria-hidden` wins, so nothing was broken, but the pair is a contradiction:
 an image role promises a name the badge has no way to supply, and does not
 need to — the rank's name is always in text beside it.
+
+## D62 — Zoom is never blocked
+
+The viewport meta carried `user-scalable=no`. Android Chrome honours it, so
+pinch-to-zoom was taken away from anyone who needs it — a straight
+accessibility failure, and there was nothing to protect: the layout holds at
+the narrowest supported width and the type scale is fixed in px, so nothing
+reflowed badly when zoomed.
+
+## D63 — The document's language follows the interface
+
+`<html lang>` was fixed at `de`. Switching to English left a screen reader
+pronouncing English words with German phonetics. The provider now sets it
+whenever the language changes.
+
+## D64 — The gap gives way before the tap target
+
+At 320px, five 44px scale bubbles plus four 8px gaps come to 252px inside a
+240px card, and the card's `overflow: hidden` silently cut the right-hand
+edge off 5 and off 10. Below 360px the gap drops to 4px, which fits without
+taking the targets under 44px or breaking the five-and-five layout.
+
+The reason this survived earlier passes is that a document-level overflow
+check cannot see it: the card clips its own content and the page never gains
+a scrollbar. The regression check now asks every element whether it fits
+inside whatever is clipping it.
+
+## D65 — A generic storage failure no longer blames private mode
+
+`error.storage.body` — the fallback for an unclassified failure — was a
+byte-for-byte copy of `error.storage.unavailable`, so any storage error the
+app could not classify told the user their browser was in private mode.

@@ -128,7 +128,7 @@ export const de = {
   'error.progress.title': 'Der Verlauf konnte nicht geladen werden',
   'error.rank.title': 'Der Rang konnte nicht geladen werden',
   'error.load.retry': 'Erneut versuchen',
-  'error.stale': 'Nicht aktualisiert.',
+  'error.stale': 'Konnte nicht aktualisiert werden.',
   'error.action': 'Das hat nicht geklappt. Versuche es noch einmal.',
   'error.actionDismiss': 'Schliessen',
 
@@ -176,7 +176,6 @@ export const de = {
     'Verlaufskurve über {days} Tage: {direction}. Von {from} auf {to}, Tiefstwert {min}, Höchstwert {max}.',
   'progress.scoredDays': '{count} von {total} Tagen erfasst',
 
-  'heatmap.average': 'Durchschnitt {value} Prozent',
   'heatmap.range': 'Letzte {count} Tage',
   'heatmap.rowSummary': '{recorded} von {total} Tagen erfasst, {missing} ohne Daten',
   'heatmap.tableCaption': 'Tageswerte der letzten {count} Tage in Prozent',
@@ -241,7 +240,7 @@ export const de = {
 
   'error.storage.title': 'Daten konnten nicht geladen werden',
   'error.storage.body':
-    'Momentum speichert alles lokal auf diesem Gerät. Im privaten Modus mancher Browser ist das nicht möglich.',
+    'Momentum konnte deine Daten gerade nicht öffnen. Versuche es noch einmal.',
 } as const;
 
 export type TranslationKey = keyof typeof de;

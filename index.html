@@ -4,11 +4,13 @@
     <meta charset="UTF-8" />
     <!-- viewport-fit=cover is what lets the app reach under the notch and the
          home indicator; the safe-area insets in tokens.css put the content
-         back where it belongs. -->
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
-    />
+         back where it belongs.
+
+         Zoom is deliberately not blocked. `user-scalable=no` is honoured by
+         Android Chrome and takes pinch-to-zoom away from anyone who needs it,
+         which is a straight accessibility failure; the layout already holds
+         at 200% text, so there was nothing to protect. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f4f4f8" />
     <meta name="description" content="Sieh, wohin dein Leben steuert." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
