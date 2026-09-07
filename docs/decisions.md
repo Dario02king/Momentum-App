@@ -94,6 +94,11 @@ reported rather than invented; the work follows HIG principles directly
 (type scale, 44px targets, safe areas, translucent tab bar, restrained
 motion). Worth re-checking before the stage 8 review.
 
+Re-checked at stage 8: still none. The §6 conformance review was therefore
+done against §6's own rules — the type scale, card treatment, tab bar,
+targets, safe areas and the one dark surface — rather than against an
+external HIG reference, as §6 instructs.
+
 ## D13 — The interface is light (supersedes D7, revises D8)
 
 *Decided by the product owner, overriding §6's "dark interface only".*
