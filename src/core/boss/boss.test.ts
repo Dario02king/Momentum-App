@@ -6,6 +6,7 @@ import {
   BOSS_PROGRESS_MAX,
   bossEraOf,
   bossPointFor,
+  bossSeries,
   equalWeights,
   normaliseWeights,
   progressToRating,
@@ -161,5 +162,139 @@ describe('one day of Boss progress', () => {
   it('reports a rating the rank machinery can consume', () => {
     const point = bossPointFor(weighted, { mental: 4, gym: 4 }, null);
     expect(rankForRating(point.rating).index).toBe(4);
+  });
+});
+
+describe('the join between the two eras', () => {
+  const weighted = bossEraOf(snapshot({ boss: { weights: { mental: 1, gym: 1 } } }));
+  const legacy: ReturnType<typeof bossEraOf> = { era: 'legacy' };
+
+  const day = (
+    era: ReturnType<typeof bossEraOf>,
+    legacyProgress: number | null,
+    mental: number,
+    gym: number,
+    started = true,
+  ) => ({
+    era,
+    legacyProgress,
+    domains: [
+      { domain: 'mental' as const, progress: mental, started },
+      { domain: 'gym' as const, progress: gym, started },
+    ],
+  });
+
+  it('replays the RC2 era as the RC2 progression, untouched', () => {
+    const { points } = bossSeries([
+      day(legacy, 3.1, 5, 6),
+      day(legacy, 3.4, 5, 6),
+      day(legacy, 3.2, 5, 6),
+    ]);
+    expect(points.map((point) => point.progress)).toEqual([3.1, 3.4, 3.2]);
+    expect(points.every((point) => point.era === 'legacy')).toBe(true);
+  });
+
+  it('continues the new era from the final RC2 value, exactly', () => {
+    const { points, transition } = bossSeries([
+      day(legacy, 3.1, 5, 6),
+      day(legacy, 3.4, 5, 6),
+      day(weighted, null, 5, 6),
+    ]);
+    // An upgrade must neither create progress nor take it away.
+    expect(transition?.from).toBe('legacy');
+    expect(transition?.index).toBe(2);
+    expect(transition?.anchorProgress).toBe(3.4);
+    // Nothing moved in either domain, so the Boss did not move either.
+    expect(points[2]?.progress).toBe(3.4);
+    expect(points[2]?.movement).toBe(0);
+  });
+
+  it('does not replace the standing with the weighted level of the domains', () => {
+    // The domains sit at 5 and 6; a weighted level would read 5.5 and the
+    // user would gain two ranks for installing an update.
+    const { points } = bossSeries([day(legacy, 3.4, 5, 6), day(weighted, null, 5, 6)]);
+    expect(points[1]?.progress).toBe(3.4);
+    expect(points[1]?.progress).not.toBeCloseTo(5.5, 3);
+  });
+
+  it('moves afterwards by the weighted movement of the domains', () => {
+    const { points } = bossSeries([
+      day(legacy, 3.4, 5, 6),
+      day(weighted, null, 5, 6),
+      day(weighted, null, 5.4, 6.2), // +0.4 and +0.2, equally weighted
+    ]);
+    expect(points[2]?.movement).toBeCloseTo(0.3, 10);
+    expect(points[2]?.progress).toBeCloseTo(3.7, 10);
+  });
+
+  it('honours the weights in force on the day the movement happened', () => {
+    const heavy = bossEraOf(snapshot({ boss: { weights: { mental: 3, gym: 1 } } }));
+    const { points } = bossSeries([
+      day(legacy, 3.4, 5, 6),
+      day(heavy, null, 5, 6),
+      day(heavy, null, 5.4, 6.2), // 0.75 × 0.4 + 0.25 × 0.2
+    ]);
+    expect(points[2]?.movement).toBeCloseTo(0.35, 10);
+  });
+
+  it('falls when the domains fall, by the same rule', () => {
+    const { points } = bossSeries([
+      day(legacy, 4, 5, 6),
+      day(weighted, null, 5, 6),
+      day(weighted, null, 4.6, 5.8),
+    ]);
+    expect(points[2]?.progress).toBeCloseTo(3.7, 10);
+  });
+
+  it('cancels the arbitrary starting level of a domain ledger', () => {
+    // Two profiles whose domains sit at completely different absolute levels
+    // move the Boss identically, because only the difference is read.
+    const low = bossSeries([day(legacy, 3.4, 1, 1), day(weighted, null, 1, 1), day(weighted, null, 1.4, 1.2)]);
+    const high = bossSeries([day(legacy, 3.4, 7, 7), day(weighted, null, 7, 7), day(weighted, null, 7.4, 7.2)]);
+    expect(low.points[2]?.progress).toBeCloseTo(high.points[2]?.progress ?? -1, 10);
+  });
+
+  it('is not dragged towards zero by a domain that has not started', () => {
+    const { points } = bossSeries([
+      day(legacy, 5.5, 0, 0, false),
+      day(weighted, null, 0, 0, false),
+      day(weighted, null, 0, 0, false),
+    ]);
+    expect(points[1]?.progress).toBe(5.5);
+    expect(points[2]?.progress).toBe(5.5);
+    expect(points[2]?.contributions).toEqual([]);
+  });
+
+  it('starts a domain contributing only once it has actually started', () => {
+    const { points } = bossSeries([
+      day(legacy, 3, 4, 2, false),
+      // Gym has still not started, so its level is not read at all.
+      { era: weighted, legacyProgress: null, domains: [
+        { domain: 'mental', progress: 4.2, started: true },
+        { domain: 'gym', progress: 2, started: false },
+      ] },
+      // Now it has, and from here its movement counts.
+      { era: weighted, legacyProgress: null, domains: [
+        { domain: 'mental', progress: 4.2, started: true },
+        { domain: 'gym', progress: 2.4, started: true },
+      ] },
+    ]);
+    expect(points[1]?.contributions.map((entry) => entry.domain)).toEqual(['mental']);
+    expect(points[2]?.movement).toBeCloseTo(0.2, 10);
+  });
+
+  it('stays inside the ladder', () => {
+    const climb = Array.from({ length: 40 }, (_, index) =>
+      day(weighted, null, index, index),
+    );
+    const { points } = bossSeries([day(legacy, 7.9, 0, 0), ...climb]);
+    expect(points.every((point) => point.progress >= 0)).toBe(true);
+    expect(points.every((point) => point.progress <= BOSS_PROGRESS_MAX)).toBe(true);
+  });
+
+  it('starts a profile with no RC2 era at the weighted level it actually has', () => {
+    const { points, transition } = bossSeries([day(weighted, null, 4, 2)]);
+    expect(transition?.from).toBe('fresh');
+    expect(points[0]?.progress).toBeCloseTo(3, 10);
   });
 });

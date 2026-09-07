@@ -3,14 +3,16 @@ import type { DateKey } from '../../core/dates';
 import {
   BOSS_PROGRESS_MAX,
   bossEraOf,
-  bossPointFor,
+  bossSeries,
   ratingToProgress,
+  type BossDayInput,
   type BossEra,
   type BossPoint,
+  type BossTransition,
 } from '../../core/boss';
 import { DOMAIN_TYPES } from '../../core/domains';
 import { buildLedger, type DomainLedger } from '../../core/ledger';
-import type { DomainType, ConfigSnapshotRecord } from '../../core/model';
+import type { ConfigSnapshotRecord, DomainType } from '../../core/model';
 import { compareDateKeys } from '../../core/dates';
 import type { DayState } from '../../core/rating';
 import { rankHistory, rankForRating, type Rank, type RankChange } from '../../core/ranks';
@@ -28,35 +30,39 @@ import { loadProgression, progressionOrigin, type Progression } from './ratingSe
  * and that series is what the Boss uses for every day that predates the
  * upgrade. Nothing here can move a number a user has already seen.
  *
- * ## The two eras
+ * ## The two eras, and the join between them
  *
  * Each day resolves to the config snapshot in force on it, and that snapshot
  * decides how the Boss is computed for that day:
  *
  * - **No `boss` field** — the snapshot was written by RC2. That day had one
  *   progression covering everything the user did, so the Boss for it *is*
- *   that progression. This is what grandfathering means in practice: it is
- *   not a carried-over number seeded at the boundary, it is the same replay,
- *   so pre-upgrade Boss history is exactly what RC2 showed and cannot drift.
- * - **Weights present** — the Boss is the weighted mean of the ladder
- *   positions of the domains enabled on that day.
+ *   that progression. It is not a carried-over number seeded at the boundary,
+ *   it is the same replay, so pre-upgrade Boss history is exactly what RC2
+ *   showed and cannot drift.
+ * - **Weights present** — the Boss continues from where the RC2 era left it
+ *   and moves by the weighted movement of the domain ledgers.
  *
- * The two are different quantities, so a user who had RC2's Sport domain and
- * splits it into Gym and Running will see the Boss step at the boundary. That
- * step is forward-only by construction, and converting the legacy sessions
- * (rather than keeping them) is what keeps it small, because the Gym or
- * Running ledger then replays the same sessions the old rating was built on.
+ * An application upgrade must not create progress or take it away. Replacing
+ * the user's standing with a weighted *level* computed a different way would
+ * do exactly that on the day it landed; accumulating weighted *movement* from
+ * the RC2 era's final value cannot. `bossSeries` holds the formula and the
+ * reasoning; this module's job is to feed it truthful per-domain series.
  */
 
 export interface DomainProgression extends DomainLedger {
   /** Ladder position on each day, aligned with the history days. */
   series: number[];
+  /** Whether the domain had started by each of those days. */
+  active: boolean[];
 }
 
 export interface BossProgression {
   origin: DateKey;
   /** One Boss point per day, aligned with `history.days`. */
   points: BossPoint[];
+  /** Where the weighted era begins, and the value it continues from. */
+  transition: (BossTransition & { date: DateKey }) | null;
   /** Ladder position today, 0–8. */
   progress: number;
   rank: Rank;
@@ -139,6 +145,21 @@ function domainDayStates(history: History, domain: DomainType): DayState[] {
   });
 }
 
+/**
+ * The first day a domain had anything of its own, and every day after it.
+ *
+ * A domain contributes to the Boss only from here. Before it, it has no
+ * history — and it is not given one: an untouched ledger sits at the starting
+ * rating, which is an arbitrary constant, not a performance the user earned.
+ */
+function startedByDay(days: readonly DayState[]): boolean[] {
+  let started = false;
+  return days.map((day) => {
+    if (day.status === 'scored' && day.recorded) started = true;
+    return started;
+  });
+}
+
 function domainXp(history: History, domain: DomainType): { days: XpDay[]; weeks: XpWeek[] } {
   const days: XpDay[] = history.days.map((day) => {
     const entry = day.domains.find((candidate) => candidate.domain === domain);
@@ -174,31 +195,30 @@ export async function loadBossProgression(
 
   const domains: DomainProgression[] = DOMAIN_TYPES.map((domain) => {
     const xp = domainXp(history, domain);
-    const ledger = buildLedger({
-      domain,
-      days: domainDayStates(history, domain),
-      xpDays: xp.days,
-      xpWeeks: xp.weeks,
-    });
-    return { ...ledger, series: ledger.points.map((point) => ratingToProgress(point.rating)) };
+    const days = domainDayStates(history, domain);
+    const ledger = buildLedger({ domain, days, xpDays: xp.days, xpWeeks: xp.weeks });
+    return {
+      ...ledger,
+      series: ledger.points.map((point) => ratingToProgress(point.rating)),
+      active: startedByDay(days),
+    };
   });
 
-  const started = new Map(domains.map((domain) => [domain.domain, domain.started]));
   const eras = eraByDate(snapshots, dates);
   const legacySeries = legacy.points.map((point) => ratingToProgress(point.rating));
 
-  const points: BossPoint[] = dates.map((_, index) => {
-    const progressByDomain: Partial<Record<DomainType, number | null>> = {};
-    for (const domain of domains) {
-      // A domain the user has never used contributes nothing rather than a
-      // starting rating: enabling Food tomorrow must not halve a year of
-      // Wellbeing on its first day.
-      progressByDomain[domain.domain] = started.get(domain.domain)
-        ? (domain.series[index] ?? null)
-        : null;
-    }
-    return bossPointFor(eras[index] ?? { era: 'legacy' }, progressByDomain, legacySeries[index] ?? null);
-  });
+  const series = bossSeries(
+    dates.map((_, index): BossDayInput => ({
+      era: eras[index] ?? { era: 'legacy' },
+      legacyProgress: legacySeries[index] ?? null,
+      domains: domains.map((domain) => ({
+        domain: domain.domain,
+        progress: domain.series[index] ?? 0,
+        started: domain.active[index] ?? false,
+      })),
+    })),
+  );
+  const points = series.points;
 
   const ranks = rankHistory(
     points.map((point, index) => ({ date: dates[index]!, rating: point.rating })),
@@ -209,6 +229,9 @@ export async function loadBossProgression(
   return {
     origin,
     points,
+    transition: series.transition
+      ? { ...series.transition, date: dates[series.transition.index]! }
+      : null,
     progress: last?.progress ?? 0,
     rank: ranks.current,
     peakRank: ranks.peak.index >= ranks.current.index ? ranks.peak : rankForRating(peakRating),

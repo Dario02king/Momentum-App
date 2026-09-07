@@ -176,6 +176,8 @@ export interface BossContribution {
   progress: number;
   /** Share of the Boss, after normalisation. */
   weight: number;
+  /** How far this domain moved today, before its weight is applied. */
+  movement: number;
 }
 
 export interface BossPoint {
@@ -183,17 +185,23 @@ export interface BossPoint {
   progress: number;
   /** The same point expressed as a rating, for the rank machinery. */
   rating: number;
+  /** How far the Boss moved from the previous day. */
+  movement: number;
   contributions: BossContribution[];
   era: BossEra['era'];
 }
 
 /**
- * One day of Boss progress.
+ * The weighted mean of the levels the domains are *at*.
  *
- * A domain with no progression yet — enabled today, never used — contributes
- * nothing rather than a zero, and its weight leaves the denominator with it.
- * Counting it as zero would mean that switching Food on tomorrow instantly
- * halves a year of Wellbeing, which is a punishment for adding a goal.
+ * Used only where there is nothing to continue from — a profile that never
+ * had an RC2 era, so its Boss has to start somewhere. It is deliberately not
+ * how the Boss moves; see `bossSeries`.
+ *
+ * A domain with no progression yet contributes nothing rather than a zero,
+ * and its weight leaves the denominator with it. Counting it as zero would
+ * mean that switching Food on tomorrow instantly halves a year of Wellbeing,
+ * which is a punishment for adding a goal.
  */
 export function bossPointFor(
   era: BossEra,
@@ -205,6 +213,7 @@ export function bossPointFor(
     return {
       progress,
       rating: progressToRating(progress),
+      movement: 0,
       contributions: [],
       era: 'legacy',
     };
@@ -218,7 +227,7 @@ export function bossPointFor(
     if (progress === null || progress === undefined) continue;
     const weight = era.weights[domain] ?? 0;
     if (weight <= 0) continue;
-    contributions.push({ domain, progress, weight });
+    contributions.push({ domain, progress, weight, movement: 0 });
     weighted += progress * weight;
     total += weight;
   }
@@ -227,12 +236,186 @@ export function bossPointFor(
   return {
     progress,
     rating: progressToRating(progress),
+    movement: 0,
     contributions: contributions.map((entry) => ({
       ...entry,
       weight: total > 0 ? entry.weight / total : 0,
     })),
     era: 'weighted',
   };
+}
+
+/* ── The series, and why it accumulates rather than recomputes ──────────── */
+
+export interface BossDomainDay {
+  domain: DomainType;
+  /** The domain ledger's ladder position on this day. */
+  progress: number;
+  /** Whether the domain has had a scored, recorded day by now. */
+  started: boolean;
+}
+
+export interface BossDayInput {
+  era: BossEra;
+  /** The undivided RC2 progression's ladder position, where one exists. */
+  legacyProgress: number | null;
+  domains: BossDomainDay[];
+}
+
+/**
+ * Where the Boss switched from the RC2 era to the weighted one.
+ *
+ * `anchorProgress` is the value the new era continues from. When there was an
+ * RC2 era it is that era's final value, to the last bit — which is the whole
+ * of the continuity rule.
+ */
+export interface BossTransition {
+  /** Index into the series of the first weighted day. */
+  index: number;
+  anchorProgress: number;
+  anchorRating: number;
+  /** `legacy` when an RC2 era preceded it, `fresh` for a new profile. */
+  from: 'legacy' | 'fresh';
+}
+
+export interface BossSeries {
+  points: BossPoint[];
+  transition: BossTransition | null;
+}
+
+/**
+ * The Boss over a whole history.
+ *
+ * Two eras, and the join between them is the part that matters.
+ *
+ * **Before the upgrade** the Boss *is* the RC2 replay. Every snapshot RC2
+ * wrote lacks Boss weights, the replay reads that absence as "one undivided
+ * progression", and the value for such a day is that progression's. Nothing
+ * is stored, nothing is seeded, and nothing can drift from what the user
+ * already saw.
+ *
+ * **From the upgrade forward** the Boss continues from where the RC2 era left
+ * it and moves by the weighted *movement* of the active domain ledgers:
+ *
+ * ```
+ *   boss[t] = clamp( boss[t-1] + Σ w[d,t] · ( p[d,t] − p[d,t-1] ) )
+ * ```
+ *
+ * where `w[d,t]` are the weights in the config snapshot in force on day `t`,
+ * normalised over the domains that are enabled, weighted and have actually
+ * started by then.
+ *
+ * ## Why movement, and not the weighted level
+ *
+ * Taking the weighted *level* would replace the user's standing with a number
+ * computed a different way, and an upgrade would create or destroy progress
+ * on the day it landed. Taking the weighted *movement* cannot: an upgrade
+ * that changes how progress is aggregated adds nothing and removes nothing,
+ * and from then on the domains decide how the Boss changes.
+ *
+ * It also disposes of an awkward artefact for free. A domain ledger's
+ * starting rating is an arbitrary constant, and in a weighted level it would
+ * show up as a real Boss level. In a difference it cancels.
+ *
+ * ## What this is not
+ *
+ * Not smoothing, not a grace period, and not a fabricated history. No
+ * domain is given performance it never had; a domain simply contributes
+ * nothing until it has actually started, and its weight leaves the
+ * denominator with it. A day on which no domain has started yet moves the
+ * Boss by zero rather than dragging it towards the bottom of the ladder.
+ */
+export function bossSeries(days: readonly BossDayInput[]): BossSeries {
+  const points: BossPoint[] = [];
+  let transition: BossTransition | null = null;
+  let current: number | null = null;
+  let previous = new Map<DomainType, number>();
+
+  days.forEach((day, index) => {
+    const levels = new Map(day.domains.map((entry) => [entry.domain, entry.progress]));
+
+    if (day.era.era === 'legacy') {
+      current = day.legacyProgress ?? current ?? 0;
+      points.push({
+        progress: current,
+        rating: progressToRating(current),
+        movement: 0,
+        contributions: [],
+        era: 'legacy',
+      });
+      previous = levels;
+      return;
+    }
+
+    // The domains that may move the Boss today: enabled in this day's
+    // snapshot, given a weight by it, and actually under way.
+    const era = day.era;
+    const weightOf = (domain: DomainType): number => era.weights[domain] ?? 0;
+    const active = day.domains.filter((entry) => entry.started && weightOf(entry.domain) > 0);
+    const total = active.reduce((sum, entry) => sum + weightOf(entry.domain), 0);
+
+    if (current === null) {
+      /*
+       * A profile with no RC2 era: there is nothing to continue from, so the
+       * Boss starts at the weighted level of what is there. This is the only
+       * place a weighted level is ever used.
+       */
+      const opening = bossPointFor(
+        day.era,
+        Object.fromEntries(
+          day.domains.map((entry) => [entry.domain, entry.started ? entry.progress : null]),
+        ) as Partial<Record<DomainType, number | null>>,
+        null,
+      );
+      current = opening.progress;
+      transition = {
+        index,
+        anchorProgress: current,
+        anchorRating: progressToRating(current),
+        from: 'fresh',
+      };
+      points.push({ ...opening, movement: 0 });
+      previous = levels;
+      return;
+    }
+
+    if (transition === null) {
+      // The upgrade day. The anchor is the RC2 era's final value, exactly.
+      transition = {
+        index,
+        anchorProgress: current,
+        anchorRating: progressToRating(current),
+        from: 'legacy',
+      };
+    }
+
+    const contributions: BossContribution[] = [];
+    let movement = 0;
+    for (const entry of active) {
+      const share = total > 0 ? weightOf(entry.domain) / total : 0;
+      const before = previous.get(entry.domain) ?? entry.progress;
+      const step = entry.progress - before;
+      movement += share * step;
+      contributions.push({
+        domain: entry.domain,
+        progress: entry.progress,
+        weight: share,
+        movement: step,
+      });
+    }
+
+    current = Math.min(BOSS_PROGRESS_MAX, Math.max(0, current + movement));
+    points.push({
+      progress: current,
+      rating: progressToRating(current),
+      movement,
+      contributions,
+      era: 'weighted',
+    });
+    previous = levels;
+  });
+
+  return { points, transition };
 }
 
 /** Every domain that could contribute, for a settings screen to enumerate. */

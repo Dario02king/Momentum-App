@@ -843,12 +843,48 @@ seeded, it is the same replay RC2 ran. Pre-upgrade Boss history is exactly
 what the user already saw and cannot drift. Every snapshot this build writes
 carries weights, so the marker stays unambiguous.
 
-The consequence is a step at the boundary for a user who had RC2's Sport
-domain: the old rating averaged Wellbeing and Sport into one number, and the
-new one is a weighted mean of separate ledgers. The step is forward-only by
-construction, peak rank cannot fall, and the demotion rules need three
-sustained days — but it is a visible change and it is flagged for review
-rather than hidden.
+## D68a — The Boss accumulates weighted movement from the RC2 anchor
+
+*Required at the Phase 1 review, replacing the era step this originally had.*
+
+The rule is that **an application upgrade alone must not create progress or
+take progress away.** The first implementation broke it: the RC2 era averaged
+Wellbeing and Sport into one number, the new era took the weighted *level* of
+the separate ledgers, and those are different quantities — so the Boss could
+move a tier on the day the update landed, without the user doing anything.
+
+The Boss now continues from where the RC2 era left it and moves by the
+weighted *movement* of the domain ledgers:
+
+```
+boss[t] = clamp( boss[t-1] + Σ w[d,t] · ( p[d,t] − p[d,t-1] ) , 0 , 8 )
+```
+
+`p[d,t]` is domain `d`'s ladder position on day `t`; `w[d,t]` are the weights
+in the config snapshot in force on day `t`, normalised over the domains that
+are enabled, weighted, and have actually started. The anchor `boss[t0-1]` is
+the RC2 era's final value, bit for bit. A profile with no RC2 era has nothing
+to continue from, so it opens at the weighted level of what it has — the one
+place a level is used at all.
+
+What this buys, beyond continuity:
+
+- **A domain ledger's starting rating stops being visible.** It is an
+  arbitrary constant; in a weighted level it would read as real standing, and
+  in a difference it cancels.
+- **Weights stay forward-only.** Each day's movement uses that day's
+  snapshot, so changing weights today cannot reach back, and enabling Food
+  later cannot alter a single earlier Boss value.
+- **A domain that has not started contributes nothing** and its weight leaves
+  the denominator with it, so it cannot drag the Boss towards zero — and a day
+  on which nothing has started moves the Boss by zero.
+- Lifetime XP is a sum over history that only ever grows, and peak rank is a
+  maximum over a series that now runs unbroken through the anchor, so neither
+  can fall at the boundary.
+
+It is not smoothing and not a grace period: no value is adjusted towards
+another, and nothing is suspended for a while. It is one continuous series
+whose increments change definition at a point.
 
 ## D69 — The Boss averages ladder position, not rating
 
@@ -865,9 +901,15 @@ sustained-demotion rules instead of growing a second copy of them.
 
 ## D70 — A domain that has never been used is left out of the Boss
 
-Not counted as zero. Switching Food on tomorrow would otherwise halve a year
-of Wellbeing on its first day, which is a punishment for adding a goal. Its
-weight leaves the denominator with it.
+Not counted as zero, and not given a history it never had. Boss continuity
+(D68a) and domain-history truth are separate concerns, and solving the first
+by fabricating the second — handing Gym, Running and Food the user's old
+overall rank as a stand-in — would make every domain screen a lie.
+
+A domain contributes from the first day it actually has a scored, recorded
+day, and its weight leaves the denominator until then. Legacy Sport is the
+one exception, and only because the user themselves said what those sessions
+were.
 
 ## D71 — Converting legacy Sport copies the sessions, it never moves them
 

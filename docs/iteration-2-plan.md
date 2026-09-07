@@ -188,9 +188,11 @@ rating of every promotion.
 - **Three-quantity ledger** (`core/ledger`), per domain: momentum (decays),
   lifetime XP (monotone), peak rank (never falls). RC2 had all three for one
   implicit domain; this makes them plural rather than inventing them.
-- **Boss Rank** (`core/boss`, `storage/services/bossService.ts`): a weighted
-  mean of ladder positions, converted back to a rating so it inherits the
-  existing hysteresis and demotion rules.
+- **Boss Rank** (`core/boss`, `storage/services/bossService.ts`): continues
+  from the RC2 era's final value and moves by the weighted *movement* of the
+  domain ledgers (D68a), converted back to a rating so it inherits the
+  existing hysteresis and demotion rules. An upgrade neither creates progress
+  nor takes it away.
 - **Decay skeleton** (`core/decay`): the input shape, the model contract, one
   switch and one flag. The formula itself is Gate 1 and is not written.
 - **Migration v1 → v2**: eleven new stores, question categories backfilled by
