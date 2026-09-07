@@ -242,6 +242,12 @@ export async function runTransaction<T>(
   try {
     result = await body(tx);
   } catch (error) {
+    // `done` is about to reject too — aborting the transaction is what makes
+    // it reject — and nothing is waiting on it any more, because the error
+    // from `body` is the one worth reporting. Observe it, or it surfaces as
+    // an unhandled rejection: noise in the browser, and a non-zero exit from
+    // the test runner even when every test passes.
+    done.catch(() => undefined);
     try {
       tx.abort();
     } catch {

@@ -1,6 +1,14 @@
 # Momentum V1 — Release Candidate 1
 
-**RC1 is `ae8b479` on `claude/momentum-pwa-spec-j82dhm`.**
+**RC1 is `ae8b479` on `claude/momentum-pwa-spec-j82dhm`**, plus two commits
+that were required to make it testable at all and that changed no product
+behaviour:
+
+- the GitHub Pages deploy workflow — the app had never been deployed, so
+  there was no address to install from;
+- a fix for an unhandled promise rejection in `runTransaction`, which made
+  `npm run test` exit non-zero and the deploy fail even with all 352 tests
+  passing.
 
 RC1 is a candidate, not a release. It has never run on a real device and has
 never been driven by a real screen reader. Nothing below should be read as a
@@ -59,6 +67,17 @@ everything that automation cannot reach.
 | 4 | 14 unused strings remain in the i18n catalogues | Invisible to users; deleting them changes nothing and is churn at RC |
 | 5 | Backup counts have no singular form — a one-answer backup reads "1 Antworten" | A transient status line in a rare edge case |
 | 6 | No Apple HIG reference was available in this environment | §6 requires this be stated rather than invented; the conformance review used §6's own rules |
+
+## Deployment
+
+The app is published to GitHub Pages by `.github/workflows/deploy.yml`, which
+runs typecheck, tests and the production build before publishing. The Vite
+base path is `/Momentum-App/`, which is where a project site is served from,
+so the build needs no deployment-specific configuration.
+
+**Pages must be enabled once, by hand:** repository → Settings → Pages →
+Build and deployment → Source → **GitHub Actions**. Until that is done the
+workflow runs and fails at the publish step; a commit cannot set it.
 
 ## Two places the app deliberately departs from the specification
 
