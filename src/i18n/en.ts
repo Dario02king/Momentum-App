@@ -120,6 +120,8 @@ export const en: Translations = {
   'today.noQuestionsTitle': 'No active questions',
   'today.noQuestionsBody': 'You can add some under Areas at any time.',
   'today.closed': 'This day is closed.',
+  'error.day.title': 'Today could not be loaded',
+  'error.day.body': 'Try again. Your entries are saved.',
 
   'answer.yes': 'Yes',
   'answer.no': 'No',

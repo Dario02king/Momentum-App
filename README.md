@@ -33,8 +33,8 @@ The app is built in reviewed stages. Current status:
 | 4 | Progress screen: heatmap and trend curve | done |
 | 5 | Rating engine, rank ladder, rank badges | done |
 | 6 | Sports domain: weekly target tracking | done |
-| 7 | Backup export/import, PWA behaviour, service worker updates | in review |
-| 8 | Product review pass and fixes | not started |
+| 7 | Backup export/import, PWA behaviour, service worker updates | done |
+| 8 | Product review pass and fixes | in progress |
 
 Decisions taken during the build that the specification did not settle are
 recorded in [`docs/decisions.md`](docs/decisions.md).

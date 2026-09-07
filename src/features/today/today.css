@@ -56,7 +56,6 @@
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
 }
 
 .check-in + .check-in {
@@ -69,8 +68,77 @@
   letter-spacing: -0.2px;
 }
 
-.check-in--answered .check-in__question {
+/*
+ * An answered question folds to one line. The row is a button covering the
+ * full width of the block, so the whole line is the target rather than the
+ * chevron alone.
+ */
+.check-in__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-min);
+  margin: calc(var(--space-2) * -1) 0;
+  padding: var(--space-2) 0;
+  text-align: left;
+}
+
+.check-in__summary .check-in__question {
+  flex: 1;
+  min-width: 0;
+  /* The answer is what matters once a question is done, so the prompt steps
+     back and the value takes the emphasis. */
   color: var(--text-secondary);
+}
+
+.check-in__value {
+  flex-shrink: 0;
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+}
+
+.check-in__chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+
+.check-in--answered.check-in--open .check-in__chevron {
+  transform: rotate(180deg);
+}
+
+/*
+ * The fold itself. `grid-template-rows` animates from 0fr to 1fr, which
+ * needs no measured height, and `visibility` is held back until the fold has
+ * finished so a closed panel is out of the tab order and out of the
+ * accessibility tree rather than merely invisible.
+ */
+.check-in__panel {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--duration-base) var(--ease-standard);
+}
+
+.check-in--answered:not(.check-in--open) .check-in__panel {
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--duration-base) var(--ease-standard),
+    visibility 0s linear var(--duration-base);
+}
+
+.check-in__panelInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.check-in__panelContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
 }
 
 /*

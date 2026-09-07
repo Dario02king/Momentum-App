@@ -567,3 +567,59 @@ The history list used bare ↑/↓ glyphs, so the one place that shows the
 ladder as a sequence showed none of it. Each entry now carries the badge of
 the rank reached, with the direction kept as a separate glyph on its corner
 — colour is never the only carrier of promotion versus demotion.
+
+## D48 — The eight-rank badge family is locked for V1
+
+The family shipped in D45–D47 is the V1 design and is not revisited for
+polish. That fixes four things in particular: Champion steps sideways into
+platinum-gold with a crimson gem rather than trying to out-yellow Master;
+Rookie stays deliberately restrained, with no aura and no ornament, because
+the floor of the ladder has to look like the floor; Legend stays
+structurally distinct from the shield-based ranks; and rank history keeps
+the badge of the rank reached.
+
+Further changes need an actual defect — usability, accessibility,
+rendering or integration — not a better idea about the artwork.
+
+## D49 — An answered question folds away, and the fold is not instant
+
+*Deferred from stage 3 to the stage 8 review by the product owner.*
+
+Today shows what is still open. An answered question folds to one line —
+the question, and what was answered — so a finished check-in reads as a
+short list of receipts rather than a wall of controls that have already
+done their job. Tapping the line opens it again: nothing is hidden, only
+folded.
+
+The fold waits about six-tenths of a second. Answering something and having
+it vanish under your finger reads as the app taking the screen away, and it
+hides the scale's band label at the moment it is most useful. The row stays
+open long enough to see the answer land, then closes. The timer is checked
+against what is on screen when it fires rather than what was expected when
+it started, because the write is asynchronous and can outrun the delay.
+
+The summary states the band, not only the number — "8 · Sehr gut" — for the
+same reason the scale itself does: a number alone is not an answer.
+
+A folded panel is `visibility: hidden` once the fold finishes, so it leaves
+the tab order and the accessibility tree instead of merely being invisible.
+The fold animates `grid-template-rows` from `0fr` to `1fr`, which needs no
+measured height; the spacing lives inside the clipped box, because padding
+on the clipped box itself survives the fold as a strip of empty space.
+
+## D50 — A screen that cannot load says so
+
+Today rendered an empty `<div>` when its day failed to load — a blank
+screen with nothing to act on. It now states what happened and offers a
+retry. The failure is reported without naming the storage layer, per the
+stage 7 copy rule, and carries no icon: the icon set has no failure mark,
+and the celebratory one reads as the opposite of what happened.
+
+## D51 — Placeholder drift is caught by test
+
+English is typed against German, so a missing or misspelled key is already
+a compile error. A placeholder renamed inside one string is not: `{total}`
+in German and `{totals}` in English compiles and ships a literal brace to
+the screen. A test compares the placeholder sets per key, checks that
+supplying the expected parameters leaves nothing unfilled, and rejects
+empty strings.

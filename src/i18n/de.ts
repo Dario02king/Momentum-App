@@ -123,6 +123,8 @@ export const de = {
   'today.noQuestionsTitle': 'Keine Fragen aktiv',
   'today.noQuestionsBody': 'Unter Bereiche kannst du jederzeit welche hinzufügen.',
   'today.closed': 'Dieser Tag ist abgeschlossen.',
+  'error.day.title': 'Heute konnte nicht geladen werden',
+  'error.day.body': 'Versuche es noch einmal. Deine Einträge sind gespeichert.',
 
   'answer.yes': 'Ja',
   'answer.no': 'Nein',

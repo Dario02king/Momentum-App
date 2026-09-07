@@ -3,10 +3,10 @@ import { today as currentDay } from '../../core/clock';
 import type { SportsSessionRecord } from '../../core/model';
 import { Button, Card, EmptyState, Row, Section } from '../../components';
 import { ChevronRightIcon, PlusIcon, SparkIcon } from '../../components/Icons';
-import { BooleanAnswer, ScaleAnswer } from '../../domains/mental/AnswerControls';
 import { SessionSheet } from '../../domains/sports/SessionSheet';
 import { formatDayAndMonth, formatTime, formatWeekday } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
+import { CheckInItem } from './CheckInItem';
 import { useDay } from './useDay';
 import './today.css';
 
@@ -19,11 +19,36 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
   const t = useT();
   const { language } = useI18n();
   const date = currentDay();
-  const { state, answer, logSession, updateSession, deleteSession } = useDay(date);
+  const { state, answer, logSession, updateSession, deleteSession, refresh } = useDay(date);
   const [editingSession, setEditingSession] = useState<SportsSessionRecord | null>(null);
 
+  if (state.status === 'error') {
+    return (
+      <div className="screen">
+        <header className="screen__header">
+          <h1 className="screen__title">{t('nav.today')}</h1>
+        </header>
+        <div className="today__scroll">
+          <Card>
+            {/* No icon: the set has no failure mark, and a sparkle on an
+                error reads as celebration. */}
+            <EmptyState
+              title={t('error.day.title')}
+              body={t('error.day.body')}
+              action={
+                <Button variant="secondary" onClick={() => void refresh()}>
+                  {t('error.storage.retry')}
+                </Button>
+              }
+            />
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (state.status !== 'ready') {
-    return <div className="screen" aria-busy={state.status === 'loading'} />;
+    return <div className="screen" aria-busy="true" />;
   }
 
   const { day } = state;
@@ -80,43 +105,14 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
                   }
                 />
               ) : (
-                mental.items.map((item) => {
-                  const value = item.answer?.value ?? null;
-                  return (
-                    <div
-                      key={item.question.id}
-                      className={`check-in ${item.answer ? 'check-in--answered' : ''}`.trim()}
-                    >
-                      <p className="check-in__question">{item.question.text}</p>
-                      {item.question.type === 'boolean' ? (
-                        <BooleanAnswer
-                          questionText={item.question.text}
-                          value={typeof value === 'boolean' ? value : null}
-                          disabled={!day.editable}
-                          onChange={(next) => answer(item.question.id, next)}
-                        />
-                      ) : (
-                        <ScaleAnswer
-                          questionText={item.question.text}
-                          value={typeof value === 'number' ? value : null}
-                          disabled={!day.editable}
-                          onChange={(next) => answer(item.question.id, next)}
-                        />
-                      )}
-                      {/* Returning a question to unanswered is deliberate and
-                          explicit — never a side effect of tapping twice. */}
-                      {item.answer && day.editable ? (
-                        <button
-                          type="button"
-                          className="check-in__clear"
-                          onClick={() => answer(item.question.id, null)}
-                        >
-                          {t('answer.clear')}
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                })
+                mental.items.map((item) => (
+                  <CheckInItem
+                    key={item.question.id}
+                    item={item}
+                    editable={day.editable}
+                    onAnswer={(next) => answer(item.question.id, next)}
+                  />
+                ))
               )}
             </Card>
           </Section>
