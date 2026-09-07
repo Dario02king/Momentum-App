@@ -1,4 +1,5 @@
 import { nowIso, today } from '../../core/clock';
+import type { RankId } from '../../core/config/constants';
 import type { Language, SettingsRecord } from '../../core/model';
 import { STORES } from '../db';
 import { createRepository } from './base';
@@ -21,6 +22,7 @@ export const settingsRepository = {
       language: 'de',
       firstUseDate: today(),
       onboardingCompletedAt: null,
+      acknowledgedRankId: null,
       createdAt: stamp,
       updatedAt: stamp,
       ...defaults,
@@ -38,6 +40,11 @@ export const settingsRepository = {
 
   async setLanguage(language: Language): Promise<SettingsRecord> {
     return settingsRepository.update({ language });
+  },
+
+  /** Records that a promotion reveal has been played. */
+  async acknowledgeRank(rankId: RankId): Promise<SettingsRecord> {
+    return settingsRepository.update({ acknowledgedRankId: rankId });
   },
 
   async completeOnboarding(): Promise<SettingsRecord> {

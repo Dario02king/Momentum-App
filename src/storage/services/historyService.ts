@@ -9,6 +9,7 @@ import {
   type DateKey,
 } from '../../core/dates';
 import { sportsTargetOf, type AppConfigSnapshot, type ConfigSnapshotRecord } from '../../core/model';
+import type { WeekKey } from '../../core/dates';
 import { scoreDay, type DayScore, type DueQuestion } from '../../core/scoring/dayScore';
 import {
   answersRepository,
@@ -34,6 +35,15 @@ export interface HistoryQuestionRow {
   scores: (number | null)[];
 }
 
+export interface HistoryWeek {
+  weekKey: WeekKey;
+  /** The target in force when the week began, or `null` if sports was off. */
+  target: number | null;
+  sessions: number;
+  met: boolean;
+  inProgress: boolean;
+}
+
 export interface History {
   from: DateKey;
   to: DateKey;
@@ -47,6 +57,8 @@ export interface History {
   /** Whether anything at all was recorded on each day, aligned with `days`.
    *  A missed day scores zero, which reads as data — this says it was not. */
   activity: boolean[];
+  /** Every Monday-to-Sunday week the range touches, oldest first. */
+  weeks: HistoryWeek[];
   /** True when the range contains nothing to show at all. */
   empty: boolean;
 }
@@ -95,6 +107,7 @@ export async function loadHistory(
       sports: [],
       questions: [],
       activity: [],
+      weeks: [],
       empty: true,
     };
   }
@@ -194,6 +207,36 @@ export async function loadHistory(
       }),
     }));
 
+  /*
+   * Weeks, for the training streak and for XP. The target is resolved at the
+   * week's Monday: a mid-week change takes effect from the following week
+   * rather than retroactively rewriting the days already lived in this one.
+   */
+  const weekKeys: WeekKey[] = [];
+  const seenWeeks = new Set<WeekKey>();
+  for (const date of dates) {
+    const weekKey = weekKeyOf(date);
+    if (!seenWeeks.has(weekKey)) {
+      seenWeeks.add(weekKey);
+      weekKeys.push(weekKey);
+    }
+  }
+  const weeks: HistoryWeek[] = weekKeys.map((weekKey) => {
+    const monday = startOfWeek(
+      dates.find((date) => weekKeyOf(date) === weekKey) ?? from,
+    );
+    const config = resolveSnapshot(snapshots, monday);
+    const target = config ? sportsTargetOf(config) : null;
+    const count = sessionsByWeek.get(weekKey) ?? 0;
+    return {
+      weekKey,
+      target,
+      sessions: count,
+      met: target !== null && count >= target,
+      inProgress: compareDateKeys(endOfWeek(monday), reference) >= 0,
+    };
+  });
+
   const sessionDates = new Set(sessions.map((session) => session.date));
   const activity = dates.map(
     (date) => (answersByDate.get(date)?.size ?? 0) > 0 || sessionDates.has(date),
@@ -209,6 +252,7 @@ export async function loadHistory(
     sports: domainSeries('sports'),
     questions,
     activity,
+    weeks,
     empty: overall.every((value) => value === null),
   };
 }

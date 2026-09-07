@@ -57,6 +57,15 @@ export const RATING = {
   /** Streak bonus: total contribution is capped and each further day adds less. */
   STREAK_BONUS_CAP: 50,
   STREAK_BONUS_PER_DAY: 4,
+  /**
+   * How much of the gap to the bonus a day closes, in either direction.
+   *
+   * The bonus is applied gradually rather than switched on and off. Dropping
+   * a full bonus the instant a streak breaks would move the rating by up to
+   * the whole cap in one day, which at a tier boundary demotes the user for a
+   * single incomplete check-in — exactly what §13 rules out.
+   */
+  STREAK_BONUS_SMOOTHING: 0.25,
   /** Inactivity decay per day, by how long the inactivity has lasted. */
   DECAY: {
     GRACE_DAYS: 2,

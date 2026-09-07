@@ -1,0 +1,306 @@
+.rank__scroll {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-1) var(--space-2)
+    calc(var(--tab-bar-height) + var(--safe-bottom) + var(--space-10));
+}
+
+/*
+ * The hero — the one dark surface in a light app.
+ *
+ * The contrast works twice over: the badge stands against its own dark
+ * ground, and that ground stands against the calm light interface around it.
+ * Everything loud in Momentum is confined to this card by construction.
+ */
+.rank-hero {
+  position: relative;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  padding: var(--space-8) var(--space-5) var(--space-6);
+  background:
+    radial-gradient(120% 80% at 50% 0%, #23263a 0%, rgba(35, 38, 58, 0) 62%),
+    linear-gradient(168deg, #14161f 0%, #0b0c11 100%);
+  box-shadow: 0 12px 32px rgba(11, 12, 17, 0.28);
+  color: #fff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* A faint grain of light across the top, so the surface reads as material
+   rather than as a flat dark rectangle. */
+.rank-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 55% at 50% 8%, rgba(255, 255, 255, 0.07), transparent 70%);
+  pointer-events: none;
+}
+
+.rank-hero > * {
+  position: relative;
+}
+
+.rank-hero__name {
+  font-size: 30px;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.4px;
+  line-height: 1.1;
+}
+
+.rank-hero__rating {
+  font-size: var(--type-footnote);
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.rank-hero__progress {
+  width: 100%;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.rank-hero__track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.rank-hero__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, #8f7ff0, #7ce0ff);
+  transition: width var(--duration-base) var(--ease-standard);
+}
+
+.rank-hero__next {
+  font-size: var(--type-footnote);
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.rank-hero__note {
+  font-size: var(--type-caption);
+  color: rgba(255, 255, 255, 0.5);
+  max-width: 30ch;
+  line-height: 1.4;
+}
+
+/* The one orchestrated moment: a promotion reveal, played once. */
+.badge-svg--reveal {
+  animation: badge-reveal 900ms var(--ease-standard) both;
+}
+
+@keyframes badge-reveal {
+  0% {
+    transform: scale(0.72) rotate(-6deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.06) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.rank-hero__flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(50% 40% at 50% 40%, rgba(255, 255, 255, 0.5), transparent 70%);
+  animation: badge-flash 900ms var(--ease-standard) both;
+  pointer-events: none;
+}
+
+@keyframes badge-flash {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.rank-hero__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-svg--reveal,
+  .rank-hero__flash {
+    animation: none;
+  }
+  .rank-hero__flash {
+    display: none;
+  }
+}
+
+/* Standings ------------------------------------------------------------- */
+
+.standing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.standing + .standing::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--space-5);
+  right: 0;
+  height: 1px;
+  background: var(--separator);
+  transform: scaleY(0.5);
+  transform-origin: top;
+}
+
+.standing {
+  position: relative;
+}
+
+/* XP has no badge of its own; a neutral mark keeps the three rows aligned. */
+.standing__mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.4px;
+}
+
+/* The label and its hint are two stacked lines, not one run-on sentence. */
+.standing__label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.standing__name {
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+}
+
+.standing__hint {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.standing__value {
+  font-size: var(--type-headline);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+  flex-shrink: 0;
+}
+
+/* Streaks --------------------------------------------------------------- */
+
+.streaks {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.streak {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-secondary);
+  border-radius: var(--radius-inner);
+  padding: var(--space-4);
+}
+
+.streak__label {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.streak__value {
+  font-size: var(--type-title);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.streak__best {
+  font-size: var(--type-caption);
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+/* Rank history ---------------------------------------------------------- */
+
+.rank-change {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--type-subhead);
+}
+
+.rank-change__mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-bold);
+}
+
+.rank-change__mark--promotion {
+  background: var(--mint-tint);
+  color: var(--mint-ink);
+}
+
+.rank-change__mark--demotion {
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+}
+
+.rank-change__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rank-change__date {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}

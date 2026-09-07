@@ -1,26 +1,15 @@
 import { useState } from 'react';
 import { AreasScreen } from '../features/areas/AreasScreen';
 import { ProgressScreen } from '../features/progress/ProgressScreen';
+import { RankScreen } from '../features/ranking/RankScreen';
 import { TodayScreen } from '../features/today/TodayScreen';
 import { OnboardingFlow } from '../features/onboarding/OnboardingFlow';
 import { I18nProvider, useT } from '../i18n/I18nProvider';
-import type { TranslationKey } from '../i18n';
 import { TabBar, type TabId } from './TabBar';
 import { useMomentum } from './useMomentum';
 import type { AppConfiguration } from '../storage/services/configurationService';
 import type { AreasActions } from '../features/areas/AreasScreen';
 import './appShell.css';
-
-/** Honest stand-in for a screen that a later stage builds. */
-function StagePlaceholder({ titleKey }: { titleKey: TranslationKey }) {
-  const t = useT();
-  return (
-    <div className="stage-placeholder">
-      <p className="stage-placeholder__title">{t(titleKey)}</p>
-      <p className="stage-placeholder__body">{t('placeholder.body')}</p>
-    </div>
-  );
-}
 
 function MainApp({
   configuration,
@@ -37,7 +26,7 @@ function MainApp({
       <div className="app__content">
         {tab === 'today' ? <TodayScreen onGoToAreas={() => setTab('areas')} /> : null}
         {tab === 'progress' ? <ProgressScreen /> : null}
-        {tab === 'rank' ? <StagePlaceholder titleKey="nav.rank" /> : null}
+        {tab === 'rank' ? <RankScreen /> : null}
         {tab === 'areas' ? (
           <AreasScreen configuration={configuration} actions={actions} />
         ) : null}

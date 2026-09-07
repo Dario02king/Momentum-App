@@ -288,3 +288,84 @@ annotation §12 asks for would never fire.
 sets from what was actually recorded. The trend module cannot infer it from
 the number alone, and pretending otherwise would have made the annotation
 fire only in the rare case where nothing was even due.
+
+## D27 — The rating is replayed, never stored
+
+*Reinforces a requirement from the product owner: a rating shown for a past
+date must come from the history valid at that point, and must not move
+because of a later configuration change.*
+
+`computeRating` is a pure fold that only ever reads backwards, over day
+scores that were themselves reconstructed against the configuration snapshot
+in force on each day. Nothing is persisted and read back, so there is no
+stored value that could disagree with the history.
+
+The consequence is tested directly: adding a question, archiving a question
+and changing the sports target today all leave every past day's rating
+byte-identical, and extending the history leaves the earlier points
+unchanged.
+
+## D28 — Inactivity decays the rating; it does not feed zeros into it
+
+§11 and §13 pull in opposite directions here, and both are honoured by
+splitting where each applies.
+
+A closed day with nothing recorded scores **zero**, and the Progress screen
+says so — that is §11 and it is the honest reading of a missed day. But
+feeding those zeros into the moving average would cost roughly a third of the
+rating for a week away, which §13 explicitly forbids ("a one-week holiday
+must never cost several tiers").
+
+So the rating treats a day with nothing recorded as *inactivity*: gentle
+per-day decay after a two-day grace, capped per episode, with a fresh
+allowance once the user returns. History tells the truth; the rating is
+deliberately forgiving.
+
+## D29 — The streak bonus eases in both directions
+
+Found on a real seeded profile, not in the tests: the rank history showed
+Legend → Champion → Legend within days. A broken streak was giving up its
+whole bonus in one step, so at a tier boundary a single incomplete check-in
+demoted the user — exactly the "a single bad day must never cost a rank tier"
+rule.
+
+The applied bonus now moves a quarter of the way towards what the streak has
+earned each day, in both directions. Gaining a streak is slightly less
+instant; losing one is no longer a cliff. A regression test pins the
+boundary case.
+
+Genuine multi-day oscillation across a threshold is still possible when the
+underlying scores really do oscillate there. That is movement, not flicker,
+and `RANK_DEMOTION_HYSTERESIS` is the constant to turn if it proves too
+lively in real use.
+
+## D30 — The trend now plots the rating (supersedes D22)
+
+*Decided by the product owner.* With the engine in place, the Progress curve
+plots the 0–1000 rating and reads `977 / 1000` as §12 shows.
+
+The trend module was already generic over its series, so this was a change of
+caller only. The rolling window is **one day**: the rating is itself an
+exponentially weighted average, and smoothing it again would flatten the very
+movement the screen exists to show. Days before the first scored day carry no
+rating and stay out of the series entirely, so a new profile still gets the
+empty state rather than a flat line.
+
+## D31 — The badges are a ladder, and Legend leaves it
+
+One shield silhouette gains framing, an inner bevel, side flanges, rays,
+laurels and finally a cut jewel as the rank rises, with the metal warming
+from steel through bronze to gold. Legend abandons the shield entirely for an
+eight-point prism inside a broken orbit — §15 asks for a treatment "clearly
+unlike every other badge", and one more shield with a brighter gradient would
+not have been that.
+
+All geometry is drawn here rather than adapted from anything published. Each
+instance scopes its gradient ids so two badges on one screen cannot collide.
+
+## D32 — The promotion reveal plays once
+
+The rank itself stays derived. What is stored is only `acknowledgedRankId` —
+that the user has *seen* a rank — so the one orchestrated animation §6 allows
+plays on promotion and not on every visit to the screen. Reduced-motion
+users get the same information with no animation at all.

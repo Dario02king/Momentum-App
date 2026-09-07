@@ -30,8 +30,8 @@ The app is built in reviewed stages. Current status:
 | 1 | Project setup, storage abstraction, schema v1, date and week logic | done |
 | 2 | Onboarding, domain and question configuration | done |
 | 3 | Today screen and daily check-in | done |
-| 4 | Progress screen: heatmap and trend curve | in review |
-| 5 | Rating engine, rank ladder, rank badges | not started |
+| 4 | Progress screen: heatmap and trend curve | done |
+| 5 | Rating engine, rank ladder, rank badges | in review |
 | 6 | Sports domain: weekly target tracking | not started |
 | 7 | Backup export/import, PWA behaviour, service worker updates | not started |
 | 8 | Product review pass and fixes | not started |
@@ -51,8 +51,11 @@ src/
     config/   every tunable constant, and config snapshots (§18)
     dates/    local-date and Monday-to-Sunday week logic
     model/    schema v1 record types
-    scoring/  day and domain scoring (§11), scale bands
+    scoring/  day and domain scoring (§11), scale bands, lifetime XP
     trends/   rolling averages, direction and annotations (§12)
+    rating/   the 0-1000 rating engine (§13), replayed from history
+    ranks/    the eight-rank ladder and boundary hysteresis (§15)
+    streaks/  check-in and training streaks (§16)
   i18n/       key-based string layer, German by default
   storage/    IndexedDB, migrations, typed repositories
   styles/     light design tokens

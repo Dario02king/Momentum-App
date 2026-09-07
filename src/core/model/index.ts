@@ -194,6 +194,14 @@ export interface SettingsRecord {
   /** The first day the app was used — the origin of every history range. */
   firstUseDate: DateKey;
   onboardingCompletedAt: string | null;
+  /**
+   * The highest rank the user has already been shown.
+   *
+   * Rank itself is derived and never stored; this records only that the
+   * promotion has been seen, so the reveal plays once instead of on every
+   * visit to the screen.
+   */
+  acknowledgedRankId?: RankId | null;
   createdAt: string;
   updatedAt: string;
 }
