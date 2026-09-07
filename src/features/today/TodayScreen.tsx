@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { today as currentDay } from '../../core/clock';
 import type { SportsSessionRecord } from '../../core/model';
-import { Button, Card, EmptyState, Row, Section } from '../../components';
+import { Button, Card, EmptyState, LoadFailure, Row, Section, StaleNotice } from '../../components';
 import { ChevronRightIcon, PlusIcon, SparkIcon } from '../../components/Icons';
 import { SessionSheet } from '../../domains/sports/SessionSheet';
 import { formatDayAndMonth, formatTime, formatWeekday } from '../../i18n/format';
@@ -19,39 +19,27 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
   const t = useT();
   const { language } = useI18n();
   const date = currentDay();
-  const { state, answer, logSession, updateSession, deleteSession, refresh } = useDay(date);
+  const { state, answer, logSession, updateSession, deleteSession, reload } = useDay(date);
   const [editingSession, setEditingSession] = useState<SportsSessionRecord | null>(null);
 
-  if (state.status === 'error') {
+  // Three states, never collapsed into one: still loading, failed outright,
+  // or loaded. What is *empty* is decided further down, from the day itself.
+  if (state.status !== 'ready') {
     return (
       <div className="screen">
         <header className="screen__header">
           <h1 className="screen__title">{t('nav.today')}</h1>
         </header>
-        <div className="today__scroll">
-          <Card>
-            {/* No icon: the set has no failure mark, and a sparkle on an
-                error reads as celebration. */}
-            <EmptyState
-              title={t('error.day.title')}
-              body={t('error.day.body')}
-              action={
-                <Button variant="secondary" onClick={() => void refresh()}>
-                  {t('error.storage.retry')}
-                </Button>
-              }
-            />
-          </Card>
+        <div className="today__scroll" aria-busy={state.status === 'loading'}>
+          {state.status === 'failed' ? (
+            <LoadFailure title={t('error.day.title')} onRetry={reload} />
+          ) : null}
         </div>
       </div>
     );
   }
 
-  if (state.status !== 'ready') {
-    return <div className="screen" aria-busy="true" />;
-  }
-
-  const { day } = state;
+  const day = state.value;
   const mental = day.mental;
   const sports = day.sports;
 
@@ -76,6 +64,8 @@ export function TodayScreen({ onGoToAreas }: { onGoToAreas(): void }) {
       </header>
 
       <div className="today__scroll">
+        {state.refreshFailed ? <StaleNotice onRetry={reload} /> : null}
+
         {day.empty ? (
           <Card>
             <EmptyState

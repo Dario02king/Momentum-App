@@ -6,3 +6,12 @@ dist-ssr
 coverage
 .vite
 *.tsbuildinfo
+
+# Compiled output never belongs beside the source it came from: Vite resolves
+# `./x` to `x.js` before `x.ts`, and picks up `vite.config.js` before
+# `vite.config.ts`, so a stray artefact silently replaces its own source.
+/src/**/*.js
+/src/**/*.d.ts
+!/src/sw/*.js
+/*.config.js
+/vitest.workspace.js

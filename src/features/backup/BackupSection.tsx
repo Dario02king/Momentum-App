@@ -75,13 +75,21 @@ export function BackupSection({ onRestored }: { onRestored(): void }) {
 
   const replace = async () => {
     if (!pending) return;
-    const result = await importBackup(pending.text);
-    setPending(null);
-    if (result.ok) {
-      setStatus({ tone: 'ok', text: t('backup.imported') });
-      onRestored();
-    } else {
+    try {
+      const result = await importBackup(pending.text);
+      if (result.ok) {
+        setStatus({ tone: 'ok', text: t('backup.imported') });
+        onRestored();
+      } else {
+        setStatus({ tone: 'error', text: t('backup.failedBroken') });
+      }
+    } catch {
+      // The replace is one transaction, so a throw here means nothing was
+      // changed. Without this the confirmation stayed on screen for good,
+      // with no message and no way back.
       setStatus({ tone: 'error', text: t('backup.failedBroken') });
+    } finally {
+      setPending(null);
     }
   };
 

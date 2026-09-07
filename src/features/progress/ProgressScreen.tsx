@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { RATING, TREND_RANGES } from '../../core/config/constants';
 import { buildTrend } from '../../core/trends';
-import { Card, EmptyState, Section, Segmented } from '../../components';
+import { Card, EmptyState, LoadFailure, Section, Segmented, StaleNotice } from '../../components';
 import { ProgressIcon } from '../../components/Icons';
 import { formatDayAndMonth } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
@@ -21,12 +21,12 @@ export function ProgressScreen() {
   const t = useT();
   const { language } = useI18n();
   const [range, setRange] = useState<number>(TREND_RANGES[TREND_RANGES.length - 1]!);
-  const state = useProgression();
+  const { state, reload } = useProgression();
 
   /** The last `range` days of the replay, for both views. */
   const window = useMemo(() => {
     if (state.status !== 'ready') return null;
-    const { history, points, firstScoredDate } = state.progression;
+    const { history, points, firstScoredDate } = state.value;
     const start = Math.max(0, history.days.length - range);
     return {
       history,
@@ -86,8 +86,21 @@ export function ProgressScreen() {
     return result;
   }, [window, t]);
 
+  // Still loading, failed outright, or loaded — three states, never one.
+  // Emptiness is a property of the loaded data and is decided below.
   if (state.status !== 'ready' || !window) {
-    return <div className="screen" aria-busy={state.status === 'loading'} />;
+    return (
+      <div className="screen">
+        <header className="screen__header">
+          <h1 className="screen__title">{t('nav.progress')}</h1>
+        </header>
+        <div className="progress__scroll" aria-busy={state.status === 'loading'}>
+          {state.status === 'failed' ? (
+            <LoadFailure title={t('error.progress.title')} onRetry={reload} />
+          ) : null}
+        </div>
+      </div>
+    );
   }
 
   const empty = window.days.every((day) => day.score === null);
@@ -112,6 +125,8 @@ export function ProgressScreen() {
       </header>
 
       <div className="progress__scroll">
+        {state.refreshFailed ? <StaleNotice onRetry={reload} /> : null}
+
         {rangeSelector}
 
         {empty ? (

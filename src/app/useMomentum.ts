@@ -35,6 +35,16 @@ export type MomentumState =
 export function useMomentum() {
   const [state, setState] = useState<MomentumState>({ status: 'loading' });
 
+  /*
+   * A write that was refused, rather than a screen that failed to load.
+   *
+   * Every mutation used to be fired with no rejection handler at all: a
+   * failed write left the interface showing something that was never stored,
+   * and a failed `applyOnboarding` stranded a new user on the last
+   * onboarding step forever, with no message and nothing to try again.
+   */
+  const [actionFailed, setActionFailed] = useState(false);
+
   const refresh = useCallback(async () => {
     try {
       const configuration = await loadConfiguration();
@@ -55,7 +65,15 @@ export function useMomentum() {
 
   const run = useCallback(
     (operation: () => Promise<unknown>) => {
-      void operation().then(refresh);
+      setActionFailed(false);
+      operation()
+        .then(refresh)
+        .catch(() => {
+          // Say so, and put the screen back on what is actually stored — the
+          // user must never be left looking at a change that did not happen.
+          setActionFailed(true);
+          void refresh();
+        });
     },
     [refresh],
   );
@@ -75,7 +93,7 @@ export function useMomentum() {
             }
           : previous,
       );
-      void settingsRepository.setLanguage(language);
+      void settingsRepository.setLanguage(language).catch(() => setActionFailed(true));
     },
     [],
   );
@@ -110,5 +128,13 @@ export function useMomentum() {
     setLanguage,
   };
 
-  return { state, areasActions, finishOnboarding, setLanguage, refresh };
+  return {
+    state,
+    areasActions,
+    finishOnboarding,
+    setLanguage,
+    refresh,
+    actionFailed,
+    dismissActionFailure: () => setActionFailed(false),
+  };
 }

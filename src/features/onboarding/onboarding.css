@@ -83,6 +83,17 @@
   padding-top: var(--space-5);
 }
 
+/* The setup did not get saved. Sits directly above the button that retries it. */
+.onboarding__failure {
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--surface-secondary);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 /* Welcome ------------------------------------------------------------- */
 
 .welcome {

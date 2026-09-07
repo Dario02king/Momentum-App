@@ -19,7 +19,13 @@ npm install
 npm run dev        # local development server
 npm run test       # domain logic tests (two time zones, see vitest.workspace.ts)
 npm run build      # typecheck + production build
+npm run typecheck  # types only, no output
 ```
+
+`typecheck` deliberately emits nothing. Compiled JavaScript written next to
+its own source shadows it — Vite resolves `./useDay` to `useDay.js` before
+`useDay.ts`, and `vite.config.js` before `vite.config.ts` — so a stray
+artefact makes the bundle stop matching the repository, silently.
 
 ## Build stages
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { CheckIcon, CloseIcon } from './Icons';
 import { useT } from '../i18n/I18nProvider';
 import './ui.css';
@@ -196,6 +196,95 @@ export function EmptyState({
       <span className="empty__title">{title}</span>
       {body ? <p className="empty__body">{body}</p> : null}
       {action}
+    </div>
+  );
+}
+
+/**
+ * A retry that cannot be double-fired and cannot get stuck.
+ *
+ * The button is out of action while the attempt is in flight, and the flag
+ * is cleared in a `finally` — including when the retry rejects, which is the
+ * case that would otherwise leave a permanently disabled button.
+ */
+function useRetry(onRetry: () => void | Promise<void>) {
+  const [busy, setBusy] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const retry = useCallback(() => {
+    setBusy(true);
+    void Promise.resolve(onRetry()).finally(() => {
+      if (mounted.current) setBusy(false);
+    });
+  }, [onRetry]);
+
+  return { busy, retry };
+}
+
+/**
+ * A screen that could not load.
+ *
+ * Distinct from an empty state by construction: this one is an `alert`, and
+ * it always offers the action that helps. It takes focus when it appears,
+ * because the content the reader was waiting for did not arrive and the next
+ * thing they need is one tab away.
+ */
+export function LoadFailure({
+  title,
+  onRetry,
+}: {
+  title: string;
+  onRetry(): void | Promise<void>;
+}) {
+  const t = useT();
+  const { busy, retry } = useRetry(onRetry);
+  const container = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    container.current?.focus();
+  }, []);
+
+  return (
+    <Card>
+      <div className="load-failure" role="alert" tabIndex={-1} ref={container}>
+        <EmptyState
+          title={title}
+          body={t('error.load.body')}
+          action={
+            <span aria-busy={busy}>
+              <Button variant="secondary" disabled={busy} onClick={retry}>
+                {t('error.load.retry')}
+              </Button>
+            </span>
+          }
+        />
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * What is on screen is real but may no longer be current.
+ *
+ * Quieter than a failure and deliberately non-destructive: the content stays
+ * where it is, and this says only that the last refresh did not get through.
+ */
+export function StaleNotice({ onRetry }: { onRetry(): void | Promise<void> }) {
+  const t = useT();
+  const { busy, retry } = useRetry(onRetry);
+
+  return (
+    <div className="stale-notice" role="status">
+      <span>{t('error.stale')}</span>
+      <button type="button" onClick={retry} disabled={busy} aria-busy={busy}>
+        {t('error.load.retry')}
+      </button>
     </div>
   );
 }

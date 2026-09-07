@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { today } from '../../core/clock';
 import type { AnswerValue } from '../../core/model';
+import { useLoadable, type Loadable } from '../../app/useLoadable';
 import {
   clearAnswer,
   deleteSession,
@@ -12,10 +13,7 @@ import {
   type SessionInput,
 } from '../../storage/services/checkInService';
 
-export type DayState =
-  | { status: 'loading' }
-  | { status: 'error'; error: Error }
-  | { status: 'ready'; day: DayView };
+export type DayState = Loadable<DayView>;
 
 /**
  * The Today screen's connection to storage.
@@ -24,37 +22,27 @@ export type DayState =
  * same-week rules, and each write is followed by a reload so what is on
  * screen is what is on disk. The interaction is small enough that this costs
  * nothing and removes a whole class of drift.
+ *
+ * A reload that fails after the day is already on screen does not take the
+ * day down with it: the loader keeps the last good view and marks it stale,
+ * so a lost write is reported without the screen emptying under the user.
  */
 export function useDay(date: string = today()) {
-  const [state, setState] = useState<DayState>({ status: 'loading' });
-
-  const refresh = useCallback(async () => {
-    try {
-      setState({ status: 'ready', day: await loadDay(date) });
-    } catch (error: unknown) {
-      setState({
-        status: 'error',
-        error: error instanceof Error ? error : new Error(String(error)),
-      });
-    }
-  }, [date]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const load = useCallback(() => loadDay(date), [date]);
+  const { state, reload } = useLoadable(load);
 
   const run = useCallback(
     (operation: () => Promise<unknown>) => {
       operation()
-        .then(refresh)
+        .then(reload)
         .catch((error: unknown) => {
           // A rejected write means a rule refused it — the edit window, or a
           // closed week. Reloading puts the screen back on the truth.
           console.warn('Check-in write refused', error);
-          void refresh();
+          void reload();
         });
     },
-    [refresh],
+    [reload],
   );
 
   return {
@@ -66,6 +54,6 @@ export function useDay(date: string = today()) {
     logSession: () => run(() => logSession(date)),
     updateSession: (id: string, input: SessionInput) => run(() => updateSession(id, input)),
     deleteSession: (id: string) => run(() => deleteSession(id)),
-    refresh,
+    reload,
   };
 }

@@ -18,10 +18,14 @@ function MainApp({
   configuration,
   actions,
   update,
+  actionFailed,
+  onDismissFailure,
 }: {
   configuration: AppConfiguration;
   actions: AreasActions;
   update: UpdateHandle | null;
+  actionFailed: boolean;
+  onDismissFailure(): void;
 }) {
   // Today is where the app opens: the daily check-in is the whole point.
   const [tab, setTab] = useState<TabId>('today');
@@ -36,6 +40,7 @@ function MainApp({
           <AreasScreen configuration={configuration} actions={actions} />
         ) : null}
       </div>
+      {actionFailed ? <ActionFailureBanner onDismiss={onDismissFailure} /> : null}
       {update ? <UpdateBanner onApply={update.apply} /> : null}
       <TabBar active={tab} onSelect={setTab} />
     </div>
@@ -76,6 +81,25 @@ function StorageProblem({ reason, onRetry }: { reason: StorageFailure; onRetry()
   );
 }
 
+/**
+ * A change that did not get stored.
+ *
+ * The screen has already been put back on what is actually saved, so this
+ * only has to say that the change did not take. It is an `alert` because it
+ * contradicts what the user just did.
+ */
+function ActionFailureBanner({ onDismiss }: { onDismiss(): void }) {
+  const t = useT();
+  return (
+    <div className="update-banner" role="alert">
+      <span>{t('error.action')}</span>
+      <button type="button" className="update-banner__action" onClick={onDismiss}>
+        {t('error.actionDismiss')}
+      </button>
+    </div>
+  );
+}
+
 /** Unobtrusive, and it never reloads on its own. */
 function UpdateBanner({ onApply }: { onApply(): void }) {
   const t = useT();
@@ -90,7 +114,8 @@ function UpdateBanner({ onApply }: { onApply(): void }) {
 }
 
 export function App() {
-  const { state, areasActions, finishOnboarding, setLanguage, refresh } = useMomentum();
+  const { state, areasActions, finishOnboarding, setLanguage, refresh, actionFailed, dismissActionFailure } =
+    useMomentum();
   const [update, setUpdate] = useState<UpdateHandle | null>(null);
 
   useEffect(() => {
@@ -108,12 +133,14 @@ export function App() {
       {state.status === 'error' ? (
         <StorageProblem reason={state.reason} onRetry={() => void refresh()} />
       ) : state.configuration.settings.onboardingCompletedAt === null ? (
-        <OnboardingFlow onFinish={finishOnboarding} />
+        <OnboardingFlow onFinish={finishOnboarding} failed={actionFailed} />
       ) : (
         <MainApp
           configuration={state.configuration}
           actions={areasActions}
           update={update}
+          actionFailed={actionFailed}
+          onDismissFailure={dismissActionFailure}
         />
       )}
     </I18nProvider>

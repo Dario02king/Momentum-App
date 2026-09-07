@@ -62,6 +62,16 @@ export default defineConfig({
   plugins: [react(), serviceWorkerPlugin()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    /*
+     * TypeScript before JavaScript.
+     *
+     * Vite's default order resolves `./useDay` to a `useDay.js` sitting next
+     * to `useDay.ts` — so a stray build artefact in `src/` silently shadows
+     * the source it was compiled from, and the bundle stops matching the
+     * repository. The `typecheck` script used to emit exactly those files.
+     * That is fixed at the source, and this makes it unable to happen again.
+     */
+    extensions: ['.mts', '.ts', '.tsx', '.mjs', '.js', '.jsx', '.json'],
   },
   build: {
     target: 'es2020',

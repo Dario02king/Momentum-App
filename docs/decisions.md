@@ -623,3 +623,73 @@ in German and `{totals}` in English compiles and ships a literal brace to
 the screen. A test compares the placeholder sets per key, checks that
 supplying the expected parameters leaves nothing unfilled, and rejects
 empty strings.
+
+## D52 — One way to load a screen, with three states that cannot be confused
+
+Today, Progress and Rank each read from storage on mount, and each had grown
+its own version of that effect. The versions did not agree, and none of them
+was right: a rejected load left Rank spinning forever, left Progress blank,
+and left Today blank until D50. None could be retried, because the load
+lived in an effect with no dependencies and nothing else could re-run it.
+
+`useLoadable` is the single version. It is a hook rather than a component
+because what counts as *empty* depends on the data and belongs to the screen;
+only loading, failure and readiness are general. They are three variants, so
+a screen cannot render one as another — the bug that made a failure look like
+a load still in progress is now unrepresentable.
+
+Two properties are easy to lose when this is written per screen, so they are
+written once:
+
+**A retry is a fresh attempt.** Every attempt takes a ticket and a reply is
+accepted only while its ticket is current, so a slow first attempt that
+resolves late cannot overwrite the retry that replaced it.
+
+**Content already on screen survives a failed refresh.** Reloading after a
+write is not a reason to throw away what the user was reading. The value is
+kept and marked stale, and the screen says so quietly instead of emptying.
+
+## D53 — A failure is louder than a stale view, and both are quieter than nothing
+
+A screen that never loaded shows an alert with a retry, and takes focus when
+it appears: the content the reader was waiting for did not arrive, and the
+next thing they need is one tab away. A screen that *did* load and then
+failed to refresh keeps its content and shows a status line — not an alert,
+because nothing on screen is wrong, only possibly out of date.
+
+Neither says why. "Deine Einträge sind gespeichert" is what the user needs;
+the storage layer is not mentioned anywhere, per the stage 7 copy rule.
+
+## D54 — A write that fails is reported, and the screen returns to the truth
+
+Every configuration mutation was fired with no rejection handler. A failed
+write left the interface showing a change that was never stored, and a failed
+`applyOnboarding` stranded a new user on the last onboarding step for good:
+the button did nothing, said nothing, and there was no way forward.
+
+Mutations now report a refusal and reload, so the screen shows what is
+actually stored rather than what was attempted. In onboarding the message
+sits above the button that retries it, because there the button *is* the
+retry. Elsewhere it is a dismissible banner over the tab bar.
+
+The same hole existed in the backup import: `replaceAllStores` can throw, and
+the confirmation stayed on screen for good with no message. The replace is
+one transaction, so a throw means nothing changed, and it is now reported as
+such.
+
+## D55 — Compiled output never sits beside its source
+
+`npm run typecheck` was `tsc -b --noEmit false --emitDeclarationOnly false`,
+which overrode the projects' own `noEmit` and wrote a `.js` next to every
+`.ts` — including `vite.config.js` beside `vite.config.ts`.
+
+That is not untidiness. Vite resolves `./useDay` to `useDay.js` before
+`useDay.ts`, and loads `vite.config.js` before `vite.config.ts`, so running
+the typecheck and then the build produced a bundle built from stale
+JavaScript, with no warning and a passing build. It was found here only
+because a change that was definitely in the source was definitely not in the
+bundle.
+
+Three things close it: the script no longer emits, `resolve.extensions` puts
+TypeScript ahead of JavaScript so an artefact cannot shadow its source again,
+and the artefacts are ignored so they cannot be committed.

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RATING } from '../../core/config/constants';
 import { nextRank, progressWithinRank, pointsToNextRank, rankById } from '../../core/ranks';
-import { Card, EmptyState, Section } from '../../components';
+import { Card, EmptyState, LoadFailure, Section, StaleNotice } from '../../components';
 import { RankIcon } from '../../components/Icons';
 import { formatDayAndMonth, formatNumber } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
 import { settingsRepository } from '../../storage/repositories';
-import { loadProgression, type Progression } from '../../storage/services/ratingService';
+import { loadProgression } from '../../storage/services/ratingService';
+import { useLoadable } from '../../app/useLoadable';
 import { RankBadge } from './RankBadge';
 import './rank.css';
 
@@ -20,31 +21,63 @@ import './rank.css';
 export function RankScreen() {
   const t = useT();
   const { language } = useI18n();
-  const [progression, setProgression] = useState<Progression | null>(null);
-  const [reveal, setReveal] = useState(false);
 
+  /*
+   * Rank reads the same replay as Progress, and adds one thing: whether this
+   * is the first time the user is seeing this rank. That is resolved as part
+   * of the load rather than in a follow-up effect, so the reveal is known on
+   * the badge's very first frame — deciding it afterwards showed the badge
+   * once, then restarted it from nothing.
+   *
+   * Recording the acknowledgement is a flourish, not the screen. If that one
+   * write fails the reveal simply plays again next time; it must not turn a
+   * working Rank screen into an error.
+   */
   const load = useCallback(async () => {
-    const next = await loadProgression();
+    const progression = await loadProgression();
     const settings = await settingsRepository.getOrCreate();
     const seen = settings.acknowledgedRankId ?? null;
     const seenIndex = seen ? rankById(seen).index : -1;
+    const promoted = progression.rank.index > seenIndex;
 
-    // One orchestrated moment: play the reveal only when the rank is higher
-    // than the one already seen, then record that it has been seen.
-    if (next.rank.index > seenIndex) {
-      setReveal(true);
-      await settingsRepository.acknowledgeRank(next.rank.id);
-      window.setTimeout(() => setReveal(false), 1000);
+    if (promoted) {
+      try {
+        await settingsRepository.acknowledgeRank(progression.rank.id);
+      } catch {
+        /* The badge still plays; the app simply forgets that it did. */
+      }
     }
-    setProgression(next);
+    return { progression, promoted };
   }, []);
 
+  const { state, reload } = useLoadable(load);
+  const promoted = state.status === 'ready' && state.value.promoted;
+  const [revealSpent, setRevealSpent] = useState(false);
+  const reveal = promoted && !revealSpent;
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!reveal) return;
+    const timer = window.setTimeout(() => setRevealSpent(true), 1000);
+    return () => window.clearTimeout(timer);
+  }, [reveal]);
 
-  if (!progression) return <div className="screen" aria-busy="true" />;
+  // Loading, failure and loaded stay three distinct states.
+  if (state.status !== 'ready') {
+    return (
+      <div className="screen">
+        <header className="screen__header">
+          <h1 className="screen__title">{t('nav.rank')}</h1>
+        </header>
+        <div className="rank__scroll" aria-busy={state.status === 'loading'}>
+          {state.status === 'failed' ? (
+            <LoadFailure title={t('error.rank.title')} onRetry={reload} />
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
+  const progression = state.value.progression;
   const { rank, peakRank, current, lifetimeXp, checkInStreak, trainingStreak, changes } =
     progression;
   const upcoming = nextRank(rank);
@@ -64,6 +97,8 @@ export function RankScreen() {
       </header>
 
       <div className="rank__scroll">
+        {state.refreshFailed ? <StaleNotice onRetry={reload} /> : null}
+
         <Section>
           <div className="rank-hero">
             {reveal ? <span className="rank-hero__flash" aria-hidden="true" /> : null}

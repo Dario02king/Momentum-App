@@ -500,3 +500,46 @@
   background: var(--selection-accent, var(--accent));
   border-color: var(--selection-accent, var(--accent));
 }
+
+/* Loading and failure ---------------------------------------------------- */
+
+/*
+ * A failed load takes focus when it appears, so a keyboard or screen-reader
+ * user lands on the new content rather than on whatever the vanished screen
+ * left behind. The container is not interactive, so it shows no ring — the
+ * retry button inside it is the visible target.
+ */
+.load-failure:focus {
+  outline: none;
+}
+
+/*
+ * The quiet counterpart: what is on screen is still real, only not known to
+ * be current. It sits above the content it qualifies and never replaces it.
+ */
+.stale-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--surface-secondary);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.stale-notice button {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-primary);
+  color: var(--accent-ink);
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-semibold);
+}
+
+.stale-notice button:disabled {
+  color: var(--text-tertiary);
+}

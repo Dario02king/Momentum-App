@@ -21,7 +21,14 @@ const STEPS: Step[] = ['welcome', 'questions', 'sports', 'summary'];
  * still ends in a working app. Nothing here explains the product at length —
  * the tagline states it once and the rest is choices.
  */
-export function OnboardingFlow({ onFinish }: { onFinish(selection: OnboardingSelection): void }) {
+export function OnboardingFlow({
+  onFinish,
+  failed = false,
+}: {
+  onFinish(selection: OnboardingSelection): void;
+  /** The last attempt to save the setup did not get through. */
+  failed?: boolean;
+}) {
   const t = useT();
   const { language } = useI18n();
   const suggestions = useMemo(() => suggestedQuestions(language), [language]);
@@ -274,6 +281,13 @@ export function OnboardingFlow({ onFinish }: { onFinish(selection: OnboardingSel
           </div>
 
           <div className="onboarding__footer">
+            {/* Saying nothing left a new user tapping a button that silently
+                did nothing. Tapping it again is the retry. */}
+            {failed ? (
+              <p className="onboarding__failure" role="alert">
+                {t('error.action')}
+              </p>
+            ) : null}
             <Button variant="primary" block onClick={() => finish(sportsTarget)}>
               {t('onboarding.summary.start')}
             </Button>
