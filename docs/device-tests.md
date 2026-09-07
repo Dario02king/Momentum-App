@@ -1,4 +1,4 @@
-# RC1 — real-device acceptance checklist
+# RC2 — real-device acceptance checklist
 
 29 tests, for an actual iPhone (and iPad if you have one). Everything here is
 something browser automation cannot prove: real Safari, the installed
@@ -7,16 +7,17 @@ standalone shell, real touch, the real keyboard, real VoiceOver.
 Start from a clean slate: Safari → Settings → Clear History and Website Data,
 or use a fresh profile, so test 6 really is a first launch.
 
-**URL:** the deployed GitHub Pages address for `ae8b479`.
+**Build under test:** Momentum V1 **RC2**, application commit `c3e8b7f`.
+**URL:** <https://dario02king.github.io/Momentum-App/> — open it in **Safari**.
 
 ## How to report what you find
 
-| Severity | Means | During RC1 |
+| Severity | Means | During RC2 |
 |---|---|---|
 | **Blocker** | Data loss, app will not start or cannot be used, install or offline flow broken, a core action unreachable | Fix before promotion |
 | **Major** | An important workflow is broken or materially confusing | Fix before promotion |
 | **Minor** | A genuine defect that does not block use | Fix if cheap and safe |
-| **Polish** | Visual or copy refinement only | Defer past RC1 unless exceptionally cheap and risk-free |
+| **Polish** | Visual or copy refinement only | Defer past RC2 unless exceptionally cheap and risk-free |
 
 For each failure note: **test number · severity · what you did · what happened
 · what you expected · device and iOS version.** A photo or screen recording
@@ -77,7 +78,7 @@ beats a description.
 
 | # | Action | Expected | ✅/❌ |
 |---|---|---|---|
-| 25 | Pinch to zoom in, and out again | Zoom works. *(Blocked zoom would be a Blocker — it was fixed in RC1, so this test is confirming the fix on real hardware.)* | ☐ |
+| 25 | Pinch to zoom in, and out again | Zoom works. *(Blocked zoom would be a Blocker — it was fixed during stage 8, so this test confirms the fix on real hardware.)* | ☐ |
 | 26 | Settings → Accessibility → Display & Text Size → Larger Text, raise it, return to the app | **Known limitation:** the app's own text will not resize — it is fixed in px. Report only if something *breaks*, not that it fails to grow | ☐ |
 | 27 | Turn on VoiceOver. Swipe through Today | Each question is announced with its answer options; the answered rows announce the question and the chosen value; the clear action is reachable | ☐ |
 | 28 | With VoiceOver on Verlauf: use the rotor to move by heading, then find the daily-values table | Headings: Verlauf, Trend, Tagesverlauf. The trend chart is announced as one image with range, direction and values. The table gives dates as column headers and percentages per day. **The 30 bars must not be announced individually** | ☐ |
@@ -89,7 +90,7 @@ beats a description.
 
 Read the expected column before you act — several tests describe known
 limitations deliberately, so you don't spend time reporting something already
-recorded in [`RC1.md`](RC1.md).
+recorded in [`release-candidates.md`](release-candidates.md).
 
 Tests 15 and 22 are the two most likely to be impractical depending on your
 device and patience. Skipping either is fine; mark it and say so.

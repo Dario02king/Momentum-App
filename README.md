@@ -45,12 +45,15 @@ The app is built in reviewed stages. Current status:
 Stage 8 closed with a combined walkthrough of the §25 acceptance questions,
 a copy review and a §6 design-conformance review against the real app.
 
-**`ae8b479` is V1 Release Candidate 1.** It is a candidate, not a release:
-it has never run on a real device and has never been driven by a real screen
-reader. [`docs/RC1.md`](docs/RC1.md) records what is frozen, what was
-verified and what is still outstanding;
-[`docs/rc1-device-tests.md`](docs/rc1-device-tests.md) is the manual
-checklist that closes the gap.
+**`c3e8b7f` is V1 Release Candidate 2** — RC1 (`ae8b479`) plus a fix for an
+unhandled promise rejection in `runTransaction` that made the test suite exit
+non-zero and blocked deployment. It is a candidate, not a release: it has
+never run on a real device and has never been driven by a real screen reader.
+
+[`docs/release-candidates.md`](docs/release-candidates.md) records both
+candidates, what is frozen, what was verified and what is still outstanding.
+[`docs/device-tests.md`](docs/device-tests.md) is the manual checklist that
+closes the gap.
 
 Decisions taken during the build that the specification did not settle are
 recorded in [`docs/decisions.md`](docs/decisions.md). Two of them override
