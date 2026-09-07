@@ -1,0 +1,52 @@
+# Publishes the built app to GitHub Pages.
+#
+# The Vite base path is already /Momentum-App/, which is exactly where Pages
+# serves a project site from, so the build needs no deployment-specific
+# configuration. The service worker's precache list is generated from the
+# bundle at build time, so it is correct for whatever this workflow produces.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [claude/momentum-pwa-spec-j82dhm]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; a half-replaced set of hashed assets is exactly
+# what the service worker cannot recover from.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # The same gates the release candidate was verified behind.
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
