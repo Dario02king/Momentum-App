@@ -166,10 +166,17 @@ export const en: Translations = {
   'progress.annotationPeak': 'Peak',
   'progress.annotationGap': '{count} days without data',
   'progress.overall': 'Overall',
+  'progress.trendTitle': 'Trend',
+  'progress.historyTitle': 'Daily history',
+  'progress.chartLabel':
+    'Trend curve over {days} days: {direction}. From {from} to {to}, lowest {min}, highest {max}.',
   'progress.scoredDays': '{count} of {total} days recorded',
 
   'heatmap.average': 'average {value} per cent',
   'heatmap.range': 'Last {count} days',
+  'heatmap.rowSummary': '{recorded} of {total} days recorded, {missing} without data',
+  'heatmap.tableCaption': 'Daily values for the last {count} days, in percent',
+  'heatmap.tableRowHeader': 'Area',
 
   'rank.current': 'Now',
   'rank.peak': 'Peak',

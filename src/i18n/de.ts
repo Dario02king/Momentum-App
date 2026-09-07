@@ -170,10 +170,17 @@ export const de = {
   'progress.annotationPeak': 'Höchststand',
   'progress.annotationGap': '{count} Tage ohne Daten',
   'progress.overall': 'Gesamt',
+  'progress.trendTitle': 'Trend',
+  'progress.historyTitle': 'Tagesverlauf',
+  'progress.chartLabel':
+    'Verlaufskurve über {days} Tage: {direction}. Von {from} auf {to}, Tiefstwert {min}, Höchstwert {max}.',
   'progress.scoredDays': '{count} von {total} Tagen erfasst',
 
   'heatmap.average': 'Durchschnitt {value} Prozent',
   'heatmap.range': 'Letzte {count} Tage',
+  'heatmap.rowSummary': '{recorded} von {total} Tagen erfasst, {missing} ohne Daten',
+  'heatmap.tableCaption': 'Tageswerte der letzten {count} Tage in Prozent',
+  'heatmap.tableRowHeader': 'Bereich',
 
   'rank.current': 'Aktuell',
   'rank.peak': 'Peak',

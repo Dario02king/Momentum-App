@@ -32,14 +32,14 @@ function MainApp({
 
   return (
     <div className="app">
-      <div className="app__content">
+      <main className="app__content">
         {tab === 'today' ? <TodayScreen onGoToAreas={() => setTab('areas')} /> : null}
         {tab === 'progress' ? <ProgressScreen /> : null}
         {tab === 'rank' ? <RankScreen /> : null}
         {tab === 'areas' ? (
           <AreasScreen configuration={configuration} actions={actions} />
         ) : null}
-      </div>
+      </main>
       {actionFailed ? <ActionFailureBanner onDismiss={onDismissFailure} /> : null}
       {update ? <UpdateBanner onApply={update.apply} /> : null}
       <TabBar active={tab} onSelect={setTab} />

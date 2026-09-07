@@ -693,3 +693,54 @@ bundle.
 Three things close it: the script no longer emits, `resolve.extensions` puts
 TypeScript ahead of JavaScript so an artefact cannot shadow its source again,
 and the artefacts are ignored so they cannot be committed.
+
+## D56 — The strips are decorative; a table carries the numbers
+
+Thirty bars per row, with no interaction on any of them. Making each a stop
+would be thirty tab stops and thirty announcements to say what one sentence
+says — and it still would not answer the question a screen reader actually
+has, because the bars never carried the dates. Only the count of days was
+ever exposed, as one aria-label per row stating the average.
+
+So the strips are `aria-hidden`, and the same data is rendered as a real
+`<table>` that nobody sees: dates as column headers, rows as row headers,
+values in percent, "Keine Daten" where there are none. That is a semantic
+alternative rather than an addition — nothing is announced twice — and it
+turns the grid into something a reader can navigate by row and column
+instead of listening to end to end.
+
+Each row header also carries one hidden sentence, "24 von 30 Tagen erfasst,
+6 ohne Daten", for the shape of the strip without entering the table. On the
+expandable rows that sentence is the button's *description*, not part of its
+name: the name says which row it opens.
+
+The wrapper carries the hiding, not the table. `.visually-hidden` clamps to a
+1px box, and `display: table` ignores that — its box is sized by its content,
+so thirty-one columns of dates made a very wide absolutely positioned element
+that only `clip-path` was keeping off the screen.
+
+## D57 — The chart is one image, and the answer is next to it
+
+The trend curve stays a single `role="img"`. Its internals are a gradient and
+two paths; exposing them would be noise, and the numbers that matter are
+already real text beside the chart — the direction in a word, the current
+value, the value before it, the annotations. Delete every SVG on the screen
+and the trend is still readable, which is the actual test.
+
+The label adds only what the shape alone knew: where the line started, where
+it ended and the range it covered. It used to say "30 Tage" and nothing else.
+
+## D58 — Values are rounded wherever they are spoken
+
+The replay produces values like 70.83333333333333. The visible grid always
+rounded them; the accessible table did not, so a reader heard thirteen
+decimal places for a number the screen shows as 71.
+
+## D59 — A section can be named without being labelled
+
+The trend card and the history grid each carry their own visual title — a
+range, a legend — so a grey heading above them would be repetition. Without
+any heading they were unnamed regions that a screen reader could neither
+navigate to nor skip. `Section` can now render its heading visually hidden,
+which structures the document without adding chrome. The shell also gained
+the `main` landmark it never had.

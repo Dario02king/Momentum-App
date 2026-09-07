@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { Trend } from '../../core/trends';
 import { useT } from '../../i18n/I18nProvider';
 
@@ -7,9 +8,19 @@ import { useT } from '../../i18n/I18nProvider';
  * It answers a directional question, so it is drawn without axes, gridlines
  * or tick labels — a shape, not a trading terminal. The numbers that matter
  * are stated above it in words and figures instead.
+ *
+ * That is also what makes it safe to treat as a single image: the direction,
+ * the current value and the one before it are already real text next to the
+ * chart, so a reader who never sees the path still has the answer. The label
+ * here adds what only the shape knew — where the line started, and how far
+ * it travelled in between.
  */
 export function TrendCurve({ trend, rangeDays }: { trend: Trend; rangeDays: number }) {
   const t = useT();
+  // Ids inside an SVG are document-global; a hardcoded one collides the
+  // moment a second chart is on screen, and the fill silently follows the
+  // first one's gradient.
+  const fillId = `trend-fill-${useId().replace(/:/g, '')}`;
 
   const points = trend.points;
   const values = points.map((point) => point.smoothed);
@@ -53,22 +64,38 @@ export function TrendCurve({ trend, rangeDays }: { trend: Trend; rangeDays: numb
       ? `${segments[0]} L ${x(lastIndex).toFixed(1)} ${height} L ${x(points.findIndex((p) => p.smoothed !== null)).toFixed(1)} ${height} Z`
       : null;
 
+  const first = known[0]!;
+  const direction = t(
+    trend.direction === 'rising'
+      ? 'progress.rising'
+      : trend.direction === 'falling'
+        ? 'progress.falling'
+        : 'progress.steady',
+  );
+
   return (
     <svg
       className="trend__chart"
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
       role="img"
-      aria-label={t('progress.rangeDays', { count: rangeDays })}
+      aria-label={t('progress.chartLabel', {
+        days: rangeDays,
+        direction,
+        from: Math.round(first),
+        to: Math.round(known[known.length - 1]!),
+        min: Math.round(min),
+        max: Math.round(max),
+      })}
     >
       <defs>
-        <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.18" />
           <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
         </linearGradient>
       </defs>
 
-      {areaPath ? <path d={areaPath} fill="url(#trend-fill)" /> : null}
+      {areaPath ? <path d={areaPath} fill={`url(#${fillId})`} /> : null}
 
       {segments.map((segment, index) => (
         <path

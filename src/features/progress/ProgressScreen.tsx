@@ -139,7 +139,7 @@ export function ProgressScreen() {
           </Card>
         ) : (
           <>
-            <Section>
+            <Section label={t('progress.trendTitle')} labelHidden>
               <Card>
                 {trend && trend.hasTrend ? (
                   <div className="trend">
@@ -209,7 +209,7 @@ export function ProgressScreen() {
               </Card>
             </Section>
 
-            <Section>
+            <Section label={t('progress.historyTitle')} labelHidden>
               <Card>
                 <Heatmap rows={rows} days={window.days.map((day) => day.date)} />
               </Card>

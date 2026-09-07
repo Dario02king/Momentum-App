@@ -13,10 +13,29 @@ export function Card({ children, padded = false, className = '' }: {
   );
 }
 
-export function Section({ label, children }: { label?: string; children: ReactNode }) {
+/**
+ * A titled group.
+ *
+ * `labelHidden` keeps the heading in the document but out of the design. Some
+ * cards carry their own visual title — a chart states its range, a grid its
+ * legend — and repeating it as a grey label above would be noise; without
+ * any heading, though, the section is an unnamed region a screen reader
+ * cannot navigate to or skip.
+ */
+export function Section({
+  label,
+  labelHidden = false,
+  children,
+}: {
+  label?: string;
+  labelHidden?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <section className="section">
-      {label ? <h2 className="section__label">{label}</h2> : null}
+    <section className="section" aria-label={label && labelHidden ? label : undefined}>
+      {label ? (
+        <h2 className={labelHidden ? 'visually-hidden' : 'section__label'}>{label}</h2>
+      ) : null}
       {children}
     </section>
   );
