@@ -43,8 +43,14 @@ The app is built in reviewed stages. Current status:
 | 8 | Product review pass and fixes | done |
 
 Stage 8 closed with a combined walkthrough of the §25 acceptance questions,
-a copy review and a §6 design-conformance review against the real app. The
-build at that point is the **V1 release candidate**.
+a copy review and a §6 design-conformance review against the real app.
+
+**`ae8b479` is V1 Release Candidate 1.** It is a candidate, not a release:
+it has never run on a real device and has never been driven by a real screen
+reader. [`docs/RC1.md`](docs/RC1.md) records what is frozen, what was
+verified and what is still outstanding;
+[`docs/rc1-device-tests.md`](docs/rc1-device-tests.md) is the manual
+checklist that closes the gap.
 
 Decisions taken during the build that the specification did not settle are
 recorded in [`docs/decisions.md`](docs/decisions.md). Two of them override
