@@ -74,3 +74,52 @@
   font-size: var(--type-footnote);
   max-width: 26ch;
 }
+
+.stage-placeholder__action {
+  margin-top: var(--space-4);
+}
+
+/*
+ * The update prompt. It sits above the tab bar, states the fact and offers
+ * one action — it never reloads by itself, because a reload during a
+ * check-in would throw away what the user was in the middle of.
+ */
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 calc(var(--safe-left) + var(--space-4)) var(--space-3)
+    calc(var(--safe-right) + var(--space-4));
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  animation: update-rise var(--duration-base) var(--ease-standard);
+}
+
+.update-banner__action {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-semibold);
+  flex-shrink: 0;
+}
+
+@keyframes update-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-banner {
+    animation: none;
+  }
+}

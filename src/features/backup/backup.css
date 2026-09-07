@@ -1,0 +1,39 @@
+.backup__explain {
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.backup__status {
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  font-size: var(--type-footnote);
+  line-height: 1.4;
+}
+
+.backup__status--ok {
+  color: var(--mint-ink);
+}
+
+.backup__status--error {
+  color: var(--rose-ink);
+}
+
+.backup__confirmBody {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.backup__confirmDetail {
+  background: var(--surface-secondary);
+  border-radius: var(--radius-inner);
+  padding: var(--space-4);
+  font-size: var(--type-subhead);
+}
+
+.backup__confirmRange {
+  color: var(--text-secondary);
+  font-size: var(--type-footnote);
+  margin-top: 4px;
+}

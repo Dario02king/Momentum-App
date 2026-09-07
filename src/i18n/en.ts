@@ -188,6 +188,38 @@ export const en: Translations = {
   'rank.calibrating': 'Calibrating — your rank can only rise for the first {days} days.',
 
 
+  'backup.title': 'Backup',
+  'backup.explain':
+    'A backup holds all of your Momentum data from this device: your questions, answers, sessions and settings.',
+  'backup.export': 'Export a backup',
+  'backup.exportHint': 'Save it as a file',
+  'backup.import': 'Import a backup',
+  'backup.importHint': 'Restore from a file',
+  'backup.exported': 'Saved: {answers} answers, {sessions} sessions.',
+  'backup.imported': 'Backup restored.',
+  'backup.confirmTitle': 'Replace your data?',
+  'backup.confirmBody':
+    'All Momentum data on this device will be replaced by the backup. This cannot be undone.',
+  'backup.confirmDetail': '{answers} answers · {sessions} sessions',
+  'backup.confirmRange': '{from} to {to}',
+  'backup.confirmAction': 'Replace',
+  'backup.failedRead': 'That file could not be read.',
+  'backup.failedInvalid': 'That file is not a Momentum backup.',
+  'backup.failedNewer': 'That backup was made by a newer version of Momentum.',
+  'backup.failedBroken': 'That backup is incomplete and was not applied.',
+
+  'update.available': 'A new version is available',
+  'update.action': 'Reload',
+
+  'error.storage.unavailable':
+    'Momentum keeps everything locally on this device, which some browsers block in private mode.',
+  'error.storage.newer':
+    'This page is running an older version of Momentum. Reload it to continue.',
+  'error.storage.blocked':
+    'Momentum is open in another window. Close it and try again.',
+  'error.storage.retry': 'Try again',
+  'error.storage.reload': 'Reload',
+
   'error.storage.title': 'Your data could not be loaded',
   'error.storage.body':
     'Momentum keeps everything locally on this device, which some browsers block in private mode.',

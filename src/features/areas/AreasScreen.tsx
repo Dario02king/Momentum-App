@@ -14,6 +14,7 @@ import {
   questionTypeBadgeKey,
 } from '../../domains/mental/questionLabels';
 import { TargetPicker } from '../../domains/sports/TargetPicker';
+import { BackupSection } from '../backup/BackupSection';
 import { useI18n, useT } from '../../i18n/I18nProvider';
 import { LANGUAGES } from '../../i18n';
 import {
@@ -23,6 +24,8 @@ import {
 import './areas.css';
 
 export interface AreasActions {
+  /** Reloads everything after a restore replaced the profile. */
+  reload(): void;
   enableMental(): void;
   disableMental(): void;
   enableSports(): void;
@@ -225,6 +228,8 @@ export function AreasScreen({
             </div>
           </Card>
         </Section>
+
+        <BackupSection onRestored={actions.reload} />
 
         {/* Settings ---------------------------------------------------- */}
         <Section label={t('common.settings')}>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Language } from '../core/model';
+import { StorageError, type StorageFailure } from '../storage/db';
 import { settingsRepository } from '../storage/repositories';
 import {
   addQuestion,
@@ -20,7 +21,7 @@ import type { AreasActions } from '../features/areas/AreasScreen';
 
 export type MomentumState =
   | { status: 'loading' }
-  | { status: 'error'; error: Error }
+  | { status: 'error'; error: Error; reason: StorageFailure }
   | { status: 'ready'; configuration: AppConfiguration };
 
 /**
@@ -42,6 +43,8 @@ export function useMomentum() {
       setState({
         status: 'error',
         error: error instanceof Error ? error : new Error(String(error)),
+        // Why it failed decides what the user can do about it.
+        reason: error instanceof StorageError ? error.reason : 'failed',
       });
     }
   }, []);
@@ -103,6 +106,7 @@ export function useMomentum() {
     pauseQuestion: (id) => run(() => pauseQuestion(id)),
     resumeQuestion: (id) => run(() => resumeQuestion(id)),
     archiveQuestion: (id) => run(() => archiveQuestion(id)),
+    reload: () => void refresh(),
     setLanguage,
   };
 

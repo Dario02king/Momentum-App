@@ -32,8 +32,8 @@ The app is built in reviewed stages. Current status:
 | 3 | Today screen and daily check-in | done |
 | 4 | Progress screen: heatmap and trend curve | done |
 | 5 | Rating engine, rank ladder, rank badges | done |
-| 6 | Sports domain: weekly target tracking | in review |
-| 7 | Backup export/import, PWA behaviour, service worker updates | not started |
+| 6 | Sports domain: weekly target tracking | done |
+| 7 | Backup export/import, PWA behaviour, service worker updates | in review |
 | 8 | Product review pass and fixes | not started |
 
 Decisions taken during the build that the specification did not settle are
@@ -57,7 +57,8 @@ src/
     ranks/    the eight-rank ladder and boundary hysteresis (§15)
     streaks/  check-in and training streaks (§16)
   i18n/       key-based string layer, German by default
-  storage/    IndexedDB, migrations, typed repositories
+  storage/    IndexedDB, migrations, typed repositories, backup and restore
+  sw/         the service worker template, filled in at build time
   styles/     light design tokens
 ```
 

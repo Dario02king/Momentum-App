@@ -69,6 +69,37 @@ const MIGRATIONS: Migration[] = [
   },
 ];
 
+/**
+ * Why storage failed, in terms the interface can act on.
+ *
+ * - `unavailable` — no IndexedDB at all (private mode in some browsers).
+ * - `blocked`     — another tab holds an older version open.
+ * - `newerData`   — the database on disk is newer than this build understands,
+ *                   which happens when an older tab is opened after an update.
+ * - `failed`      — everything else, including a migration that threw.
+ */
+export type StorageFailure = 'unavailable' | 'blocked' | 'newerData' | 'failed';
+
+export class StorageError extends Error {
+  constructor(
+    readonly reason: StorageFailure,
+    message: string,
+    readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = 'StorageError';
+  }
+}
+
+export function isStorageAvailable(): boolean {
+  try {
+    return typeof indexedDB !== 'undefined' && indexedDB !== null;
+  } catch {
+    // Accessing the global itself can throw where site data is blocked.
+    return false;
+  }
+}
+
 export function toPromise<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
@@ -89,6 +120,13 @@ let dbPromise: Promise<IDBDatabase> | null = null;
 export function openDatabase(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
 
+  if (!isStorageAvailable()) {
+    dbPromise = null;
+    return Promise.reject(
+      new StorageError('unavailable', 'This browser will not let Momentum store data'),
+    );
+  }
+
   dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -97,8 +135,15 @@ export function openDatabase(): Promise<IDBDatabase> {
       const tx = request.transaction;
       if (!tx) throw new Error('Upgrade transaction missing');
       const from = event.oldVersion;
-      for (const migration of MIGRATIONS) {
-        if (migration.version > from) migration.up(db, tx);
+      try {
+        for (const migration of MIGRATIONS) {
+          if (migration.version > from) migration.up(db, tx);
+        }
+      } catch (error) {
+        // Abort rather than leave a half-migrated database behind; the open
+        // then fails and the interface can offer a way out.
+        tx.abort();
+        throw new StorageError('failed', 'Momentum could not update its stored data', error);
       }
     };
 
@@ -113,12 +158,30 @@ export function openDatabase(): Promise<IDBDatabase> {
       resolve(db);
     };
 
-    request.onerror = () => reject(request.error ?? new Error('Could not open database'));
+    request.onerror = () => {
+      const error = request.error;
+      // A database newer than this build is the update case: an old tab is
+      // still open after a new version has run.
+      const reason: StorageFailure = error?.name === 'VersionError' ? 'newerData' : 'failed';
+      reject(
+        new StorageError(
+          reason,
+          reason === 'newerData'
+            ? 'This page is running an older version of Momentum than the stored data'
+            : 'Momentum could not open its stored data',
+          error,
+        ),
+      );
+    };
     request.onblocked = () =>
-      reject(new Error('Database upgrade blocked by another open tab'));
+      reject(
+        new StorageError('blocked', 'Another open Momentum tab is holding the data'),
+      );
   }).catch((error) => {
     dbPromise = null;
-    throw error;
+    throw error instanceof StorageError
+      ? error
+      : new StorageError('failed', 'Momentum could not open its stored data', error);
   });
 
   return dbPromise;
@@ -139,6 +202,26 @@ export async function deleteDatabase(): Promise<void> {
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error ?? new Error('Could not delete database'));
     request.onblocked = () => resolve();
+  });
+}
+
+/**
+ * Replaces the contents of every store in **one** transaction.
+ *
+ * This is what makes an import atomic: IndexedDB rolls the whole transaction
+ * back if any part of it fails, so a profile is either fully replaced or
+ * left exactly as it was. Clearing and writing store by store would leave a
+ * half-restored profile behind the moment one write failed.
+ */
+export async function replaceAllStores(
+  contents: Partial<Record<StoreName, unknown[]>>,
+): Promise<void> {
+  await runTransaction(ALL_STORES, 'readwrite', (tx) => {
+    for (const store of ALL_STORES) {
+      const objectStore = tx.objectStore(store);
+      objectStore.clear();
+      for (const record of contents[store] ?? []) objectStore.put(record);
+    }
   });
 }
 

@@ -471,3 +471,66 @@ The sheet offers the seven days of the session's own week, with days still to
 come disabled. Moving beyond the week is refused by the same rule that
 governs every other edit to a session, so the week a target counts over
 cannot be rewritten after the fact.
+
+## D39 — A backup carries source data only
+
+Ratings, ranks, peaks, streaks, XP, trends and day scores are all replayed
+from answers, sessions and configuration snapshots (D27), so exporting them
+would ship two versions of the truth that could disagree — and the derived
+one would be the stale one. The file holds settings, domains, questions,
+answers, sessions, configuration snapshots and rank events, and nothing that
+can be recomputed.
+
+Records are sorted by id on the way out, so exporting the same profile twice
+produces identical bytes. That makes "export, import, export" comparable
+rather than merely equivalent.
+
+## D40 — Two version numbers, because they move for different reasons
+
+`formatVersion` describes the envelope, `schemaVersion` the records inside
+it. A future reader can then say *which* of the two it does not understand,
+and either being higher than this build knows is refused outright rather than
+guessed at.
+
+## D41 — Import replaces; it never merges
+
+Version 1 has no conflict resolution and should not invent one. Merging two
+histories would produce a profile that never existed, with a rating matching
+neither — and the rating is a fold over the whole history, so a merged
+timeline is not a repair, it is a fabrication.
+
+The whole file is validated before anything is touched, and the replacement
+runs as a **single IndexedDB transaction** across every store. A rejected
+file, or one that fails partway, leaves the existing profile exactly as it
+was. Importing the same backup twice is idempotent.
+
+## D42 — The service worker never applies an update on its own
+
+The failure §4 names is a user unknowingly stuck on an old build. So a new
+version installs and then *waits*: the app shows an unobtrusive prompt and
+the reload happens only when the user taps it, and exactly once — guarded
+against the `controllerchange` event firing more than once.
+
+One cache per build, named from the built asset filenames, so activation
+cannot leave a mix of old and new assets. The worker never reads or writes
+IndexedDB: activating a new version replaces cached code and cannot touch a
+single answer.
+
+Navigations are served from the cached shell first rather than trying the
+network first, because the app is local-first and has everything it needs
+without a request succeeding — network-first would make every offline launch
+wait for a timeout.
+
+## D43 — Storage failures say which failure they are
+
+`StorageError` carries a reason — unavailable, blocked, newerData, failed —
+and the screen offers the action that actually helps: a reload when an old
+tab is running against newer data, a retry otherwise. A migration that throws
+aborts its transaction rather than leaving a half-migrated database.
+
+## D44 — The precache list is generated, never written by hand
+
+A hand-maintained list drifts the first time a filename changes, and the
+symptom is an installed app serving half of an old build. The build plugin
+takes the list from the bundle, so the possibility is removed rather than
+managed.

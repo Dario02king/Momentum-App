@@ -192,6 +192,38 @@ export const de = {
   'rank.calibrating': 'Kalibrierung – dein Rang kann in den ersten {days} Tagen nur steigen.',
 
 
+  'backup.title': 'Backup',
+  'backup.explain':
+    'Ein Backup enthält alle Momentum-Daten von diesem Gerät: deine Fragen, Antworten, Trainings und Einstellungen.',
+  'backup.export': 'Backup exportieren',
+  'backup.exportHint': 'Als Datei sichern',
+  'backup.import': 'Backup importieren',
+  'backup.importHint': 'Aus einer Datei wiederherstellen',
+  'backup.exported': 'Gesichert: {answers} Antworten, {sessions} Trainings.',
+  'backup.imported': 'Backup wiederhergestellt.',
+  'backup.confirmTitle': 'Daten ersetzen?',
+  'backup.confirmBody':
+    'Alle Momentum-Daten auf diesem Gerät werden durch das Backup ersetzt. Das lässt sich nicht rückgängig machen.',
+  'backup.confirmDetail': '{answers} Antworten · {sessions} Trainings',
+  'backup.confirmRange': '{from} bis {to}',
+  'backup.confirmAction': 'Ersetzen',
+  'backup.failedRead': 'Diese Datei konnte nicht gelesen werden.',
+  'backup.failedInvalid': 'Diese Datei ist kein Momentum-Backup.',
+  'backup.failedNewer': 'Dieses Backup stammt aus einer neueren Version von Momentum.',
+  'backup.failedBroken': 'Dieses Backup ist unvollständig und wurde nicht übernommen.',
+
+  'update.available': 'Neue Version verfügbar',
+  'update.action': 'Neu laden',
+
+  'error.storage.unavailable':
+    'Momentum speichert alles lokal auf diesem Gerät. Im privaten Modus mancher Browser ist das nicht möglich.',
+  'error.storage.newer':
+    'Diese Seite läuft noch mit einer älteren Version von Momentum. Lade sie neu, um fortzufahren.',
+  'error.storage.blocked':
+    'Momentum ist in einem anderen Fenster geöffnet. Schliesse es und versuche es erneut.',
+  'error.storage.retry': 'Erneut versuchen',
+  'error.storage.reload': 'Neu laden',
+
   'error.storage.title': 'Daten konnten nicht geladen werden',
   'error.storage.body':
     'Momentum speichert alles lokal auf diesem Gerät. Im privaten Modus mancher Browser ist das nicht möglich.',
