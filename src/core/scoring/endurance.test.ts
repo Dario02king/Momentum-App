@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GYM_RATING } from '../config/constants';
+import { TRAINING_RATING } from '../config/constants';
 import { enduranceState, type EnduranceWeek } from './endurance';
 
 const week = (weekKey: string, sessions: number, target = 3, inProgress = false): EnduranceWeek => ({
@@ -92,7 +92,7 @@ describe('the Endurance Phase', () => {
   });
 
   it('reports the requirement it is measuring against', () => {
-    expect(enduranceState([]).required).toBe(GYM_RATING.ENDURANCE_WEEKS_REQUIRED);
+    expect(enduranceState([]).required).toBe(TRAINING_RATING.ENDURANCE_WEEKS_REQUIRED);
     expect(enduranceState([]).progress).toBe(0);
     expect(enduranceState([]).unlocked).toBe(false);
   });

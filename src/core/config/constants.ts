@@ -199,19 +199,30 @@ export const SCORING_MODEL = 'categoryMean' as const;
  */
 export const GYM_SCORING_MODEL = 'attendancePerformance' as const;
 
+/**
+ * The Running scoring model this build writes into new config snapshots.
+ *
+ * Same era rule as `GYM_SCORING_MODEL`: a snapshot with no `runningModel`
+ * predates phase 5 and its days replay as attendance against the weekly quota,
+ * which is what those days actually were.
+ */
+export const RUNNING_SCORING_MODEL = 'attendancePerformance' as const;
+
 /** Onboarding recommends three to five questions. */
 export const RECOMMENDED_QUESTION_COUNT = { min: 3, max: 5 } as const;
 
 /**
- * The Gym rating model (Phase 4.1).
+ * The training-domain rating model.
  *
- * Gym Rank is **40 % attendance and 60 % personal development**, and it is
- * emphatically not a measure of absolute strength — that is what Tombstones
- * are for. Every number below is relative to the user's own history, so
- * someone lifting light weights consistently and improving reaches the same
- * ranks as someone lifting heavy ones.
+ * Introduced for Gym in phase 4.1 and adopted unchanged by Running in phase 5,
+ * which is why it is no longer named after either of them. A training rank is
+ * **40 % attendance and 60 % personal development**, and it is emphatically
+ * not a measure of absolute strength or absolute speed — those are Tombstones.
+ * Every number below is relative to the user's own history, so someone lifting
+ * light weights or running modest paces reaches the same ranks as anyone else
+ * by turning up and improving.
  */
-export const GYM_RATING = {
+export const TRAINING_RATING = {
   /** The 40/60 split of the target rating. The two must sum to 1. */
   ATTENDANCE_WEIGHT: 0.4,
   PERFORMANCE_WEIGHT: 0.6,
@@ -228,7 +239,7 @@ export const GYM_RATING = {
    * `score / (1000 − score) = ODDS_PER_DECADE ^ (change% / DECADE_PERCENT)`,
    * so every ten points of improvement multiplies the odds by four: 0 % is
    * evens and scores 500, +10 % is 4:1 and scores 800, −10 % is 1:4 and
-   * scores 200. See `core/gym/score.ts` for the derivation and the fit.
+   * scores 200. See `core/scoring/performanceCurve.ts` for the derivation and the fit.
    */
   CURVE_ODDS_PER_DECADE: 4,
   CURVE_DECADE_PERCENT: 10,
@@ -274,7 +285,8 @@ export const MUSCLE_ROLE_WEIGHTS = {
 } as const;
 
 /**
- * Inactivity decay, by Gym training age (Phase 4.1 §14).
+ * Inactivity decay, by training age. Approved for Gym in phase 4.1 and adopted
+ * unchanged by Running in phase 5 (D96).
  *
  * Each phase is one number: the share of the rank progress held at the start
  * of the abstinence episode that each completed 7-day block removes. They are
@@ -286,11 +298,45 @@ export const MUSCLE_ROLE_WEIGHTS = {
  * training age is 2 completed months is in their third month and decays at
  * 25 % a block.
  */
-export const GYM_DECAY_PHASES = [
+export const TRAINING_DECAY_PHASES = [
   { id: 'early', fromMonth: 0, perBlock: 0.5 },
   { id: 'settling', fromMonth: 2, perBlock: 0.25 },
   { id: 'established', fromMonth: 4, perBlock: 0.2 },
   { id: 'mature', fromMonth: 12, perBlock: 0.1 },
 ] as const;
 
-export type GymDecayPhaseId = (typeof GYM_DECAY_PHASES)[number]['id'];
+export type TrainingDecayPhaseId = (typeof TRAINING_DECAY_PHASES)[number]['id'];
+
+/**
+ * **The Running distance grid (D103). Part of the scoring-model contract.**
+ *
+ * Two runs are directly comparable when their measured distances differ by no
+ * more than 10 %. Comparability is symmetric but *not* transitive, so it
+ * cannot itself define a grouping; a run's identity is instead the fixed,
+ * half-open multiplicative band it falls in:
+ *
+ * ```
+ *   band(d) = floor( ln(d / ANCHOR) / ln(WIDTH) )
+ * ```
+ *
+ * Because a band spans `[a, 1.10a)`, any two runs sharing one are within 10 %
+ * of each other by construction — and because the band depends on nothing but
+ * the run's own distance, adding, editing, removing or expiring any other run
+ * can never change it.
+ *
+ * `ANCHOR` is the minimax grid offset over 3 km, 5 km, 10 km, 15 km, the half
+ * marathon and the marathon: every one of those sits at least 18 % of a band
+ * (±1.73 % of distance) away from a boundary. The obvious round anchors are
+ * far worse — 3000 puts 3 km *exactly* on a boundary.
+ *
+ * **Do not re-tune either constant after release.** They are not preferences;
+ * they define what a stored run's identity *is*, and moving them would
+ * silently repartition every user's history. A change here is a new scoring
+ * era and needs the snapshot marker to say so.
+ */
+export const RUNNING_BANDS = {
+  ANCHOR_METRES: 972.42,
+  WIDTH: 1.1,
+  /** Below this, a run counts for attendance but yields no performance. */
+  MIN_PERFORMANCE_METRES: 3000,
+} as const;

@@ -9,7 +9,7 @@ import {
   rankInterval,
   rankProgressOf,
   trainingAgeMonths,
-} from './decay';
+} from './abstinence';
 
 describe('training age', () => {
   it('counts completed calendar months', () => {

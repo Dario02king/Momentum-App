@@ -250,6 +250,19 @@ export type ScoringModel = 'flat' | 'categoryMean';
  */
 export type GymScoringModel = 'attendance' | 'attendancePerformance';
 
+/**
+ * How a Running day's rating level is produced (D104).
+ *
+ * The same two eras as Gym, for the same reason: `attendance` is runs against
+ * the weekly quota folded by the shared rating engine, which is what every day
+ * before phase 5 actually was; `attendancePerformance` is 40 % attendance and
+ * 60 % pace development at a comparable distance.
+ *
+ * **Absent means `attendance`.** A snapshot with no `runningModel` predates
+ * the change, and the days it covers keep the number the user saw.
+ */
+export type RunningScoringModel = 'attendance' | 'attendancePerformance';
+
 export type DomainConfigSnapshot = {
   [T in StoredDomainType]: {
     id: string;
@@ -295,6 +308,8 @@ export interface AppConfigSnapshot {
     model?: ScoringModel;
     /** Absent means `attendance`: the snapshot predates Gym performance scoring. */
     gymModel?: GymScoringModel;
+    /** Absent means `attendance`: the snapshot predates Running performance scoring. */
+    runningModel?: RunningScoringModel;
   };
   /** Absent on every snapshot RC2 wrote. Absence means the RC2 era. */
   boss?: BossConfigSnapshot;

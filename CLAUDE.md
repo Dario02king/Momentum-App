@@ -111,10 +111,22 @@ Never conflate them.
 - Wellbeing questions are asked **daily**. There is no rhythm engine, no
   per-question schedule, and there never will be.
 - Gym and Running are independent weekly quotas, never a combined one.
-- Gym's rating is **40 % attendance and 60 % personal development**. Extra
-  sessions beyond the weekly target buy no more attendance; a rate of change
-  reaches the level through one documented curve
-  (`src/core/gym/score.ts`), never through a table of branches.
+- A training domain's rating is **40 % attendance and 60 % personal
+  development** — Gym and Running both. Extra sessions beyond the weekly
+  target buy no more attendance; a rate of change reaches the level through
+  one documented curve (`src/core/scoring/performanceCurve.ts`), never
+  through a table of branches.
+- **What a domain compares is domain-specific; how it is scored is not.** Gym
+  reduces to the best set of an exercise, Running to pace at a comparable
+  distance. Each produces a percentage change per window, and everything after
+  that — the curve, the 40/60 target, movement, Endurance, decay, Maintenance
+  — is the shared code in `core/scoring/`. Add a domain by adding its
+  evidence, never by copying the model.
+- **An identity a comparison is grouped by must depend only on the record's
+  own facts.** Running's distance bands are a pure function of the run's own
+  distance, so adding, editing, deleting or expiring any other run cannot
+  change what an existing run is compared against. Anything that groups by
+  looking at neighbouring records reinterprets history the moment one arrives.
 - A rating **moves towards** its target rather than becoming it. Climbing gets
   slower as the rating rises; falling never does — a high rank is harder to
   reach, not protected.

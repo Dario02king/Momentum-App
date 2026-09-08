@@ -1,4 +1,4 @@
-import { GYM_DECAY_PHASES, GYM_RATING, type GymDecayPhaseId } from '../config/constants';
+import { TRAINING_DECAY_PHASES, TRAINING_RATING, type TrainingDecayPhaseId } from '../config/constants';
 import type { DateKey } from '../dates';
 import { diffInDays, middayOf } from '../dates';
 import { nextRank, rankById, type Rank } from '../ranks';
@@ -82,17 +82,17 @@ export function trainingAgeMonths(start: DateKey, on: DateKey): number {
   return Math.max(0, months);
 }
 
-export interface GymDecayPhase {
-  id: GymDecayPhaseId;
+export interface TrainingDecayPhase {
+  id: TrainingDecayPhaseId;
   fromMonth: number;
   /** Share of the baseline rank progress one full 7-day block removes. */
   perBlock: number;
 }
 
 /** Which schedule a user of this training age decays under. */
-export function decayPhaseFor(ageMonths: number): GymDecayPhase {
-  const phases: readonly GymDecayPhase[] = GYM_DECAY_PHASES;
-  let match: GymDecayPhase = phases[0]!;
+export function decayPhaseFor(ageMonths: number): TrainingDecayPhase {
+  const phases: readonly TrainingDecayPhase[] = TRAINING_DECAY_PHASES;
+  let match: TrainingDecayPhase = phases[0]!;
   for (const phase of phases) if (ageMonths >= phase.fromMonth) match = phase;
   return match;
 }
@@ -116,7 +116,7 @@ export function decayPhaseFor(ageMonths: number): GymDecayPhase {
  * boundary meaningless and the arithmetic unexplainable.
  */
 export function decayFraction(days: number, ageMonths: number): number {
-  const blocks = Math.floor(Math.max(0, days) / GYM_RATING.ABSTINENCE_BLOCK_DAYS);
+  const blocks = Math.floor(Math.max(0, days) / TRAINING_RATING.ABSTINENCE_BLOCK_DAYS);
   if (blocks <= 0) return 0;
   return Math.min(1, blocks * decayPhaseFor(ageMonths).perBlock);
 }
@@ -161,7 +161,7 @@ export interface DecayResult {
   /** Rank progress before and after, for a screen that wants to explain it. */
   progressBefore: number;
   progressAfter: number;
-  phase: GymDecayPhaseId;
+  phase: TrainingDecayPhaseId;
   blocks: number;
 }
 
@@ -184,7 +184,7 @@ export function applyAbstinenceDecay(input: DecayInput): DecayResult {
     progressBefore,
     progressAfter,
     phase: decayPhaseFor(input.ageMonths).id,
-    blocks: Math.floor(Math.max(0, input.days) / GYM_RATING.ABSTINENCE_BLOCK_DAYS),
+    blocks: Math.floor(Math.max(0, input.days) / TRAINING_RATING.ABSTINENCE_BLOCK_DAYS),
   };
 }
 

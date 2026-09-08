@@ -1628,3 +1628,156 @@ and preserves all five rules, which is the only kind of retuning that is safe.
 The curve lives in `core/gym/score.ts` today. When Running becomes a real
 second caller it should move to `core/scoring/` unchanged — a move, not a
 reimplementation, and not two copies that can drift.
+
+## D102 — Running performance is pace at a comparable measured distance
+
+A runner is rewarded for **getting faster over runs that are genuinely
+alike**. Not for running further, not for running longer, and never through a
+composite that mixes the two.
+
+An observation qualifies only with a **measured** distance of at least 3 km
+and a positive duration. Distance is what the watch recorded, never a target
+the user declared — a declared "5 k" that was actually 5.4 km would put two
+different efforts under one label and quietly compare them.
+
+```
+  ratio = (distanceCurrent × durationBaseline)
+        / (durationCurrent × distanceBaseline)
+```
+
+Above 1 is faster and therefore positive. Both products are integers, so two
+identical runs give exactly 1, and a longer duration alone can never read as
+improvement because distance sits in the numerator beside it.
+
+Everything else about a run stays valid without qualifying. **A run saves with
+no distance and no duration at all** and counts in full towards the weekly
+target; logging has to stay one tap, and taxing it would cost more honest data
+than the performance figure is worth. Missing fields are never fabricated to
+make a run scorable, which is why every converted RC2 run is attendance-only
+for ever: RC2 recorded no distance, and inventing one would be inventing a
+performance.
+
+Two consequences the product accepts deliberately:
+
+- **Running further at the same pace is exactly neutral.** It is not an
+  improvement under a metric that measures speed, and pretending otherwise
+  would make the number mean two things.
+- **A nearby-but-not-identical distance is not perfectly effort-equivalent.**
+  Inside the allowed comparability range a small distance-related bias can
+  remain. It is left uncorrected: every correction for it is a
+  population-derived model, which this app does not use anywhere.
+
+## D103 — A Running distance identity is a fixed multiplicative band
+
+Two runs may be compared when `max/min ≤ 1.10`, symmetric and inclusive at the
+boundary, evaluated in integer metres so the edge is exact rather than a
+rounding artefact.
+
+That relation is symmetric but **not transitive** — 5.0 and 5.4 km compare,
+5.4 and 5.8 compare, 5.0 and 5.8 do not — so it cannot group anything by
+itself. Grouping is a fixed, half-open multiplicative band:
+
+```
+  band(d) = floor( ln(d / ANCHOR) / ln(WIDTH) )
+  ANCHOR = 972.42 m      WIDTH = 1.10
+```
+
+**A band depends on nothing but the run's own distance.** That is the whole
+point, and it was arrived at by discarding three alternatives that each let an
+unrelated run rewrite history:
+
+- *Anchoring a group at its lowest member.* Adding a 4 900 m run to an
+  existing 5 000/5 500 pair moved the anchor, evicted the 5 500 run and cost
+  it its baseline. A run logged in January stopped counting because of one
+  logged in March.
+- *Connected components of the comparability relation.* Chains 5.0 km to
+  6.2 km through the runs between them, then compares two runs 24 % apart —
+  which the rule forbids outright.
+- *A band wider than the comparability ratio, choosing the best pair inside.*
+  A 5.4 km history and a 6.4 km history share such a band while being 18.5 %
+  apart, so one of two legitimate histories is discarded — and which one
+  survives flips with their calendar spans, so extending the losing history
+  changes nothing.
+
+Because a band spans `[a, 1.10a)`, **same band implies comparable** by
+construction rather than by a check, and the baseline/current pair needs no
+selection heuristic: earliest date against latest, exactly as Gym does. Needing
+anything cleverer would have been evidence the identity was too wide.
+
+`ANCHOR` is the minimax grid offset over 3 km, 5 km, 10 km, 15 km, the half
+marathon and the marathon — every one sits at least 18 % of a band (±1.73 % of
+distance) from a boundary. The obvious round anchors are far worse: 3 000
+places 3 km *exactly* on a boundary, 1 000 does the same to the half marathon.
+
+**Both constants are part of the scoring-model contract.** They define what a
+stored run's identity *is*; changing either would silently repartition every
+user's history, so a change is a new scoring era and must say so through the
+snapshot marker. Do not re-tune them.
+
+### The accepted split
+
+A comparable pair can still straddle a boundary — 5 000 and 5 500 m are
+exactly 10 % apart and land either side of one. A repeated route whose
+measured distance wanders across a boundary becomes two identities, each
+carrying equal weight, so that route is counted twice.
+
+Both are accepted, and **no attempt is made to detect that two adjacent bands
+probably mean the same route**. Doing so would make identity depend on the
+surrounding observations, which is exactly the reinterpretation the fixed grid
+exists to prevent. The product preference is explicit: a deterministic,
+historically stable identity with a small weighting artefact beats a history
+that rewrites itself.
+
+## D104 — Running window evidence, and the aggregation Gym already uses
+
+Inside each window independently:
+
+1. keep the qualifying runs of that band;
+2. collapse a date to its **fastest** run, the way an exercise-day collapses
+   to its best set;
+3. require **two distinct dates**, else the identity has no baseline and
+   leaves the denominator — it is not a zero;
+4. baseline is the earliest date, current the latest;
+5. **one ratio per identity**, however many runs built it.
+
+Then, and this is the part that had to match Gym exactly:
+
+```
+  identity ratios
+    → equal-weighted mean                    ← ONE ratio for the window
+      → percentage change → shared curve     ← mapped ONCE per window
+        → Trend score, YTD score → 50/50
+```
+
+Frequency is evidence, never weight: twenty 5 km runs and two 10 km runs each
+contribute exactly one ratio to the mean.
+
+**Ratios are averaged before the curve, not after.** An earlier proposal had
+Running map each identity and average the scores; it was withdrawn. Gym
+averages ratios within a window and maps once, the two orders differ
+materially at wide spreads, and two training domains disagreeing about the
+shape of their own pipeline would be a defect waiting to be found by a user.
+Gym was not changed.
+
+Trend is a rolling 60 days and year-to-date starts on January the first, each
+computed over its own range so neither can borrow the other's baseline. Both
+available blends 50/50; one available is used alone; neither available means
+performance is unavailable and the target is attendance by itself.
+
+## D105 — Shared scoring is a move, not a second copy
+
+Running became the second real caller of the model Gym established, so the
+parts both use moved out of `core/gym/` into `core/scoring/`: the performance
+curve, attendance, the two-window blend, the 40/60 target, the movement
+factor, Maintenance, the rating fold, the Endurance Phase and abstinence
+decay. `GYM_RATING` became `TRAINING_RATING` for the same reason.
+
+It is a move rather than an extraction of something new — the test suite that
+pinned Gym's behaviour ran unchanged across it — and it stops at what two
+callers actually share. What stays domain-specific is the *evidence*: Gym's
+best set per exercise, Running's pace per distance identity. Each reduces to a
+percentage change per window, and from that point the two domains are scored
+by identical code.
+
+No generic framework was built for domains that do not exist yet. Food has no
+scoring engine and gains nothing here.

@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setClock } from '../../core/clock';
-import { GYM_RATING, RATING } from '../../core/config/constants';
+import { TRAINING_RATING, RATING } from '../../core/config/constants';
 import { addDays, weekKeyOf } from '../../core/dates';
-import { mapPerformanceChangeToScore } from '../../core/gym/score';
+import { mapPerformanceChangeToScore } from '../../core/scoring/performanceCurve';
 import { closeDatabase, deleteDatabase } from '../db';
 import {
   configSnapshotsRepository,
@@ -112,8 +112,8 @@ describe('the 40/60 target', () => {
     expect(state.performance.score).not.toBeNull();
     const attendance = 1000; // three of three
     const expected =
-      GYM_RATING.ATTENDANCE_WEIGHT * attendance +
-      GYM_RATING.PERFORMANCE_WEIGHT * state.performance.score!;
+      TRAINING_RATING.ATTENDANCE_WEIGHT * attendance +
+      TRAINING_RATING.PERFORMANCE_WEIGHT * state.performance.score!;
     const last = state.detail[state.detail.length - 1]!;
     expect(last.target).toBeCloseTo(expected, 6);
   });
@@ -186,7 +186,7 @@ describe('the Endurance Phase, end to end', () => {
     const steps = points.slice(1).map((point, index) => point.rating - points[index]!.rating);
     const largest = Math.max(...steps.map(Math.abs));
     expect(unlockWeek).toBeTruthy();
-    expect(largest).toBeLessThan(RATING.MAX * GYM_RATING.BASE_MOVEMENT + 1e-6);
+    expect(largest).toBeLessThan(RATING.MAX * TRAINING_RATING.BASE_MOVEMENT + 1e-6);
   });
 
   it('holds the gate shut through four weeks that were not met', async () => {
@@ -559,7 +559,7 @@ describe('a profile that predates the Gym scoring model', () => {
     // The day the model changes moves the rating by one ordinary step at
     // most: an upgrade neither creates progress nor takes it away.
     const step = Math.abs(after.rating - before.rating);
-    expect(step).toBeLessThanOrEqual(RATING.MAX * GYM_RATING.BASE_MOVEMENT + 1e-6);
+    expect(step).toBeLessThanOrEqual(RATING.MAX * TRAINING_RATING.BASE_MOVEMENT + 1e-6);
   });
 
   it('leaves every earlier day exactly where the old model put it', async () => {

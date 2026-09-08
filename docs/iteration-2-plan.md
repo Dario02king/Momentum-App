@@ -144,7 +144,7 @@ rating of every promotion.
 | 3 | `features/ranking/*` (Boss UI, domain ranks, weights, mystery), `core/ranks/progress.ts`, `features/today/BossSummary.tsx` | **review stop** ← we are here |
 | 4 | `features/gym/*`, `components/BodyRenderer/*`, `core/gym/performance.ts`, `core/gym/catalogue.ts`, `storage/services/gymService.ts` | **review stop** ← we are here |
 | 4.1 | `core/gym/{score,rating,load,muscles,endurance,decay}.ts`, `storage/services/gymRatingService.ts`, `features/gym/GymOverview.tsx`, schema 4 | **review stop** ← we are here |
-| 5 | `features/running/*` (new), `core/running/*`, `RunSource` adapter shape | |
+| 5 | `features/running/*` (new), `core/running/*`, `core/scoring/*` (shared), `RunSource` adapter shape | **review stop** ← we are here |
 | 6 | `features/food/*` (new), `core/food/*`, `FoodRepository` | **review stop** |
 | 7 | decay formula → **Gate 1**; nutrition targets → **Gate 2** | **two gates** |
 | 8 | Today/Progress integration, tombstones, rest day, pause, "Warum diese Zahl?", full regression | |
@@ -314,3 +314,38 @@ migration runner: two migrations rewriting one store each opened their own
 cursor, so a device jumping from version 2 to version 4 silently lost version
 3's work (D98). Migrations now declare their rewrites and the runner composes
 them.
+
+## Phase 5 as built
+
+Running reuses the scoring model Gym established and adds only what is
+genuinely its own.
+
+- **The evidence is pace at a comparable measured distance** (D102): a
+  measured distance of at least 3 km and a positive duration, `ratio =
+  (d_cur × t_base) / (t_cur × d_base)`. Running further at the same pace is
+  exactly neutral. A run without both fields still counts in full for
+  attendance, and nothing is ever fabricated to make one scorable — which is
+  why every converted RC2 run stays attendance-only.
+- **Identity is a fixed multiplicative band** (D103), `floor(ln(d/972.42) /
+  ln(1.10))`, depending on nothing but the run's own distance. Three dynamic
+  alternatives were built and rejected during design, each because an
+  unrelated run could rewrite an existing comparison; the regressions that
+  killed them (4900/5000/5500 and the 5.4/6.4 pair) are pinned as tests.
+  Because a band spans `[a, 1.10a)`, same band implies comparable, so
+  baseline and current are simply earliest and latest.
+- **Aggregation matches Gym exactly** (D104): one ratio per identity,
+  equal-weighted mean, then the shared curve once per window, then Trend and
+  YTD 50/50. An earlier map-per-identity proposal was withdrawn rather than
+  shipped as an asymmetry.
+- **The shared model moved rather than being copied** (D105).
+  `core/scoring/` now holds the curve, attendance, the blend, the target,
+  movement, Maintenance, the fold, Endurance and abstinence decay; Gym's
+  entire test suite ran unchanged across the move.
+- **Entry stays one tap.** Distance and duration are optional fields on the
+  run's detail sheet, in kilometres, with derived pace shown once both are
+  present. No band index, anchor or logarithm appears anywhere in the
+  interface.
+
+Schema was untouched: `distanceMetres` has existed since schema 2. The only
+model change is the snapshot's `runningModel` era marker, absent on every
+snapshot written before phase 5 and read as the attendance era.

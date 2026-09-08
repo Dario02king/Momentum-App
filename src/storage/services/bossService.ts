@@ -17,9 +17,14 @@ import { compareDateKeys } from '../../core/dates';
 import type { DayState } from '../../core/rating';
 import { rankHistory, rankForRating, type Rank, type RankChange } from '../../core/ranks';
 import type { XpDay, XpWeek } from '../../core/scoring/xp';
-import { configSnapshotsRepository, gymSessionsRepository } from '../repositories';
+import { configSnapshotsRepository, gymSessionsRepository, runsRepository } from '../repositories';
 import { buildGymRating, type GymRatingState } from './gymRatingService';
 import { loadExerciseDays } from './gymService';
+import {
+  buildRunningRating,
+  loadRunObservations,
+  type RunningRatingState,
+} from './runningRatingService';
 import type { History } from './historyService';
 import { loadProgression, progressionOrigin, type Progression } from './ratingService';
 
@@ -89,6 +94,15 @@ export interface BossProgression {
    * a number the Boss simply consumes.
    */
   gym: GymRatingState;
+  /**
+   * Running's rating state — its distance identities, the two pace windows,
+   * the Endurance Phase and the abstinence episode.
+   *
+   * The same arrangement as `gym` above and for the same reason: the Boss
+   * reads a ladder position and knows nothing about how either domain
+   * produced its rating. There is no separate Running-to-Boss formula.
+   */
+  running: RunningRatingState;
 }
 
 /** Which era each day belongs to, resolved once rather than per domain. */
@@ -226,24 +240,44 @@ export async function loadBossProgression(
     reference,
   });
 
+  /* Running is replayed from its runs the same way, and by the same shared
+     scoring code once its own evidence has been reduced to a percentage. */
+  const runs = await runsRepository.getAll();
+  const runningDayStates = domainDayStates(history, 'running');
+  const running = buildRunningRating({
+    history,
+    dayStates: runningDayStates,
+    snapshots,
+    runDates: new Set(runs.map((entry) => entry.date)),
+    runs: firstDate && lastDate ? await loadRunObservations(firstDate, lastDate) : [],
+    reference,
+  });
+
+  /** The two training domains supply their own rating series; the rest fold. */
+  const supplied: Partial<Record<DomainType, { state: GymRatingState | RunningRatingState; days: DayState[] }>> = {
+    gym: { state: gym, days: gymDayStates },
+    running: { state: running, days: runningDayStates },
+  };
+
   const domains: DomainProgression[] = DOMAIN_TYPES.map((domain) => {
     const xp = domainXp(history, domain);
-    const days = domain === 'gym' ? gymDayStates : domainDayStates(history, domain);
+    const own = supplied[domain];
+    const days = own ? own.days : domainDayStates(history, domain);
     const ledger = buildLedger({
       domain,
       days,
       xpDays: xp.days,
       xpWeeks: xp.weeks,
-      ...(domain === 'gym'
+      ...(own
         ? {
             rating: {
-              points: gym.points,
-              current: gym.rating,
-              peak: gym.peak,
+              points: own.state.points,
+              current: own.state.rating,
+              peak: own.state.peak,
               currentStreak: 0,
               bestStreak: 0,
             },
-            promotionUnlocked: gym.promotionUnlocked,
+            promotionUnlocked: own.state.promotionUnlocked,
           }
         : {}),
     });
@@ -294,6 +328,7 @@ export async function loadBossProgression(
     history,
     legacy,
     gym,
+    running,
   };
 }
 

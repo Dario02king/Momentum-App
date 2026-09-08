@@ -497,6 +497,64 @@ export const de = {
   'gym.detail.day': 'Tag',
   'gym.detail.value': 'Bester Satz',
   'gym.detail.open': 'Verlauf dieser Übung öffnen',
+
+  'running.distance': 'Distanz',
+  'running.distanceUnit': 'km',
+  'running.distanceHint':
+    'Optional. Mit Distanz und Dauer zählt der Lauf auch für deine Tempoentwicklung.',
+  'running.pace': 'Tempo {pace} min/km',
+  'running.title': 'Laufen',
+
+  'running.rating.title': 'Lauf-Rating',
+  'running.rating.value': '{value} von 1000',
+  'running.rating.explain':
+    'Setzt sich zusammen aus 40 % Anwesenheit und 60 % Tempoentwicklung auf vergleichbaren Distanzen. Verglichen wird immer mit deiner eigenen Historie.',
+  'running.rating.notStarted': 'Noch keine Läufe aufgezeichnet.',
+
+  'running.ytd.title': 'Tempo seit Jahresbeginn',
+  'running.ytd.explain':
+    'Verglichen wird dein letzter Lauf mit deinem ersten in diesem Jahr — jeweils nur auf vergleichbaren Distanzen.',
+  'running.trend.title': 'Aktueller Trend',
+  'running.performance.none': 'Noch kein Vergleich möglich',
+  'running.performance.needsSecond':
+    'Sobald du eine ähnliche Distanz ein zweites Mal mit Distanz und Dauer aufzeichnest, zählt deine Tempoentwicklung.',
+  'running.performance.counted': '{count} Distanzbereiche gewertet',
+  'running.performance.attendanceOnly':
+    '{count} Läufe ohne Distanz oder Dauer zählen für die Anwesenheit, aber nicht fürs Tempo.',
+  'running.performance.comparable':
+    'Nur Läufe mit ähnlicher Distanz werden miteinander verglichen. Ein 5-km-Lauf wird nie gegen einen 20-km-Lauf gestellt.',
+
+  'running.attendance.title': 'Anwesenheit',
+  'running.attendance.value': '{sessions} von {target} Läufen',
+  'running.attendance.thisWeek': 'Diese Woche',
+  'running.attendance.explain':
+    'Mehr Läufe als dein Wochenziel bringen hier nichts zusätzlich. Gym zählt nicht zum Laufen.',
+
+  'running.endurance.title': 'Ausdauerphase',
+  'running.endurance.progress': '{progress} von {required} Wochen',
+  'running.endurance.explain':
+    'Dein erster Rang wird freigeschaltet, sobald du vier Wochen netto geschafft hast. Eine erreichte Woche zählt +1, eine verpasste −0,5.',
+  'running.endurance.locked': 'Erster Rang noch gesperrt',
+  'running.endurance.stillCounts':
+    'Dein Rating wird bereits normal berechnet. Gesperrt ist nur die Beförderung.',
+
+  'running.decay.title': 'Laufpause',
+  'running.decay.days': '{days} Tage ohne Lauf',
+  'running.decay.lost': '{percent} % deines Rangfortschritts abgebaut',
+  'running.decay.explain':
+    'Abgebaut wird nur der Fortschritt innerhalb deines aktuellen Rangs. Deine aufgezeichneten Läufe und deine Tempowerte bleiben unverändert.',
+  'running.decay.floor': 'Du fällst dadurch nicht unter deinen aktuellen Rang.',
+  'running.decay.resume': 'Ein gespeicherter Lauf beendet die Pause sofort.',
+
+  'running.maintenance.body':
+    'Nach einem Jahr Training hält ein unverändertes Tempo bei erfülltem Wochenziel dein Rating. Du musst dich nicht ewig steigern.',
+
+  'running.progress.title': 'Laufen',
+  'running.progress.distances': 'Distanzbereiche',
+  'running.progress.noData': 'Noch keine Laufdaten.',
+  'running.progress.range': '{from}–{to} km',
+  'running.progress.runs': '{count} Läufe',
+  'running.progress.noBaseline': 'Noch kein Vergleich',
 } as const;
 
 export type TranslationKey = keyof typeof de;

@@ -22,13 +22,16 @@ import {
 } from './db';
 import {
   answersRepository,
+  configSnapshotsRepository,
   domainsRepository,
   exercisesRepository,
   gymSetsRepository,
   questionsRepository,
+  runsRepository,
   settingsRepository,
   sportsSessionsRepository,
 } from './repositories';
+import { runningPerformance } from '../core/running/performance';
 import { loadProgression } from './services/ratingService';
 import { loadBossProgression } from './services/bossService';
 
@@ -366,6 +369,30 @@ describe('the gym stores at version 3 and 4', () => {
     expect((set as unknown as { weightKg?: number }).weightKg).toBeUndefined();
     expect(set?.reps).toBe(8);
     expect(set?.muscles).toEqual([]);
+  });
+
+  it('leaves a legacy run attendance-only, because RC2 recorded no distance', async () => {
+    /*
+     * Phase 5 changed no record shape — `distanceMetres` has existed since
+     * schema 2 — so there is no migration to run. What has to hold is that a
+     * run carrying no distance is never given one, and therefore never
+     * carries performance. This is the promise every converted RC2 run
+     * depends on.
+     */
+    await openDatabase();
+    const snapshot = (await configSnapshotsRepository.list())[0]!;
+    await runsRepository.create({
+      date: '2026-09-06',
+      durationSeconds: 1800,
+      configSnapshotId: snapshot.id,
+      legacyCarryOver: true,
+    });
+    const stored = (await runsRepository.getAll()).find((run) => run.legacyCarryOver)!;
+    expect(stored.distanceMetres).toBeNull();
+    expect(stored.elevationMetres).toBeNull();
+    expect(runningPerformance([
+      { id: stored.id, date: stored.date, distanceMetres: stored.distanceMetres, durationSeconds: stored.durationSeconds },
+    ]).ratio).toBeNull();
   });
 
   it('still reproduces the RC2 numbers it was carrying', async () => {

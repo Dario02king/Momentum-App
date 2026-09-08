@@ -1,8 +1,8 @@
-import { GYM_RATING, RATING } from '../config/constants';
+import { TRAINING_RATING, RATING } from '../config/constants';
 import type { DateKey } from '../dates';
 import { rankForRating, rankWithHysteresis, type Rank } from '../ranks';
-import { applyAbstinenceDecay, rankInterval, rankProgressOf } from './decay';
-import { attendanceScore, performanceScore, type PerformanceScore } from './score';
+import { applyAbstinenceDecay, rankInterval, rankProgressOf } from './abstinence';
+import { attendanceScore, performanceScore, type PerformanceScore } from './performanceCurve';
 
 /**
  * The Gym rating: **40 % attendance, 60 % personal development.**
@@ -81,9 +81,9 @@ import { attendanceScore, performanceScore, type PerformanceScore } from './scor
  * the one the tests assert.
  */
 export function movementFactor(rating: number, target: number): number {
-  const base = GYM_RATING.BASE_MOVEMENT;
+  const base = TRAINING_RATING.BASE_MOVEMENT;
   if (target < rating) return base;
-  const headroom = RATING.MAX - GYM_RATING.MOVEMENT_FULL_SPEED_BELOW;
+  const headroom = RATING.MAX - TRAINING_RATING.MOVEMENT_FULL_SPEED_BELOW;
   const scale = headroom <= 0 ? 1 : Math.min(1, (RATING.MAX - rating) / headroom);
   return base * Math.max(0, scale);
 }
@@ -112,8 +112,8 @@ export interface TargetInput {
 export function targetRating(input: TargetInput): number {
   if (input.performance === null) return clamp(input.attendance);
   return clamp(
-    GYM_RATING.ATTENDANCE_WEIGHT * input.attendance +
-      GYM_RATING.PERFORMANCE_WEIGHT * input.performance,
+    TRAINING_RATING.ATTENDANCE_WEIGHT * input.attendance +
+      TRAINING_RATING.PERFORMANCE_WEIGHT * input.performance,
   );
 }
 
@@ -164,17 +164,17 @@ export interface MaintenanceInput {
  */
 export function maintenanceHolds(input: MaintenanceInput): boolean {
   return (
-    input.ageMonths >= GYM_RATING.MAINTENANCE_MIN_MONTHS &&
+    input.ageMonths >= TRAINING_RATING.MAINTENANCE_MIN_MONTHS &&
     input.attendanceFraction >= 1 &&
     input.sufficientHistory &&
     input.performanceChange !== null &&
-    Math.abs(input.performanceChange) <= GYM_RATING.MAINTENANCE_TOLERANCE_PERCENT
+    Math.abs(input.performanceChange) <= TRAINING_RATING.MAINTENANCE_TOLERANCE_PERCENT
   );
 }
 
 /* ── The fold ───────────────────────────────────────────────────────────── */
 
-export interface GymRatingDay {
+export interface TrainingRatingDay {
   date: DateKey;
   /**
    * Whether this day counts at all. A day before Gym was enabled, or one
@@ -198,7 +198,7 @@ export interface GymRatingDay {
   enduranceUnlocked: boolean;
 }
 
-export interface GymRatingPoint {
+export interface TrainingRatingPoint {
   date: DateKey;
   rating: number;
   /** Where the rating was heading. `null` on a day that did not count. */
@@ -214,8 +214,8 @@ export interface GymRatingPoint {
   skipped: boolean;
 }
 
-export interface GymRatingResult {
-  points: GymRatingPoint[];
+export interface TrainingRatingResult {
+  points: TrainingRatingPoint[];
   current: number;
   peak: number;
 }
@@ -241,7 +241,7 @@ const clamp = (value: number) => Math.min(RATING.MAX, Math.max(RATING.MIN, value
  * penalty the decay rule was written to avoid, and it is why decay reads its
  * baseline once and then recomputes from it rather than eating the remainder.
  */
-export interface GymRatingOptions {
+export interface TrainingRatingOptions {
   /**
    * The rating to continue from.
    *
@@ -259,11 +259,11 @@ export interface GymRatingOptions {
   heldRank?: Rank | null;
 }
 
-export function computeGymRating(
-  days: readonly GymRatingDay[],
-  options: GymRatingOptions = {},
-): GymRatingResult {
-  const points: GymRatingPoint[] = [];
+export function computeTrainingRating(
+  days: readonly TrainingRatingDay[],
+  options: TrainingRatingOptions = {},
+): TrainingRatingResult {
+  const points: TrainingRatingPoint[] = [];
   let rating: number = options.start ?? RATING.START;
   let peak: number = Math.max(options.peak ?? RATING.START, rating);
 
@@ -291,7 +291,7 @@ export function computeGymRating(
     const decaying =
       day.enduranceUnlocked &&
       !day.sessionToday &&
-      day.abstinentDays >= GYM_RATING.ABSTINENCE_BLOCK_DAYS;
+      day.abstinentDays >= TRAINING_RATING.ABSTINENCE_BLOCK_DAYS;
 
     if (!day.scored && !decaying) {
       points.push({

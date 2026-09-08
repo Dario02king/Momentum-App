@@ -1,6 +1,7 @@
 import {
   EDIT_WINDOW_DAYS,
   GYM_SCORING_MODEL,
+  RUNNING_SCORING_MODEL,
   SCALE_MAX,
   SCALE_MIN,
   SCORING_MODEL,
@@ -100,6 +101,14 @@ export function buildConfigSnapshot(
        * for `boss` before it, and it is never backfilled.
        */
       gymModel: GYM_SCORING_MODEL,
+      /*
+       * And once more for Running (D104), which reached the same model in
+       * phase 5. A snapshot with no `runningModel` predates it and replays as
+       * runs against the weekly quota, which is what those days were. The era
+       * marker is the existing mechanism, not a new one: same absence rule,
+       * same never-backfill rule, same place.
+       */
+      runningModel: RUNNING_SCORING_MODEL,
     },
   };
 }

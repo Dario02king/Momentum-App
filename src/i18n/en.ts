@@ -491,6 +491,64 @@ export const en: Translations = {
   'gym.detail.tableCaption': 'Best set per training day',
   'gym.detail.day': 'Day',
   'gym.detail.value': 'Best set',
-  'gym.detail.open': 'Open the history for this exercise',
+  'gym.detail.open': 'Open this exercise’s history',
+
+  'running.distance': 'Distance',
+  'running.distanceUnit': 'km',
+  'running.distanceHint':
+    'Optional. With a distance and a duration the run also counts towards your pace development.',
+  'running.pace': 'Pace {pace} min/km',
+  'running.title': 'Running',
+
+  'running.rating.title': 'Running rating',
+  'running.rating.value': '{value} of 1000',
+  'running.rating.explain':
+    'Made up of 40 % attendance and 60 % pace development over comparable distances. The comparison is always against your own history.',
+  'running.rating.notStarted': 'No runs recorded yet.',
+
+  'running.ytd.title': 'Pace year to date',
+  'running.ytd.explain':
+    'Your latest run is compared with your first this year — only ever over comparable distances.',
+  'running.trend.title': 'Current trend',
+  'running.performance.none': 'No comparison possible yet',
+  'running.performance.needsSecond':
+    'As soon as you record a similar distance a second time with both distance and duration, your pace development starts to count.',
+  'running.performance.counted': '{count} distance ranges counted',
+  'running.performance.attendanceOnly':
+    '{count} runs without a distance or duration count towards attendance, but not towards pace.',
+  'running.performance.comparable':
+    'Only runs of a similar distance are compared with each other. A 5 km run is never set against a 20 km one.',
+
+  'running.attendance.title': 'Attendance',
+  'running.attendance.value': '{sessions} of {target} runs',
+  'running.attendance.thisWeek': 'This week',
+  'running.attendance.explain':
+    'Runs beyond your weekly target add nothing here. The gym does not count towards running.',
+
+  'running.endurance.title': 'Endurance phase',
+  'running.endurance.progress': '{progress} of {required} weeks',
+  'running.endurance.explain':
+    'Your first rank unlocks once you have four net weeks. A week you meet counts +1, a week you miss −0.5.',
+  'running.endurance.locked': 'First rank still locked',
+  'running.endurance.stillCounts':
+    'Your rating is already being calculated normally. Only the promotion is held back.',
+
+  'running.decay.title': 'Running break',
+  'running.decay.days': '{days} days without a run',
+  'running.decay.lost': '{percent} % of your rank progress reduced',
+  'running.decay.explain':
+    'Only your progress inside your current rank is reduced. Your recorded runs and your pace figures stay exactly as they were.',
+  'running.decay.floor': 'This alone cannot drop you below your current rank.',
+  'running.decay.resume': 'One saved run ends the break immediately.',
+
+  'running.maintenance.body':
+    'After a year of training, an unchanged pace with your weekly target met holds your rating. You do not have to improve for ever.',
+
+  'running.progress.title': 'Running',
+  'running.progress.distances': 'Distance ranges',
+  'running.progress.noData': 'No running data yet.',
+  'running.progress.range': '{from}–{to} km',
+  'running.progress.runs': '{count} runs',
+  'running.progress.noBaseline': 'No comparison yet',
 
 };

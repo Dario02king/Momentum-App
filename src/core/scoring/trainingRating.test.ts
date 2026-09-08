@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { GYM_RATING, RATING } from '../config/constants';
+import { TRAINING_RATING, RATING } from '../config/constants';
 import { addDays } from '../dates';
 import { rankForRating } from '../ranks';
 import {
-  computeGymRating,
+  computeTrainingRating,
   maintenanceHolds,
   movementFactor,
   targetRating,
-  type GymRatingDay,
-} from './rating';
-import { mapPerformanceChangeToScore, performanceScore } from './score';
+  type TrainingRatingDay,
+} from './trainingRating';
+import { mapPerformanceChangeToScore, performanceScore } from './performanceCurve';
 
 /* ── The target ─────────────────────────────────────────────────────────── */
 
@@ -39,7 +39,7 @@ describe('the target rating', () => {
 describe('how fast the rating moves', () => {
   it('closes a tenth of the gap at ordinary levels', () => {
     for (const rating of [0, 120, 250, 410, 500]) {
-      expect(movementFactor(rating, 900)).toBeCloseTo(GYM_RATING.BASE_MOVEMENT, 12);
+      expect(movementFactor(rating, 900)).toBeCloseTo(TRAINING_RATING.BASE_MOVEMENT, 12);
     }
   });
 
@@ -55,7 +55,7 @@ describe('how fast the rating moves', () => {
 
   it('never protects a high rating from falling', () => {
     for (const rating of [300, 700, 900, 999]) {
-      expect(movementFactor(rating, 100)).toBeCloseTo(GYM_RATING.BASE_MOVEMENT, 12);
+      expect(movementFactor(rating, 100)).toBeCloseTo(TRAINING_RATING.BASE_MOVEMENT, 12);
     }
   });
 
@@ -91,8 +91,8 @@ describe('how fast the rating moves', () => {
     const target = targetRating({ attendance: 1000, performance: mapPerformanceChangeToScore(8) });
     expect(targetRating({ attendance: 1000, performance: mapPerformanceChangeToScore(8) })).toBe(target);
     expect(target).toBeGreaterThan(850);
-    expect(movementFactor(300, target)).toBeCloseTo(GYM_RATING.BASE_MOVEMENT, 12);
-    expect(movementFactor(800, target)).toBeCloseTo(GYM_RATING.BASE_MOVEMENT * 0.4, 12);
+    expect(movementFactor(300, target)).toBeCloseTo(TRAINING_RATING.BASE_MOVEMENT, 12);
+    expect(movementFactor(800, target)).toBeCloseTo(TRAINING_RATING.BASE_MOVEMENT * 0.4, 12);
     expect(movementFactor(800, target)).toBeLessThan(movementFactor(300, target));
   });
 });
@@ -129,7 +129,7 @@ describe('the one-year Maintenance rule', () => {
   it('absorbs floating-point dust and nothing larger', () => {
     expect(maintenanceHolds({ ...base, performanceChange: 1e-12 })).toBe(true);
     expect(maintenanceHolds({ ...base, performanceChange: -1e-12 })).toBe(true);
-    const tolerance = GYM_RATING.MAINTENANCE_TOLERANCE_PERCENT;
+    const tolerance = TRAINING_RATING.MAINTENANCE_TOLERANCE_PERCENT;
     expect(maintenanceHolds({ ...base, performanceChange: tolerance })).toBe(true);
     expect(maintenanceHolds({ ...base, performanceChange: tolerance * 1.001 })).toBe(false);
     expect(maintenanceHolds({ ...base, performanceChange: -1 })).toBe(false);
@@ -139,7 +139,7 @@ describe('the one-year Maintenance rule', () => {
 
 /* ── The fold ───────────────────────────────────────────────────────────── */
 
-const day = (date: string, patch: Partial<GymRatingDay> = {}): GymRatingDay => ({
+const day = (date: string, patch: Partial<TrainingRatingDay> = {}): TrainingRatingDay => ({
   date,
   scored: true,
   sessionsInWeek: 3,
@@ -153,8 +153,8 @@ const day = (date: string, patch: Partial<GymRatingDay> = {}): GymRatingDay => (
   ...patch,
 });
 
-const run = (count: number, patch: (index: number) => Partial<GymRatingDay> = () => ({})) =>
-  computeGymRating(
+const run = (count: number, patch: (index: number) => Partial<TrainingRatingDay> = () => ({})) =>
+  computeTrainingRating(
     Array.from({ length: count }, (_, index) =>
       day(addDays('2026-01-05', index), patch(index)),
     ),
@@ -185,7 +185,7 @@ describe('the rating fold', () => {
     const early = run(2);
     const gainAt250 = early.points[0]!.rating - RATING.START;
 
-    const late = computeGymRating([day('2026-06-01')], { start: 900 });
+    const late = computeTrainingRating([day('2026-06-01')], { start: 900 });
     const gainAt900 = late.points[0]!.rating - 900;
 
     expect(gainAt250).toBeGreaterThan(gainAt900);
@@ -195,16 +195,16 @@ describe('the rating fold', () => {
   });
 
   it('falls at the base rate whatever the rating', () => {
-    const high = computeGymRating([day('2026-06-01', { sessionsInWeek: 0, sessionToday: false })], {
+    const high = computeTrainingRating([day('2026-06-01', { sessionsInWeek: 0, sessionToday: false })], {
       start: 900,
     });
     // 900 + 0.10 × (0 − 900)
     expect(high.points[0]!.rating).toBeCloseTo(810, 9);
-    expect(high.points[0]!.movement).toBeCloseTo(GYM_RATING.BASE_MOVEMENT, 12);
+    expect(high.points[0]!.movement).toBeCloseTo(TRAINING_RATING.BASE_MOVEMENT, 12);
   });
 
   it('does not move on a day that did not count', () => {
-    const result = computeGymRating([
+    const result = computeTrainingRating([
       day('2026-01-05', { scored: false }),
       day('2026-01-06', { scored: false }),
     ]);
@@ -214,7 +214,7 @@ describe('the rating fold', () => {
 
   it('continues from where a previous model left the rating', () => {
     // An upgrade must neither create progress nor take it away.
-    const carried = computeGymRating([day('2026-06-01')], { start: 612.5 });
+    const carried = computeTrainingRating([day('2026-06-01')], { start: 612.5 });
     // One ordinary step from 612.5 — slowed by the headroom scaling, which is
     // the point: continuing is a step, never a jump.
     const factor = movementFactor(612.5, 1000);
@@ -225,7 +225,7 @@ describe('the rating fold', () => {
 
   it('uses performance from the first valid comparison, not after a month', () => {
     const withPerformance = performanceScore({ trendChange: 10, ytdChange: 10 });
-    const result = computeGymRating([
+    const result = computeTrainingRating([
       day('2026-01-05', { performance: withPerformance, performanceChange: 10 }),
     ]);
     // 0.4 × 1000 + 0.6 × 800 = 880
@@ -238,7 +238,7 @@ describe('abstinence inside the fold', () => {
 
   /** Trains hard for a while, then stops dead. */
   const stopAfter = (trainingDays: number, totalDays: number) =>
-    computeGymRating(
+    computeTrainingRating(
       Array.from({ length: totalDays }, (_, index) => {
         const training = index < trainingDays;
         return day(addDays('2026-01-05', index), {
@@ -305,7 +305,7 @@ describe('abstinence inside the fold', () => {
   });
 
   it('does not decay at all before the Endurance Phase is complete', () => {
-    const locked = computeGymRating(
+    const locked = computeTrainingRating(
       Array.from({ length: 30 }, (_, index) =>
         day(addDays('2026-01-05', index), {
           enduranceUnlocked: false,
@@ -320,7 +320,7 @@ describe('abstinence inside the fold', () => {
   });
 
   it('stops the moment a session is saved, and does not give the loss back', () => {
-    const days: GymRatingDay[] = [];
+    const days: TrainingRatingDay[] = [];
     for (let index = 0; index < 14; index += 1) {
       days.push(day(addDays('2026-01-05', index), {
         ...unlocked,
@@ -329,9 +329,9 @@ describe('abstinence inside the fold', () => {
         abstinentDays: index + 1,
       }));
     }
-    const decayed = computeGymRating(days, { start: 640 }).current;
+    const decayed = computeTrainingRating(days, { start: 640 }).current;
     // One session on day 15 ends the episode; the rating then moves normally.
-    const resumed = computeGymRating(
+    const resumed = computeTrainingRating(
       [...days, day(addDays('2026-01-05', 14), { ...unlocked, sessionsInWeek: 1, abstinentDays: 0 })],
       { start: 640 },
     );
@@ -346,7 +346,7 @@ describe('abstinence inside the fold', () => {
 
 describe('maintenance inside the fold', () => {
   const holding = (ageMonths: number, change: number, start: number) =>
-    computeGymRating(
+    computeTrainingRating(
       [
         day('2027-06-01', {
           ageMonths,
@@ -387,7 +387,7 @@ describe('maintenance inside the fold', () => {
   });
 
   it('still lets missed attendance lower it', () => {
-    const point = computeGymRating(
+    const point = computeTrainingRating(
       [
         day('2027-06-01', {
           ageMonths: 13,

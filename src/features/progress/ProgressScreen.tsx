@@ -9,6 +9,8 @@ import { GymOverview } from '../gym/GymOverview';
 import { GymProgress } from '../gym/GymProgress';
 import { useGymHistory } from '../gym/useGymHistory';
 import { useGymRating } from '../gym/useGymRating';
+import { RunningOverview } from '../running/RunningOverview';
+import { useRunningRating } from '../running/useRunningRating';
 import { Heatmap, type HeatmapRow } from './Heatmap';
 import { QuestionDetail } from './QuestionDetail';
 import { TrendCurve } from './TrendCurve';
@@ -34,6 +36,8 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
   // The rating, the Endurance Phase and the two performance windows. Loaded
   // separately from the sets, so a failure in one does not empty the other.
   const gymRating = useGymRating();
+  // Running replays from its runs; loaded alongside for the same reason.
+  const runningRating = useRunningRating();
 
   /** The last `range` days of the replay, for both views. */
   const window = useMemo(() => {
@@ -160,6 +164,20 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
         {gym && gym.days.length > 0 ? <GymProgress history={gym} /> : null}
       </Section>
     ) : null;
+  /*
+   * Running's own hierarchy, in the same order as Gym's: the rating, the
+   * year-to-date pace, attendance, then the distance ranges underneath.
+   */
+  const runningSection = runningRating?.started ? (
+    <Section label={t('running.progress.title')}>
+      <RunningOverview
+        state={runningRating.state}
+        rank={runningRating.rank}
+        started={runningRating.started}
+      />
+    </Section>
+  ) : null;
+
   const rangeSelector = (
     <div className="progress__ranges">
       <Segmented<string>
@@ -216,8 +234,10 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
         */}
         {gymSection}
 
+        {runningSection}
+
         {empty ? (
-          gymSection !== null ? null : (
+          gymSection !== null || runningSection !== null ? null : (
             <Card>
               <EmptyState
                 icon={<ProgressIcon size={26} />}

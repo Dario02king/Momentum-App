@@ -1,4 +1,4 @@
-import { GYM_RATING, RATING } from '../config/constants';
+import { TRAINING_RATING, RATING } from '../config/constants';
 
 /**
  * Turning a performance *change* into a 0–1000 Performance Score.
@@ -66,7 +66,7 @@ import { GYM_RATING, RATING } from '../config/constants';
 
 /** `ln(ODDS) / DECADE` — the logistic rate, per percentage point. */
 const K =
-  Math.log(GYM_RATING.CURVE_ODDS_PER_DECADE) / GYM_RATING.CURVE_DECADE_PERCENT;
+  Math.log(TRAINING_RATING.CURVE_ODDS_PER_DECADE) / TRAINING_RATING.CURVE_DECADE_PERCENT;
 
 /**
  * A performance change in **percent** (+10 means ten per cent better) as a
@@ -171,7 +171,7 @@ export function performanceScore(input: PerformanceComponents): PerformanceScore
 
   if (trendScore !== null && ytdScore !== null) {
     return {
-      score: GYM_RATING.TREND_WEIGHT * trendScore + GYM_RATING.YTD_WEIGHT * ytdScore,
+      score: TRAINING_RATING.TREND_WEIGHT * trendScore + TRAINING_RATING.YTD_WEIGHT * ytdScore,
       trendScore,
       ytdScore,
       components,

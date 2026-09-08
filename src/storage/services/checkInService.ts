@@ -91,6 +91,12 @@ export interface TrainingSession {
   performedAt: string;
   note: string | null;
   durationMinutes: number | null;
+  /**
+   * Measured distance in whole metres, for a run. `null` everywhere else, and
+   * `null` on a run the user logged without one — which is allowed, and leaves
+   * that run counting for attendance and nothing more.
+   */
+  distanceMetres: number | null;
   /** Carried over from RC2's Sport log, so a screen can say so. */
   legacyCarryOver: boolean;
 }
@@ -135,6 +141,7 @@ async function loadWeek(domain: StoredDomainType, weekKey: WeekKey): Promise<Tra
       performedAt: session.performedAt,
       note: session.note,
       durationMinutes: null,
+      distanceMetres: null,
       legacyCarryOver: session.legacyCarryOver,
     }));
   }
@@ -146,6 +153,7 @@ async function loadWeek(domain: StoredDomainType, weekKey: WeekKey): Promise<Tra
       performedAt: run.performedAt,
       note: run.note,
       durationMinutes: minutesFromSeconds(run.durationSeconds),
+      distanceMetres: run.distanceMetres,
       legacyCarryOver: run.legacyCarryOver,
     }));
   }
@@ -156,6 +164,7 @@ async function loadWeek(domain: StoredDomainType, weekKey: WeekKey): Promise<Tra
     performedAt: session.performedAt,
     note: session.note,
     durationMinutes: session.durationMinutes,
+    distanceMetres: null,
     legacyCarryOver: false,
   }));
 }
@@ -274,8 +283,20 @@ export async function clearAnswer(
 export interface SessionInput {
   note?: string | null;
   durationMinutes?: number | null;
+  /**
+   * Measured distance in whole metres. Optional: a run saves without it, and
+   * without a duration, because logging has to stay one tap. Supplying both
+   * is what unlocks performance (D102).
+   */
+  distanceMetres?: number | null;
   /** Moving a session within its own week — the day it actually happened. */
   date?: DateKey;
+}
+
+/** Whole metres, or `null`. One rounding rule, in one place. */
+function metresFrom(value: number | null | undefined): number | null {
+  if (value === undefined || value === null || !Number.isFinite(value) || value <= 0) return null;
+  return Math.round(value);
 }
 
 /** A session may be logged for any day of the week it belongs to. */
@@ -311,6 +332,7 @@ export async function logSession(
       performedAt: session.performedAt,
       note: session.note,
       durationMinutes: null,
+      distanceMetres: null,
       legacyCarryOver: false,
     };
   }
@@ -323,6 +345,7 @@ export async function logSession(
         input.durationMinutes === undefined || input.durationMinutes === null
           ? null
           : Math.round(input.durationMinutes * 60),
+      distanceMetres: metresFrom(input.distanceMetres),
       configSnapshotId: snapshot.id,
     });
     return {
@@ -332,6 +355,7 @@ export async function logSession(
       performedAt: run.performedAt,
       note: run.note,
       durationMinutes: minutesFromSeconds(run.durationSeconds),
+      distanceMetres: run.distanceMetres,
       legacyCarryOver: false,
     };
   }
@@ -350,6 +374,7 @@ export async function logSession(
     performedAt: session.performedAt,
     note: session.note,
     durationMinutes: session.durationMinutes,
+    distanceMetres: null,
     legacyCarryOver: false,
   };
 }
@@ -390,6 +415,9 @@ export async function updateSession(
         input.durationMinutes === undefined || input.durationMinutes === null
           ? null
           : Math.round(input.durationMinutes * 60),
+      // Absent means the user cleared it; a run without a distance is still a
+      // run, and simply stops carrying performance.
+      distanceMetres: metresFrom(input.distanceMetres),
     });
     return;
   }

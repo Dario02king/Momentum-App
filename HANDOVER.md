@@ -1,8 +1,8 @@
-# Handover — end of Phase 4.1
+# Handover — end of Phase 5
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D101). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D105). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -15,10 +15,11 @@ either — it says where things stand.
 | `BACKUP_FORMAT_VERSION` | **2** (`src/core/backup/format.ts`) — unchanged; the envelope did not change, only record shapes, and a v1 or v2 file still imports |
 | `SCORING_MODEL` | `categoryMean` (`src/core/config/constants.ts`) |
 | `GYM_SCORING_MODEL` | `attendancePerformance` — Gym's 40/60 model |
+| `RUNNING_SCORING_MODEL` | `attendancePerformance` — Running's 40/60 model |
 | `DECAY_MODEL_APPROVED` | `false` — the **general** cooling-off gate is still open |
 
-Phases 0–4 of iteration 2 are complete, and Phase 4.1 has closed the Gym
-scoring gate. Phase 5 (Running) is next.
+Phases 0–5 of iteration 2 are complete. Phase 4.1 closed the Gym scoring gate
+and Phase 5 closed Running's. Phase 6 (Food, Gate 2) is next.
 
 > **The branch changed.** This work was carried out on
 > `claude/gym-scoring-integration-9oeblv`, reset from
@@ -33,7 +34,12 @@ records (answers, sessions, sets, snapshots)
        ├─ ratingService  the legacy undivided progression (RC2's rating)
        └─ bossService    per-domain ledgers + the Boss series
   └─ gymService          gym sets → core/gym/performance → progress figures
-       └─ gymRatingService  attendance + performance windows → the Gym rating
+       └─ gymRatingService      attendance + windows → the Gym rating
+  └─ runningRatingService  runs → core/running/performance → the Running rating
+
+  core/scoring/*  the model both training domains share, from the percentage
+                  change onwards: curve, target, movement, Endurance, decay,
+                  Maintenance, the fold
 ```
 
 - **Nothing derived is stored.** Everything above is replayed on load.
@@ -58,10 +64,11 @@ records (answers, sessions, sets, snapshots)
 | `src/core/gym/performance.ts` | Best set → comparison → muscle group → aggregate; the trend and YTD windows |
 | `src/core/gym/load.ts` | Effective load: external, bodyweight, assisted |
 | `src/core/gym/muscles.ts` | 70/30 primary/secondary influence |
-| `src/core/gym/score.ts` | The performance curve, attendance, the two-window blend |
-| `src/core/gym/rating.ts` | The 40/60 target, movement, Maintenance, the fold |
-| `src/core/gym/endurance.ts` | The first-promotion gate |
-| `src/core/gym/decay.ts` | Abstinence episodes and the four schedules |
+| `src/core/scoring/performanceCurve.ts` | **Shared.** The curve, attendance, the two-window blend |
+| `src/core/scoring/trainingRating.ts` | **Shared.** The 40/60 target, movement, Maintenance, the fold |
+| `src/core/scoring/endurance.ts` | **Shared.** The first-promotion gate |
+| `src/core/scoring/abstinence.ts` | **Shared.** Episodes, the four decay schedules, rank intervals |
+| `src/core/running/performance.ts` | Distance bands, pace ratios, the window aggregate |
 | `src/core/gym/catalogue.ts` | 29 built-in exercises, stable ids, explicit muscles, roles and load types |
 | `src/core/decay/index.ts` | **General** decay contract + placeholder (gate still open) |
 | `src/core/migration/legacySport.ts` | RC2 Sport conversion planning (pure) |
@@ -70,9 +77,11 @@ records (answers, sessions, sets, snapshots)
 | `src/storage/services/bossService.ts` | Ledgers, Boss series, era transition |
 | `src/storage/services/gymService.ts` | Catalogue seeding, sets, bodyweight, gym replay |
 | `src/storage/services/gymRatingService.ts` | Gym's rating state, the era join, window memoisation |
+| `src/storage/services/runningRatingService.ts` | Running's rating state, the era join, window memoisation |
 | `src/storage/services/checkInService.ts` | Today; owns the edit-window rules |
 | `src/components/BodyRenderer/index.tsx` | Muscle diagram; presentation only |
 | `src/features/gym/*` | Session logging, picker, bodyweight, overview, exercise detail, progress |
+| `src/features/running/*` | The Running overview and its distance ranges |
 | `scripts/verify/` | Browser + accessibility suites (see its README) |
 | `.github/fixtures/` | RC2 export + a 120-day synthetic profile |
 
@@ -85,7 +94,10 @@ records (answers, sessions, sets, snapshots)
 - **Gym scoring: the 40/60 rating, the trend and year-to-date windows, the
   Endurance Phase, abstinence decay, Maintenance, bodyweight and assisted
   exercises, 70/30 muscle roles, and the Gym overview that explains them**
-- Running: weekly quota, logging one run from Today (no distance/pace UI)
+- **Running: the 40/60 rating, distance-band identities, pace over the trend
+  and year-to-date windows, the Endurance Phase, abstinence decay,
+  Maintenance, optional distance/duration entry with derived pace, and the
+  Running overview that explains them**
 - Boss Rank + four domain ranks, user-configurable weights, mystery ladder
 - Backup export/import, PWA, offline, migrations v1→v2→v3→v4
 
@@ -238,6 +250,31 @@ rating           ← rating + (target − rating) × movementFactor(rating, targ
   replays as it was scored; the new fold continues from the number the old one
   left.
 
+### Running performance (`core/running/performance.ts`)
+
+**Pace at a comparable measured distance** (D102). Relative to the runner's
+own history; no population norms, ever.
+
+- **Qualifying:** a *measured* distance ≥ 3 km and a positive duration. A run
+  missing either counts in full for attendance and carries no performance.
+  Nothing is fabricated — every converted RC2 run is attendance-only for ever.
+- **Comparability:** `max/min ≤ 1.10`, symmetric, inclusive, in integer metres.
+- **Identity** (D103): a fixed half-open band,
+  `floor(ln(d / 972.42) / ln(1.10))`, depending **only** on the run's own
+  distance. Same band ⇒ comparable by construction. Adding, editing, deleting
+  or expiring any other run can never move an existing run's identity.
+- **Evidence** (D104): fastest run per date; ≥ 2 dates; baseline earliest,
+  current latest; one ratio per identity;
+  `ratio = (d_cur × t_base) / (t_cur × d_base)`.
+- **Window:** equal-weighted mean of identity ratios → one percentage change,
+  then the shared curve **once**, then Trend (rolling 60 days) and YTD 50/50.
+- **Accepted:** a comparable pair can straddle a boundary, and a route
+  wandering across one becomes two equally weighted identities. No attempt is
+  made to re-merge them, because that would read neighbouring runs.
+- Running's Endurance Phase, abstinence decay, Maintenance and movement are
+  the shared training-domain rules, identical to Gym's, against Running's own
+  weekly target.
+
 ## Invariants future changes must preserve
 
 - No derived value is written to storage.
@@ -257,6 +294,12 @@ rating           ← rating + (target − rating) × movementFactor(rating, targ
 - Gym rank is personal development; Tombstones are absolute. No population
   norms enter a rank, and no development percentage enters a Tombstone.
 - Two migrations rewriting one store share one cursor (D98).
+- **A comparison identity depends only on its own record's facts.** Running's
+  distance band reads the run's distance and two fixed constants, nothing
+  else. Grouping by looking at neighbouring records reinterprets history the
+  moment one is added, and three such designs were rejected for exactly that.
+- `RUNNING_BANDS.ANCHOR_METRES` and `WIDTH` are the scoring-model contract.
+  Changing either repartitions every user's history and is a new era.
 - Exercise identity is the id. Never join history on a display name.
 - Peak rank and lifetime XP never fall.
 - One badge family, one rank ladder, one Boss.
@@ -264,11 +307,10 @@ rating           ← rating + (target − rating) × movementFactor(rating, targ
 
 ## Open product decisions — do not invent these
 
-1. ~~**How Gym performance maps into the 0–1000 rating.**~~ **Resolved in
-   Phase 4.1** (D90, D99). Gym's rating is 40 % attendance and 60 % personal
-   development; D88 no longer describes the build. The same question is still
-   open for **Running**, and Phase 5 should resolve it by reusing this model
-   rather than inventing a second one.
+1. ~~**How training performance maps into the 0–1000 rating.**~~ **Resolved
+   for Gym in Phase 4.1** (D90, D99) and **for Running in Phase 5**
+   (D102–D105). Both are 40 % attendance and 60 % personal development,
+   through the same shared code. D88 no longer describes the build.
 2. **The general cooling-off / decay formula.** Gate 1, still open (D72).
    Phase 4.1's abstinence decay is a *Gym-specific* rule about rank progress
    (D96) and does not close this: `core/decay` is untouched and
@@ -290,16 +332,31 @@ rating           ← rating + (target − rating) × movementFactor(rating, targ
   numbers RC2 produced from them are pinned in `src/storage/migration.test.ts`.
 - **`SPORTS` in `constants.ts` is now unused by app code.** Kept because it
   documents the quota range legacy weeks were scored under.
-- **The Gym rating replays two performance windows per day.** The obvious
+- **Both training ratings replay two performance windows per day.** The obvious
   implementation filters the exercise-days per day and is quadratic — the same
-  shape D73 already removed once. `gymRatingService` walks the window bounds
-  with pointers and memoises on their contents; `gymScoring.test.ts` measures a
-  420-day history of real sets against a guard. Do not replace that with a
-  filter inside the day loop.
-- **Nothing surfaces a Gym rank demotion yet.** The rating can fall through
+  shape D73 already removed once. `gymRatingService` and `runningRatingService`
+  both walk the window bounds with pointers and memoise on their contents;
+  `gymScoring.test.ts` measures a 420-day history of real sets against a
+  guard. Do not replace either with a filter inside the day loop.
+- **Running's accepted limitations, all deliberate** (D103). A comparable pair
+  can straddle a fixed band boundary and never compare — 5 000 and 5 500 m are
+  exactly 10 % apart and land either side of one. A repeated route whose
+  measured distance wanders across a boundary becomes two identities and is
+  counted twice. Neither is fixed, because detecting them means reading the
+  surrounding runs, which is the history-reinterpretation the fixed grid
+  exists to prevent. Also: pace at a nearby but non-identical distance is not
+  perfectly effort-equivalent, so a small distance-related bias can remain
+  inside the allowed range. It is left uncorrected — every correction for it
+  is a population-derived model.
+- **There is no treadmill / indoor / outdoor concept**, and no compensation
+  for one. A user mixing treadmill and outdoor runs at the same distance will
+  see them compared. Recording this rather than inventing a correction.
+- **`elevationMetres` and `steps` remain in the data model, unwritten and
+  unscored.** No input exists and none is planned for now.
+- **Nothing surfaces a Gym or Running rank demotion yet.** The rating can fall through
   missed attendance and through decay, and `rankHistory` records the demotion,
   but no screen announces it the way a promotion is announced. That is Phase 8
-  integration work rather than a defect here.
+  integration work rather than a defect in either domain.
 - **Replay cost is linear and measured**
   (`replayPerformance.test.ts`, ~60 ms for two years of four domains against
   fake-indexeddb). Do not add caching without a measurement showing need — a
@@ -315,16 +372,20 @@ in, except where noted.
 
 | | |
 |---|---|
-| Unit tests | **819 passing, 49 files, exit 0** (`npm run test`) |
+| Unit tests | **884 passing, 51 files, exit 0** (`npm run test`) |
 | Typecheck | `tsc -b` clean |
 | Production build | clean; no stale `.js` beside any `.ts` |
-| Migration + backup | included above: RC2 fixtures reproduce exactly, v1→v2→v3→v4 migrations (including the v2→v4 jump that D98 fixed), backup round trip, newer-file refusal |
-| Browser (Phase 4.1) | **52/52** at 320/360/393/430px (`phase41.mjs`) |
-| Accessibility (Phase 4.1) | **14/14** (`phase41-a11y.mjs`) |
+| Migration + continuity | no schema change was needed — `distanceMetres` has existed since schema 2. RC2 fixtures reproduce exactly, v1→v2→v3→v4 migrations (including the v2→v4 jump D98 fixed), a legacy run stays attendance-only, backup round trip, newer-file refusal |
+| Model-era continuity | a snapshot without `runningModel` replays as the attendance era; the new fold continues from the number the old one left; every earlier day is bit-identical |
+| Browser (Phase 5) | **46/46** at 320/360/393/430px (`phase5.mjs`) |
+| Accessibility (Phase 5) | **15/15** (`phase5-a11y.mjs`) |
+| Browser (Phase 4.1, regression) | 52/52 at 320/360/393/430px |
+| Accessibility (Phase 4.1) | 14/14 |
 | Browser (Phase 4, regression) | 52/52 at 320/360/393/430px |
 | Accessibility (Phase 4) | 15/15 |
 | Browser (Phases 2–3, regression) | 64/64, 44/44, 5/5 |
 | Accessibility (Phases 2–3) | 17/17, 9/9 |
+| Shared-scoring refactor | Gym's whole suite ran unchanged across the move into `core/scoring/`; no Gym behaviour was altered |
 
 **Real VoiceOver was not tested. No Apple hardware is available in this
 environment.** What is verified is the layer VoiceOver consumes — the computed
@@ -336,25 +397,21 @@ Re-run browser suites with `scripts/verify/*.mjs` (see that README; needs
 
 ## Next work
 
-**Phase 5 — Running.** Distance, duration, pace, optional elevation and steps;
-run history and progress; the `RunSource` import seam stays a seam. Same rules
-as Gym: performance pipeline in `core/running/*`, presentation in `features/`.
+**Phase 6 — Food (Gate 2).** Nutrition targets are a product-owner gate and
+are not to be invented. Food is currently enable-able, shows *Noch nicht
+gestartet*, contributes nothing to the Boss and fabricates no XP — that is
+correct behaviour, not a gap.
 
-**The open question about how performance reaches the rating is now answered
-for Gym, and Running should reuse that answer rather than invent a second
-one.** What generalises, and what does not:
+Phase 7 is the **general** cooling-off gate (D72), still open: the
+training-domain abstinence rule Gym and Running share is a different, narrower
+mechanism and does not resolve it. `core/decay` is untouched and
+`DECAY_MODEL_APPROVED` is still `false`.
 
-- *Generalises.* The 40/60 shape, the performance curve
-  (`core/gym/score.ts` — worth moving to `core/scoring/` when the second
-  caller exists), map-then-average over two windows, the movement factor, the
-  Endurance Phase, abstinence decay, Maintenance, and the snapshot era marker.
-- *Does not.* Running's performance *metric*. Gym's is `max(reps × load)` per
-  exercise; Running's has to be decided — pace at a distance, distance in a
-  session, or something else — and **that is a product decision, not a detail
-  to settle while building.** Surface it; do not pick one.
+Phase 8 is integration, tombstones, rest days and pause.
 
-Phase 6 is Food (Gate 2). Phase 7 is the general decay gate — still open, and
-Phase 4.1's Gym abstinence rule does not close it. Phase 8 is integration,
-tombstones, rest days and pause.
-
-
+**If a third training domain ever arrives**, add only its evidence — what one
+comparable observation is, and what makes two of them comparable. Everything
+from the percentage change onwards already exists in `core/scoring/` and
+should not be copied. And whatever groups its comparisons must depend only on
+the record's own facts; the three designs that did not are recorded in D103
+along with the regressions that killed them.

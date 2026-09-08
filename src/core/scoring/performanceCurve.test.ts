@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { GYM_RATING, RATING } from '../config/constants';
+import { TRAINING_RATING, RATING } from '../config/constants';
 import {
   attendanceScore,
   mapPerformanceChangeToScore,
   performanceChangeForScore,
   performanceScore,
   scoreForRatio,
-} from './score';
+} from './performanceCurve';
 
 const map = mapPerformanceChangeToScore;
 
@@ -133,8 +133,8 @@ describe('the performance curve', () => {
   it('is one documented parameter, not a table of branches', () => {
     // Every ten points of improvement multiplies the odds by four.
     const odds = (change: number) => map(change) / (RATING.MAX - map(change));
-    expect(odds(10) / odds(0)).toBeCloseTo(GYM_RATING.CURVE_ODDS_PER_DECADE, 9);
-    expect(odds(20) / odds(10)).toBeCloseTo(GYM_RATING.CURVE_ODDS_PER_DECADE, 9);
+    expect(odds(10) / odds(0)).toBeCloseTo(TRAINING_RATING.CURVE_ODDS_PER_DECADE, 9);
+    expect(odds(20) / odds(10)).toBeCloseTo(TRAINING_RATING.CURVE_ODDS_PER_DECADE, 9);
   });
 });
 
@@ -203,7 +203,7 @@ describe('composing the two windows', () => {
   });
 
   it('keeps the two weights summing to one', () => {
-    expect(GYM_RATING.TREND_WEIGHT + GYM_RATING.YTD_WEIGHT).toBe(1);
-    expect(GYM_RATING.ATTENDANCE_WEIGHT + GYM_RATING.PERFORMANCE_WEIGHT).toBeCloseTo(1, 12);
+    expect(TRAINING_RATING.TREND_WEIGHT + TRAINING_RATING.YTD_WEIGHT).toBe(1);
+    expect(TRAINING_RATING.ATTENDANCE_WEIGHT + TRAINING_RATING.PERFORMANCE_WEIGHT).toBeCloseTo(1, 12);
   });
 });

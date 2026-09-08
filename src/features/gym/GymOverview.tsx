@@ -1,5 +1,5 @@
 import { displayedRankProgress } from '../../core/ranks/progress';
-import { GYM_RATING } from '../../core/config/constants';
+import { TRAINING_RATING } from '../../core/config/constants';
 import type { Rank } from '../../core/ranks';
 import { Card, Section } from '../../components';
 import { RankBadge } from '../ranking/RankBadge';
@@ -189,7 +189,7 @@ export function GymOverview({
       </Section>
 
       {/* Surfaced only while it is actually happening. */}
-      {state.abstinence && state.abstinence.days >= GYM_RATING.ABSTINENCE_BLOCK_DAYS ? (
+      {state.abstinence && state.abstinence.days >= TRAINING_RATING.ABSTINENCE_BLOCK_DAYS ? (
         <Section label={t('gym.decay.title')}>
           <Card>
             <div className="gym-overview__line">

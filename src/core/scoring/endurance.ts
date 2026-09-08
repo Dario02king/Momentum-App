@@ -1,4 +1,4 @@
-import { GYM_RATING } from '../config/constants';
+import { TRAINING_RATING } from '../config/constants';
 import type { WeekKey } from '../dates';
 
 /**
@@ -89,7 +89,7 @@ export interface EnduranceState {
  * the app on a Tuesday.
  */
 export function enduranceState(weeks: readonly EnduranceWeek[]): EnduranceState {
-  const required = GYM_RATING.ENDURANCE_WEEKS_REQUIRED;
+  const required = TRAINING_RATING.ENDURANCE_WEEKS_REQUIRED;
   const points: EnduranceProgressPoint[] = [];
   let progress = 0;
   let unlockedAt: WeekKey | null = null;
@@ -99,7 +99,7 @@ export function enduranceState(weeks: readonly EnduranceWeek[]): EnduranceState 
     const met = week.sessions >= Math.max(1, week.target);
     progress = Math.max(
       0,
-      progress + (met ? GYM_RATING.ENDURANCE_WEEK_MET : GYM_RATING.ENDURANCE_WEEK_MISSED),
+      progress + (met ? TRAINING_RATING.ENDURANCE_WEEK_MET : TRAINING_RATING.ENDURANCE_WEEK_MISSED),
     );
     // Reached once is reached for good: the flag is latched here rather than
     // recomputed from the final balance, so a later bad month cannot close a

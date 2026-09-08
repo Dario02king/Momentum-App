@@ -1,91 +1,91 @@
-import { RATING } from '../../core/config/constants';
-import {
-  addDays,
-  compareDateKeys,
-  weekKeyOf,
-  type DateKey,
-  type WeekKey,
-} from '../../core/dates';
-import { TRAINING_RATING } from '../../core/config/constants';
+import { RATING, TRAINING_RATING } from '../../core/config/constants';
+import { addDays, compareDateKeys, weekKeyOf, type DateKey, type WeekKey } from '../../core/dates';
+import type {
+  AppConfigSnapshot,
+  ConfigSnapshotRecord,
+  RunRecord,
+  RunningScoringModel,
+} from '../../core/model';
+import type { DayState, RatingPoint } from '../../core/rating';
+import { computeRating } from '../../core/rating';
 import {
   currentAbstinence,
   trainingAgeMonths,
   type AbstinenceEpisode,
 } from '../../core/scoring/abstinence';
-import { enduranceState, type EnduranceState, type EnduranceWeek } from '../../core/scoring/endurance';
 import {
-  gymPerformanceInWindow,
-  percentChange,
-  type ExerciseDay,
-  type GymPerformance,
-} from '../../core/gym/performance';
+  enduranceState,
+  type EnduranceState,
+  type EnduranceWeek,
+} from '../../core/scoring/endurance';
+import { performanceScore, type PerformanceScore } from '../../core/scoring/performanceCurve';
 import {
   computeTrainingRating,
   type TrainingRatingDay,
   type TrainingRatingPoint,
 } from '../../core/scoring/trainingRating';
-import { performanceScore, type PerformanceScore } from '../../core/scoring/performanceCurve';
-import type { AppConfigSnapshot, ConfigSnapshotRecord, GymScoringModel } from '../../core/model';
-import type { DayState, RatingPoint, RatingResult } from '../../core/rating';
-import { computeRating } from '../../core/rating';
-import { loadExerciseDays } from './gymService';
+import {
+  paceChangePercent,
+  runningPerformanceInWindow,
+  type RunObservation,
+  type RunningPerformance,
+} from '../../core/running/performance';
+import { runsRepository } from '../repositories';
 import type { History } from './historyService';
 
 /**
- * The Gym rating, assembled from what is stored and nothing else.
+ * The Running rating, assembled from what is stored and nothing else.
  *
- * The arithmetic is all in `core/gym/*` and none of it is here; this module's
- * job is to feed it truthful inputs — which day was scored, what the week's
- * target was, what the user had actually lifted by each day, and which
- * scoring era each day belongs to.
+ * A deliberate near-twin of `gymRatingService`. The two domains differ in
+ * exactly one place — what a performance observation *is* — and everything
+ * downstream of that is the same shared code (`core/scoring/*`). Keeping the
+ * two services parallel rather than merging them into one generic replay is
+ * the smaller cost: their storage shapes and their windows are genuinely
+ * different, and a single abstraction over both would have to carry a
+ * discriminator into every line.
  *
- * ## Two eras, joined the way the Boss joins its own
+ * ## Two eras, joined the way Gym joins its own
  *
- * A config snapshot with no `gymModel` was written before this model existed,
- * and the days it covers are scored the way they were actually scored: the
- * shared EWMA over attendance. From the first snapshot that carries
- * `attendancePerformance`, the new fold takes over — **continuing from the
- * number the old one left**, so the day the update lands moves the rating by
- * one ordinary step rather than by a jump. Upgrading the app must neither
- * create progress nor take it away, and that rule does not stop applying
- * because the domain is Gym rather than the Boss (D68a, D90).
+ * A snapshot with no `runningModel` predates phase 5, and the days it covers
+ * are scored the way they were actually scored: the shared EWMA over
+ * attendance. From the first snapshot carrying `attendancePerformance` the
+ * new fold takes over, **continuing from the number the old one left**, so
+ * the day the update lands moves the rating by one ordinary step rather than
+ * by a jump.
  */
 
-export interface GymRatingState {
+export interface RunningRatingState {
   /** One point per history day, aligned with `history.days`. */
   points: RatingPoint[];
   /** The richer per-day record, for the screens that explain the number. */
   detail: TrainingRatingPoint[];
   rating: number;
   peak: number;
-  /** The era today's number was produced in. */
-  model: GymScoringModel;
-  /** The day Gym first had anything of its own, or `null` if it never has. */
+  model: RunningScoringModel;
+  /** The day Running first had anything of its own, or `null`. */
   origin: DateKey | null;
   ageMonths: number;
   endurance: EnduranceState;
   /** Whether a promotion is permitted on each day, aligned with `points`. */
   promotionUnlocked: boolean[];
-  /** Today's windows, for the Gym screens. */
+  /** Today's windows, for the Running screens. */
   performance: PerformanceScore;
-  trend: GymPerformance | null;
-  ytd: GymPerformance | null;
+  trend: RunningPerformance | null;
+  ytd: RunningPerformance | null;
   trendChange: number | null;
   ytdChange: number | null;
-  /** This week's attendance, as the user is living it. */
   sessionsThisWeek: number;
   weeklyTarget: number;
-  /** The abstinence episode in progress, or `null` when there is none. */
   abstinence: AbstinenceEpisode | null;
-  /** Share of the baseline rank progress the episode has removed so far. */
   decayFraction: number;
-  /** True when today's rating is being held up by the Maintenance rule. */
   maintenance: boolean;
+  /** Runs in the window that carry no performance, so a screen can say why. */
+  attendanceOnlyRuns: number;
 }
 
-/** Which Gym model a day was lived under. Absent is the pre-4.1 era. */
-export function gymModelOf(config: AppConfigSnapshot): GymScoringModel {
-  return config.scoring.gymModel ?? 'attendance';
+/** Which era a day was lived under. Absent is the pre-phase-5 era. */
+export function runningModelOf(config: AppConfigSnapshot): RunningScoringModel {
+  return config.scoring.runningModel ?? 'attendance';
 }
 
 function resolveSnapshot(
@@ -100,76 +100,73 @@ function resolveSnapshot(
   return match?.config ?? null;
 }
 
-/**
- * The performance windows as they stood on one day.
- *
- * Both windows are spans — one comparison per exercise — so training
- * frequency adds evidence and never weight. The trend window rolls; the
- * year-to-date window starts at January the first and is therefore a
- * different, deliberately shorter, question every January.
- */
 export interface WindowPerformance {
-  trend: GymPerformance;
-  ytd: GymPerformance;
+  trend: RunningPerformance;
+  ytd: RunningPerformance;
   score: PerformanceScore;
 }
 
-export function performanceOn(days: readonly ExerciseDay[], on: DateKey): WindowPerformance {
+/**
+ * The two performance windows as they stood on one day.
+ *
+ * Each is computed independently over its own date range, so the trend cannot
+ * borrow the year's baseline and January the first genuinely restarts the
+ * yearly question.
+ */
+export function performanceOn(runs: readonly RunObservation[], on: DateKey): WindowPerformance {
   const trendFrom = addDays(on, -(TRAINING_RATING.TREND_WINDOW_DAYS - 1));
-  const trend = gymPerformanceInWindow(days, trendFrom, on);
-  const ytd = gymPerformanceInWindow(days, `${on.slice(0, 4)}-01-01`, on);
+  const trend = runningPerformanceInWindow(runs, trendFrom, on);
+  const ytd = runningPerformanceInWindow(runs, `${on.slice(0, 4)}-01-01`, on);
   return {
     trend,
     ytd,
     score: performanceScore({
-      trendChange: percentChange(trend.ratio),
-      ytdChange: percentChange(ytd.ratio),
+      trendChange: paceChangePercent(trend.ratio),
+      ytdChange: paceChangePercent(ytd.ratio),
     }),
   };
 }
 
-export interface GymRatingInput {
+export interface RunningRatingInput {
   history: History;
-  /** Gym day states, as `bossService` already derives them per domain. */
   dayStates: readonly DayState[];
   snapshots: readonly ConfigSnapshotRecord[];
-  /** Every day a Gym session was saved, whatever else happened that day. */
-  sessionDates: ReadonlySet<DateKey>;
-  exerciseDays: readonly ExerciseDay[];
+  /** Every day a run was saved, whatever else happened that day. */
+  runDates: ReadonlySet<DateKey>;
+  runs: readonly RunObservation[];
   reference: DateKey;
 }
 
-export function buildGymRating(input: GymRatingInput): GymRatingState {
-  const { history, dayStates, snapshots, sessionDates } = input;
+export function buildRunningRating(input: RunningRatingInput): RunningRatingState {
+  const { history, dayStates, snapshots, runDates } = input;
   const dates = history.days.map((day) => day.date);
 
   /* ── Weeks, for attendance and for the Endurance Phase ───────────────── */
 
-  const weekTargets = new Map<WeekKey, { sessions: number; target: number; inProgress: boolean }>();
+  const weeks = new Map<WeekKey, { sessions: number; target: number; inProgress: boolean }>();
   for (const week of history.weeks) {
-    const gym = week.domains.find((entry) => entry.domain === 'gym');
-    if (!gym) continue;
-    weekTargets.set(week.weekKey, {
-      sessions: gym.sessions,
-      target: gym.target,
+    const entry = week.domains.find((domain) => domain.domain === 'running');
+    if (!entry) continue;
+    weeks.set(week.weekKey, {
+      sessions: entry.sessions,
+      target: entry.target,
       inProgress: week.inProgress,
     });
   }
 
   /*
-   * Gym's own timeline. The Endurance Phase, the training age the decay
-   * schedule is keyed on and the abstinence run all start here, and "here" is
-   * the first day Gym actually had something of its own — not the first day
-   * the app was installed. A user who enabled Gym in June is two months into
-   * Gym in August, however long they have been logging their sleep.
+   * Running's own timeline. A user who enabled Running in June is two months
+   * into Running in August, however long they have been logging their sleep —
+   * so the Endurance Phase, the decay schedule's training age and the
+   * abstinence run all start at the first day Running had a session.
    */
-  const origin = dates.find((date) => sessionDates.has(date)) ?? null;
+  const origin = dates.find((date) => runDates.has(date)) ?? null;
 
   const enduranceWeeks: EnduranceWeek[] = origin
     ? history.weeks
         .filter((week) => week.weekKey >= weekKeyOf(origin))
         .flatMap((week) => {
-          const entry = weekTargets.get(week.weekKey);
+          const entry = weeks.get(week.weekKey);
           return entry
             ? [{
                 weekKey: week.weekKey,
@@ -186,37 +183,32 @@ export function buildGymRating(input: GymRatingInput): GymRatingState {
 
   const models = dates.map((date) => {
     const config = resolveSnapshot(snapshots, date);
-    return config ? gymModelOf(config) : 'attendance';
+    return config ? runningModelOf(config) : ('attendance' as const);
   });
-  /* The first day the new model is in force. Everything before it keeps the
-     number it already had, computed by the fold that produced it. */
   const transition = models.findIndex((model) => model === 'attendancePerformance');
 
   /* ── Performance per day, memoised on the window contents ─────────────── */
 
-  const ordered = [...input.exerciseDays].sort((a, b) => a.date.localeCompare(b.date));
+  const ordered = [...input.runs].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
+  );
   /*
-   * The windows only change when a day enters or leaves one, so the whole
-   * pipeline runs once per distinct window rather than once per calendar day.
-   * A two-year replay of someone training three times a week has a few
-   * hundred distinct windows, not seven hundred and thirty of them.
-   *
-   * The bounds are found by walking three pointers forward with the dates
-   * rather than by filtering the array per day. Filtering inside a loop over
-   * the history is the quadratic that was already found and removed once
-   * here (D73), and it would have come straight back.
+   * The windows change only when a run enters or leaves one, so the pipeline
+   * runs once per distinct window rather than once per calendar day. The
+   * bounds are walked with pointers rather than by filtering inside the day
+   * loop — that filter is the quadratic D73 already removed once from the week
+   * lookup, and it would come straight back here.
    */
   const cache = new Map<string, WindowPerformance>();
+  const byDate = new Map<DateKey, WindowPerformance>();
   let trendLow = 0;
   let yearLow = 0;
   let high = 0;
-  const performanceByDate = new Map<DateKey, WindowPerformance>();
   for (const date of dates) {
     const trendFrom = addDays(date, -(TRAINING_RATING.TREND_WINDOW_DAYS - 1));
     const yearFrom = `${date.slice(0, 4)}-01-01`;
     while (trendLow < ordered.length && ordered[trendLow]!.date < trendFrom) trendLow += 1;
-    // January the first walks the pointer back, once a year, by at most a
-    // year's worth of entries — so the pointer is reset rather than advanced.
+    // January the first walks the pointer back, once a year.
     if (yearLow > 0 && ordered[yearLow - 1]!.date >= yearFrom) yearLow = 0;
     while (yearLow < ordered.length && ordered[yearLow]!.date < yearFrom) yearLow += 1;
     while (high < ordered.length && ordered[high]!.date <= date) high += 1;
@@ -227,10 +219,10 @@ export function buildGymRating(input: GymRatingInput): GymRatingState {
       value = performanceOn(ordered.slice(Math.min(trendLow, yearLow), high), date);
       cache.set(key, value);
     }
-    performanceByDate.set(date, value);
+    byDate.set(date, value);
   }
   const performanceFor = (date: DateKey): WindowPerformance =>
-    performanceByDate.get(date) ?? performanceOn(ordered, date);
+    byDate.get(date) ?? performanceOn(ordered, date);
 
   /* ── The abstinence run, walked once ─────────────────────────────────── */
 
@@ -241,7 +233,7 @@ export function buildGymRating(input: GymRatingInput): GymRatingState {
       abstinentDays.push(0);
       continue;
     }
-    run = sessionDates.has(date) ? 0 : run + 1;
+    run = runDates.has(date) ? 0 : run + 1;
     abstinentDays.push(run);
   }
 
@@ -249,7 +241,6 @@ export function buildGymRating(input: GymRatingInput): GymRatingState {
 
   const legacy = computeRating(dayStates as DayState[]);
   const legacyEnd = transition === -1 ? dates.length : transition;
-
   const unlockedFrom =
     endurance.unlockedAt === null
       ? Infinity
@@ -259,20 +250,19 @@ export function buildGymRating(input: GymRatingInput): GymRatingState {
   for (let index = legacyEnd; index < dates.length; index += 1) {
     const date = dates[index]!;
     const state = dayStates[index];
-    const week = weekTargets.get(weekKeyOf(date));
+    const week = weeks.get(weekKeyOf(date));
     const performance = performanceFor(date);
     modernDays.push({
       date,
       scored: state?.status === 'scored' && week !== undefined,
       sessionsInWeek: week?.sessions ?? 0,
       weeklyTarget: week?.target ?? 1,
-      sessionToday: sessionDates.has(date),
+      sessionToday: runDates.has(date),
       performance: performance.score,
       performanceChange: aggregateChange(performance),
       abstinentDays: abstinentDays[index] ?? 0,
       ageMonths: origin ? trainingAgeMonths(origin, date) : 0,
-      // The gate opens from the day *after* the week it was completed in:
-      // a week is only known to have been met once it is over.
+      // A week is only known to have been met once it is over.
       enduranceUnlocked: index >= unlockedFrom,
     });
   }
@@ -303,18 +293,15 @@ export function buildGymRating(input: GymRatingInput): GymRatingState {
   );
 
   const last = points[points.length - 1];
-  const rating = last?.rating ?? RATING.START;
-  const todayWeek = weekTargets.get(weekKeyOf(input.reference));
+  const todayWeek = weeks.get(weekKeyOf(input.reference));
   const todayPerformance = performanceFor(input.reference);
-  const abstinence = origin
-    ? currentAbstinence(sessionDates, origin, input.reference)
-    : null;
   const lastDetail = modern.points[modern.points.length - 1];
+  const trendFrom = addDays(input.reference, -(TRAINING_RATING.TREND_WINDOW_DAYS - 1));
 
   return {
     points,
     detail: modern.points,
-    rating,
+    rating: last?.rating ?? RATING.START,
     peak: Math.max(legacyEnd === 0 ? RATING.START : legacy.peak, modern.peak),
     model: models[models.length - 1] ?? 'attendance',
     origin,
@@ -324,31 +311,48 @@ export function buildGymRating(input: GymRatingInput): GymRatingState {
     performance: todayPerformance.score,
     trend: todayPerformance.trend,
     ytd: todayPerformance.ytd,
-    trendChange: percentChange(todayPerformance.trend.ratio),
-    ytdChange: percentChange(todayPerformance.ytd.ratio),
+    trendChange: paceChangePercent(todayPerformance.trend.ratio),
+    ytdChange: paceChangePercent(todayPerformance.ytd.ratio),
     sessionsThisWeek: todayWeek?.sessions ?? 0,
     weeklyTarget: todayWeek?.target ?? 0,
-    abstinence,
+    abstinence: origin ? currentAbstinence(runDates, origin, input.reference) : null,
     decayFraction: lastDetail?.decayFraction ?? 0,
     maintenance: lastDetail?.maintenance ?? false,
+    attendanceOnlyRuns: ordered.filter(
+      (entry) =>
+        entry.date >= trendFrom &&
+        entry.date <= input.reference &&
+        (entry.distanceMetres === null || entry.durationSeconds === null),
+    ).length,
   };
 }
 
 /**
  * The one aggregate change Maintenance judges, in percent.
  *
- * The blended Performance Score read back through the curve would do, but it
- * is simpler and more honest to average the two windows' changes here: this
- * number is only ever compared against zero, and at zero the two agree
- * exactly because the curve is symmetric about it.
+ * The mean of the two windows' ratios, converted once. This number is only
+ * ever compared against zero, where averaging-then-converting and the score's
+ * own convert-then-average agree exactly, because the curve is symmetric
+ * about it. Identical to Gym's treatment, deliberately.
  */
 function aggregateChange(performance: WindowPerformance): number | null {
   const values = [performance.trend.ratio, performance.ytd.ratio].filter(
     (value): value is number => value !== null,
   );
   if (values.length === 0) return null;
-  return ((values.reduce((sum, value) => sum + value, 0) / values.length) - 1) * 100;
+  return (values.reduce((sum, value) => sum + value, 0) / values.length - 1) * 100;
 }
 
-export type { RatingResult };
-export { loadExerciseDays };
+/** Every run in a range, as the pure pipeline wants it. */
+export async function loadRunObservations(
+  from: DateKey,
+  to: DateKey,
+): Promise<RunObservation[]> {
+  const runs: RunRecord[] = await runsRepository.listByDateRange(from, to);
+  return runs.map((entry) => ({
+    id: entry.id,
+    date: entry.date,
+    distanceMetres: entry.distanceMetres,
+    durationSeconds: entry.durationSeconds,
+  }));
+}

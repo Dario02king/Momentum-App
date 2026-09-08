@@ -15,10 +15,34 @@ import './sessionSheet.css';
  * optional and added afterwards, so a session never waits on a form.
  *
  * The fields follow the domain rather than the other way round. A run has a
- * duration; a gym session's substance is its sets, which belong on the gym
- * screen and not in a sheet reached from Today. Showing an empty duration
- * box for a gym session would be asking for a number nothing reads.
+ * distance and a duration; a gym session's substance is its sets, which belong
+ * on the gym screen and not in a sheet reached from Today. Showing an empty
+ * duration box for a gym session would be asking for a number nothing reads.
+ *
+ * **Distance and duration stay optional for a run.** Both are what unlock
+ * pace development, and neither is required to log one — a run saved with
+ * nothing but a date still counts in full towards the weekly target. Making
+ * them mandatory would tax the honest logging the whole domain depends on.
+ * The sheet says what supplying them buys instead of insisting.
  */
+/** Kilometres as whole metres. Swiss metric, one decimal is plenty. */
+function metresFrom(text: string): number | null {
+  const value = Number.parseFloat(text.replace(',', '.'));
+  return Number.isFinite(value) && value > 0 ? Math.round(value * 1000) : null;
+}
+
+function kmText(metres: number): string {
+  const km = metres / 1000;
+  return Number.isInteger(km) ? String(km) : String(Number(km.toFixed(3)));
+}
+
+/** Minutes and seconds per kilometre, for display only. */
+function paceText(metres: number, seconds: number): string {
+  const perKm = seconds / (metres / 1000);
+  const minutes = Math.floor(perKm / 60);
+  return `${minutes}:${String(Math.round(perKm % 60)).padStart(2, '0')}`;
+}
+
 export function SessionSheet({
   open,
   session,
@@ -36,16 +60,25 @@ export function SessionSheet({
   const { language } = useI18n();
   const [note, setNote] = useState('');
   const [duration, setDuration] = useState('');
+  const [distance, setDistance] = useState('');
   const [date, setDate] = useState<DateKey>(today());
 
   useEffect(() => {
     if (!open) return;
     setNote(session?.note ?? '');
     setDuration(session?.durationMinutes ? String(session.durationMinutes) : '');
+    setDistance(session?.distanceMetres ? kmText(session.distanceMetres) : '');
     setDate(session?.date ?? today());
   }, [open, session]);
 
   const parsedDuration = Number.parseInt(duration, 10);
+  const parsedDistance = metresFrom(distance);
+  const isRun = session?.domain === 'running';
+  /* Pace is shown, never stored: it is the two numbers above, divided. */
+  const pace =
+    isRun && parsedDistance !== null && Number.isFinite(parsedDuration) && parsedDuration > 0
+      ? paceText(parsedDistance, parsedDuration * 60)
+      : null;
 
   return (
     <Sheet
@@ -63,6 +96,7 @@ export function SessionSheet({
                 note: note.trim() || null,
                 durationMinutes:
                   Number.isFinite(parsedDuration) && parsedDuration > 0 ? parsedDuration : null,
+                distanceMetres: parsedDistance,
               })
             }
           >
@@ -101,6 +135,23 @@ export function SessionSheet({
         </div>
       </div>
 
+      {isRun ? (
+        <div>
+          <label className="field-label" htmlFor="session-distance">
+            {t('running.distance')}
+          </label>
+          <input
+            id="session-distance"
+            className="field"
+            value={distance}
+            inputMode="decimal"
+            placeholder={t('running.distanceUnit')}
+            onChange={(event) => setDistance(event.target.value.replace(/[^0-9.,]/g, ''))}
+          />
+          <p className="session-sheet__hint">{t('running.distanceHint')}</p>
+        </div>
+      ) : null}
+
       {session?.domain === 'gym' ? null : (
         <div>
           <label className="field-label" htmlFor="session-duration">
@@ -114,6 +165,11 @@ export function SessionSheet({
             placeholder={t('sports.durationUnit')}
             onChange={(event) => setDuration(event.target.value.replace(/[^0-9]/g, ''))}
           />
+          {pace ? (
+            <p className="session-sheet__hint" role="status">
+              {t('running.pace', { pace })}
+            </p>
+          ) : null}
         </div>
       )}
 
