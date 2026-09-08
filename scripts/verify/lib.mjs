@@ -1,0 +1,170 @@
+export const URL_APP = 'http://127.0.0.1:4173/Momentum-App/';
+export const results = [];
+export const check = (n, p, d = '') => {
+  results.push({ n, p, d });
+  console.log(`${p ? 'PASS' : 'FAIL'}  ${n}${d ? '  — ' + d : ''}`);
+};
+export const summary = () => {
+  console.log('\n--- summary ---');
+  console.log(`${results.filter((r) => r.p).length}/${results.length} checks passed`);
+  const bad = results.filter((r) => !r.p);
+  if (bad.length) console.log('FAILED:\n' + bad.map((f) => `  • ${f.n}${f.d ? ' — ' + f.d : ''}`).join('\n'));
+  return bad.length === 0;
+};
+export const phone = { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, hasTouch: true, acceptDownloads: true };
+
+/** Walks the iteration-2 onboarding: three concepts, the picker, then setup. */
+export async function onboard(page, { questions = [/Wie gut hast du gesch/, /Wie war deine Stimmung/], gym = 3, running = 2, food = false, wellbeing = true } = {}) {
+  await page.getByRole('button', { name: /Los geht/ }).click();
+  await page.getByRole('button', { name: 'Weiter' }).click();   // three worlds
+  await page.getByRole('button', { name: 'Weiter' }).click();   // rank + milestones
+  // Domain picker: Wellbeing starts selected.
+  if (!wellbeing) await page.getByRole('button', { name: /^Wellbeing/ }).click();
+  if (gym || running) await page.getByRole('button', { name: /^Sport/ }).click();
+  if (food) await page.getByRole('button', { name: /^Ernährung/ }).click();
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  if (wellbeing) {
+    for (const q of questions) await page.getByRole('button', { name: q }).first().click();
+    await page.getByRole('button', { name: 'Weiter' }).click();
+  }
+  if (gym || running) {
+    const cards = page.locator('.card');
+    if (gym) await cards.nth(0).getByRole('button', { name: `${gym} pro Woche` }).click();
+    if (running) await cards.nth(1).getByRole('button', { name: `${running} pro Woche` }).click();
+    await page.getByRole('button', { name: 'Weiter' }).click();
+  }
+  await page.getByRole('button', { name: 'Starten' }).click();
+  await page.waitForTimeout(900);
+}
+
+/** Reads the stored domains straight out of IndexedDB. */
+export async function storedDomains(page) {
+  return page.evaluate(async () => {
+    const db = await new Promise((res, rej) => {
+      const r = indexedDB.open('momentum');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    const rows = await new Promise((res, rej) => {
+      const r = db.transaction(['domains'], 'readonly').objectStore('domains').getAll();
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    return rows.map((d) => ({ type: d.type, enabled: d.enabled, settings: d.settings }));
+  });
+}
+
+export async function storedQuestions(page) {
+  return page.evaluate(async () => {
+    const db = await new Promise((res, rej) => {
+      const r = indexedDB.open('momentum');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    const rows = await new Promise((res, rej) => {
+      const r = db.transaction(['questions'], 'readonly').objectStore('questions').getAll();
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    return rows.map((q) => ({ text: q.text, type: q.type, category: q.category, inverted: q.inverted }));
+  });
+}
+
+/** Every element cut off by whatever is clipping it. */
+export async function clipped(page) {
+  return page.evaluate(() => {
+    const bad = [];
+    const clipper = (el) => {
+      let p = el.parentElement;
+      while (p) {
+        const s = getComputedStyle(p);
+        if (s.overflow !== 'visible' && s.overflowX !== 'visible') return p;
+        p = p.parentElement;
+      }
+      return document.documentElement;
+    };
+    for (const el of document.querySelectorAll('button, a, input, .card, h1, h2, p, span')) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      const c = clipper(el);
+      const cr = c.getBoundingClientRect();
+      const overflowX = r.right - cr.right;
+      if (overflowX > 1.5 && getComputedStyle(c).overflowX !== 'auto' && getComputedStyle(c).overflowX !== 'scroll') {
+        bad.push(`${el.className || el.tagName} cut by ${overflowX.toFixed(1)}px inside ${c.className || c.tagName}`);
+      }
+    }
+    return [...new Set(bad)];
+  });
+}
+
+/** Every tap target smaller than the minimum. */
+export async function smallTargets(page) {
+  return page.evaluate(() => {
+    const bad = [];
+    for (const el of document.querySelectorAll('button, a[href], input, [role="radio"], [role="switch"]')) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      // A visually hidden control is operated through the visible one that
+      // labels it — the file input behind an Import button, for instance.
+      if (el.closest('.visually-hidden') || el.classList.contains('visually-hidden')) continue;
+      // Several controls grow their hit area with a ::before overlay rather
+      // than by growing the box, which is how a 31px iOS switch is a 45px
+      // target. Measure what the finger actually hits.
+      const before = getComputedStyle(el, '::before');
+      let height = r.height;
+      let width = r.width;
+      if (before.content !== 'none' && before.position === 'absolute') {
+        // Only a *negative* inset grows the target. A hairline separator is
+        // also an absolutely positioned ::before, and counting it would
+        // shrink the box to the height of the line.
+        const grow = (v) => (v.endsWith('px') && parseFloat(v) < 0 ? -parseFloat(v) : 0);
+        height += grow(before.top) + grow(before.bottom);
+        width += grow(before.left) + grow(before.right);
+      }
+      if (height < 40 || width < 24) bad.push(`${el.className || el.tagName} ${width.toFixed(0)}x${height.toFixed(0)}`);
+    }
+    return [...new Set(bad)];
+  });
+}
+
+/** Writes past history directly, so Verlauf has something to draw. */
+export async function seed(page, { days = 30 } = {}) {
+  return page.evaluate(async ({ days }) => {
+    const open = () => new Promise((res, rej) => { const r = indexedDB.open('momentum'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const all = (db, s) => new Promise((res, rej) => { const r = db.transaction([s], 'readonly').objectStore(s).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const putAll = (db, s, recs) => new Promise((res, rej) => { const tx = db.transaction([s], 'readwrite'); for (const r of recs) tx.objectStore(s).put(r); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+    const pad = (n, l = 2) => String(n).padStart(l, '0');
+    const key = (d) => `${pad(d.getFullYear(), 4)}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const shift = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return d; };
+    const isoWeek = (d) => { const t = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12); t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + 3); const y = t.getFullYear(); const f = new Date(y, 0, 4, 12); f.setDate(f.getDate() - ((f.getDay() + 6) % 7) + 3); return `${pad(y, 4)}-W${pad(1 + Math.round((t - f) / (7 * 86400000)))}`; };
+    const db = await open();
+    const questions = await all(db, 'questions');
+    const domains = await all(db, 'domains');
+    const snaps = await all(db, 'configSnapshots');
+    const settings = await all(db, 'settings');
+    const origin = key(shift(-(days + 1)));
+    await putAll(db, 'configSnapshots', snaps.map((s, i) => (i === 0 ? { ...s, effectiveFrom: origin } : s)));
+    await putAll(db, 'settings', [{ ...settings[0], firstUseDate: origin }]);
+    const mentalId = domains.find((d) => d.type === 'mental')?.id;
+    const gymOn = domains.some((d) => d.type === 'gym' && d.enabled);
+    const answers = [], sessions = [];
+    for (let i = days; i >= 1; i -= 1) {
+      const date = key(shift(-i));
+      const level = 0.4 + ((days - i) / days) * 0.5;
+      const stamp = new Date().toISOString();
+      for (const q of questions) {
+        answers.push({ id: `${date}#${q.id}`, date, questionId: q.id, domainId: mentalId,
+          value: q.type === 'scale' ? Math.max(1, Math.min(10, Math.round(level * 10))) : (i * 7) % 10 < level * 10,
+          valueType: q.type, sensitivity: 'private', configSnapshotId: snaps[0].id, createdAt: stamp, updatedAt: stamp });
+      }
+      if (gymOn && i % 3 === 0) {
+        const at = new Date(shift(-i).setHours(18, 0, 0, 0)).toISOString();
+        sessions.push({ id: `seed-${date}`, date, weekKey: isoWeek(shift(-i)), performedAt: at,
+          planId: null, note: null, legacyCarryOver: false, configSnapshotId: snaps[0].id, createdAt: at, updatedAt: at });
+      }
+    }
+    await putAll(db, 'answers', answers);
+    if (sessions.length) await putAll(db, 'gymSessions', sessions);
+    return { answers: answers.length, sessions: sessions.length };
+  }, { days });
+}
