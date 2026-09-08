@@ -2,7 +2,7 @@
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D100). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D101). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -210,15 +210,30 @@ rating           ← rating + (target − rating) × movementFactor(rating, targ
   is then permanent. The rating calculates and moves throughout; nothing is
   awarded at the unlock. The Boss reads the rating, so the gate does not
   reach it.
-- **Abstinence decay** (D96): 7 consecutive days with no saved session, after
-  the Endurance Phase only. Reduces **rank progress only**, cumulative against
-  the progress held at the episode's start, never compounded. 50 % a block in
-  months 1–2, 25 % in 3–4, 20 % in 5–12, 10 % from month 13, capped at 100 %.
-  Never below the rank floor. Any saved session ends it; a later absence takes
-  a fresh baseline.
-- **Maintenance** (D97): from 12 months, with attendance fully met and
-  aggregate performance within ±0.25 pp of zero, the target may not pull the
-  rating down. A floor under the target, nothing more.
+- **Abstinence decay** (D96): **7 consecutive calendar days with zero saved
+  Gym sessions**, and only after the Endurance Phase is complete. Missing the
+  weekly attendance target alone is *not* abstinence. Reduces **within-rank
+  progress only** — never the historical rating, the performance percentages
+  or anything already recorded — cumulative against the progress held at the
+  episode's start and never compounded. Never below the current rank floor.
+  Any saved session ends the episode; a later absence takes a fresh baseline.
+  Whole blocks only, and the phase is fixed by the training age at the
+  episode's start:
+
+  ```
+    abstinent days      →   7     14     21     28     35     42  …  70
+
+    through month 2       50 %  100 %  100 %  100 %  100 %  100 %   100 %
+    months 3–4            25 %   50 %   75 %  100 %  100 %  100 %   100 %
+    months 5–12           20 %   40 %   60 %   80 %  100 %  100 %   100 %
+    month 13 onward       10 %   20 %   30 %   40 %   50 %   60 %   100 %
+  ```
+- **Maintenance** (D97): from 12 months of Gym training age, with the week's
+  attendance target fully met, **both** performance windows carrying a
+  baseline, and the aggregate change within ±0.25 pp of zero, the target may
+  not pull the rating down. A floor under the target, nothing more — positive
+  performance still raises, negative still lowers, missed attendance still
+  lowers, and abstinence decay is untouched.
 - **Era:** a snapshot with no `scoring.gymModel` is the attendance era and
   replays as it was scored; the new fold continues from the number the old one
   left.

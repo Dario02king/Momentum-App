@@ -1418,14 +1418,32 @@ cannot fall out of their rank through this either — losing a tier to a
 fortnight's holiday would contradict the sustained-evidence rule demotion has
 always needed.
 
-Four schedules, keyed on Gym training age, and all four are one rule with a
-different number in it — a full seven-day block removes a fixed share, capped
-at everything:
+Four schedules, keyed on Gym training age. All four are one rule with a
+different number in it — a **full** seven-day block removes a fixed share of
+the baseline, capped at everything — but the rule is written out day by day
+here, because "20 % a block" is the kind of summary that gets reimplemented
+slightly differently later:
 
 ```
-months 1–2    50 % a block      months 5–12   20 % a block
-months 3–4    25 % a block      month 13+     10 % a block
+  abstinent days      →   7     14     21     28     35     42  …  70
+
+  after unlock,
+  through month 2       50 %  100 %  100 %  100 %  100 %  100 %   100 %
+  months 3–4            25 %   50 %   75 %  100 %  100 %  100 %   100 %
+  months 5–12           20 %   40 %   60 %   80 %  100 %  100 %   100 %
+  month 13 onward       10 %   20 %   30 %   40 %   50 %   60 %   100 %
 ```
+
+Blocks are whole. Six days is not a block and removes nothing; thirteen days
+is one block and not one and a bit. Partial credit would make the boundary
+meaningless and the arithmetic unexplainable. The phase is chosen from the
+training age **at the start of the episode**, so an episode that crosses a
+month boundary does not change schedule underneath the user.
+
+"Training age" is completed whole calendar months since the first day Gym
+actually had a session of its own — not since the app was installed. A user
+who enabled Gym in June is two months into Gym in August, however long they
+have been logging their sleep.
 
 **Cumulative against the baseline, never compounded against the remainder.**
 In the 25 % phase, 80 % of a rank runs 80 → 60 → 40 → 20 → 0, not 80 → 60 →
@@ -1454,10 +1472,25 @@ ever by doing exactly what they set out to do. "Improve every month or lose
 your rank" is not something this app should say to someone in their second
 year.
 
-So when **all** of these hold — training age ≥ 12 months, the week's
-attendance target fully met, aggregate performance genuinely about zero rather
-than missing, and enough performance history for that to mean something — the
-target may not pull the rating **down**.
+So when **all** of these hold, the target may not pull the rating **down**:
+
+- Gym **training age ≥ 12 completed months**, counted from the first day Gym
+  had a session of its own.
+- The week's **attendance target fully met** — `sessions / target ≥ 1`,
+  uncapped, so "nearly" does not qualify.
+- **Both performance windows carry a baseline.** This is what "enough
+  performance history" means concretely: `components.length >= 2`, the trend
+  *and* the year-to-date figure. One window alone is not enough evidence to
+  call a year's work "unchanged", and no window at all is missing data rather
+  than a flat result.
+- The **aggregate change is within ±0.25 percentage points of zero** —
+  genuinely about zero rather than missing.
+
+The aggregate the tolerance is measured against is the mean of the two
+windows' ratios, converted to a percentage. That is average-then-convert
+rather than the map-then-average the *score* uses, and it is deliberate: this
+number is only ever compared against zero, where the two orders agree exactly
+because the curve is symmetric about it.
 
 It is a floor under the target and nothing more, which is what keeps it
 narrow:
@@ -1553,3 +1586,45 @@ often adds evidence and never weight.
 
 The lifetime variant stays, because the Progress screen's "overall" figure is
 a different question and answers it correctly.
+
+## D101 — The performance curve is a shared contract, and its anchors are illustrative
+
+*Confirmed at the Phase 5 review, before Running becomes its second caller.*
+
+D99 chose the curve and recorded why the approved anchor table could not be
+satisfied as written. This states the resulting rule as a **durable,
+cross-domain contract**, because the curve is about to be reused and the
+question "may I refit it to hit 950 at +20 %?" must have a permanent answer.
+
+**Authoritative, in this order, and not negotiable per domain:**
+
+1. `score(0 %) = 500` — exactly.
+2. Monotonic and continuous over the whole real line, with no branch on sign
+   that changes the value.
+3. **Symmetric about 500**: `score(−x) = 1000 − score(x)`, exactly.
+4. Diminishing marginal reward as `|x|` grows.
+5. Bounded to 0–1000, asymptotically, with no cap on the input.
+
+**Illustrative, and not to be fitted against:** the ±20 % anchors. The
+approved table's −20 % → 0 and +20 % → 950 cannot coexist with rule 3 (which
+demands 50/950) or with rule 5 (an asymptote reaches 0 at no finite input).
+The reference values the curve actually produces are:
+
+```
+  −20 %   58.8      0 %   500.0     +20 %   941.2
+  −10 %  200.0     +5 %   666.7
+   −5 %  333.3    +10 %   800.0
+```
+
+`score(x) = 1000 / (1 + 4^(−x/10))` satisfies every authoritative rule and
+meets 0 % and ±10 % exactly; ±5 % lands within 3.4 points of the illustration.
+
+**Do not silently refit the curve** to close the ±20 % gap. Any function that
+does so breaks symmetry, monotonicity or boundedness, and those are the
+properties the score's meaning rests on. The one tunable is
+`GYM_RATING.CURVE_ODDS_PER_DECADE`; changing it moves every anchor together
+and preserves all five rules, which is the only kind of retuning that is safe.
+
+The curve lives in `core/gym/score.ts` today. When Running becomes a real
+second caller it should move to `core/scoring/` unchanged — a move, not a
+reimplementation, and not two copies that can drift.
