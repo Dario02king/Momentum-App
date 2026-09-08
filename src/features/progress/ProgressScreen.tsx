@@ -5,6 +5,8 @@ import { Card, EmptyState, LoadFailure, Section, Segmented, StaleNotice } from '
 import { ProgressIcon } from '../../components/Icons';
 import { formatDayAndMonth } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
+import { GymProgress } from '../gym/GymProgress';
+import { useGymHistory } from '../gym/useGymHistory';
 import { Heatmap, type HeatmapRow } from './Heatmap';
 import { QuestionDetail } from './QuestionDetail';
 import { TrendCurve } from './TrendCurve';
@@ -24,6 +26,9 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
   const [range, setRange] = useState<number>(TREND_RANGES[TREND_RANGES.length - 1]!);
   const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
   const { state, reload } = useProgression();
+  // Gym replays from its own sets rather than from the day scores, so it
+  // loads alongside rather than inside the progression.
+  const gym = useGymHistory(range);
 
   /** The last `range` days of the replay, for both views. */
   const window = useMemo(() => {
@@ -123,6 +128,20 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
   }
 
   const empty = window.days.every((day) => day.score === null);
+
+  /*
+   * Gym's own hierarchy: the domain, its muscle groups, its exercises, and
+   * each exercise's best set per day. Kept a section of its own rather than a
+   * row in the history grid, because its numbers are progress ratios and the
+   * grid's are daily percentages — putting them in one table would invite
+   * reading one as the other.
+   */
+  const gymSection =
+    gym && gym.days.length > 0 ? (
+      <Section label={t('gym.progress.title')}>
+        <GymProgress history={gym} />
+      </Section>
+    ) : null;
   const rangeSelector = (
     <div className="progress__ranges">
       <Segmented<string>
@@ -168,14 +187,27 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
 
         {rangeSelector}
 
+        {/*
+          Gym stands on its own data.
+          
+          It used to sit inside the branch that renders when the *Wellbeing*
+          history is empty, so a user who logged their first gym session and
+          opened Verlauf was told there was nothing to show — while holding a
+          session they had just logged. The two histories are replayed from
+          different rows and one being empty says nothing about the other.
+        */}
+        {gymSection}
+
         {empty ? (
-          <Card>
-            <EmptyState
-              icon={<ProgressIcon size={26} />}
-              title={t('progress.emptyTitle')}
-              body={t('progress.emptyBody')}
-            />
-          </Card>
+          gym && gym.days.length > 0 ? null : (
+            <Card>
+              <EmptyState
+                icon={<ProgressIcon size={26} />}
+                title={t('progress.emptyTitle')}
+                body={t('progress.emptyBody')}
+              />
+            </Card>
+          )
         ) : (
           <>
             <Section label={t('progress.trendTitle')} labelHidden>
@@ -253,6 +285,8 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
                 <Heatmap rows={rows} days={window.days.map((day) => day.date)} />
               </Card>
             </Section>
+
+
           </>
         )}
       </div>

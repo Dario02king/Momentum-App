@@ -23,6 +23,8 @@ import {
 import {
   answersRepository,
   domainsRepository,
+  exercisesRepository,
+  gymSetsRepository,
   questionsRepository,
   settingsRepository,
   sportsSessionsRepository,
@@ -229,5 +231,97 @@ describe('upgrading a database with months of history', () => {
       expect(point.era).toBe('legacy');
       expect(point.rating).toBeCloseTo(legacy.points[index]!.rating, 9);
     });
+  });
+});
+
+describe('the gym stores at version 3', () => {
+  /**
+   * Version 3 reshapes two gym stores: an exercise gains `muscles` in place
+   * of a single `muscle`, and a set stores whole grams in place of a
+   * floating-point kilogram figure.
+   *
+   * No release has ever written either record — phase 1 created the stores
+   * and phase 4 is the first code to fill them — so on a real device this
+   * migrates nothing. It is tested against version 2 rows anyway, because a
+   * store that is empty everywhere today is exactly the one that turns out
+   * not to have been, and a restored backup can carry anything.
+   */
+  async function seedVersion2Gym(): Promise<void> {
+    await seedVersion1(fixture('rc2-export.json').data);
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 2);
+      request.onupgradeneeded = () => MIGRATIONS[1]!.up(request.result, request.transaction!);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction([STORES.exercises, STORES.gymSets], 'readwrite');
+        tx.objectStore(STORES.exercises).put({
+          id: 'ex_old',
+          muscle: 'chest',
+          name: 'Bench Press',
+          builtIn: true,
+          bodyweightBased: false,
+          addedWeightKg: null,
+          durationSeconds: null,
+          attributes: {},
+          createdAt: '2026-09-01T00:00:00.000Z',
+          updatedAt: '2026-09-01T00:00:00.000Z',
+        });
+        tx.objectStore(STORES.gymSets).put({
+          id: 'set_old',
+          sessionId: 'gym_old',
+          exerciseId: 'ex_old',
+          date: '2026-09-07',
+          weightKg: 62.5,
+          reps: 8,
+          order: 0,
+          createdAt: '2026-09-07T18:00:00.000Z',
+        });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      };
+    });
+  }
+
+  beforeEach(async () => {
+    setClock({ now: () => new Date(2026, 8, 7, 21, 0, 0) });
+    await seedVersion2Gym();
+  });
+
+  it('opens at version 3 with every store still present', async () => {
+    const db = await openDatabase();
+    expect(db.version).toBe(3);
+    for (const store of ALL_STORES) expect(db.objectStoreNames.contains(store)).toBe(true);
+  });
+
+  it('gives an exercise a list of muscles instead of one', async () => {
+    await openDatabase();
+    const exercise = await exercisesRepository.get('ex_old');
+    expect(exercise?.muscles).toEqual(['chest']);
+    expect((exercise as unknown as { muscle?: string }).muscle).toBeUndefined();
+    // And it keeps the name it had, which is what history joins on after id.
+    expect(exercise?.name).toBe('Bench Press');
+  });
+
+  it('converts a set to whole grams without losing the weight', async () => {
+    await openDatabase();
+    const set = (await gymSetsRepository.getAll()).find((entry) => entry.id === 'set_old');
+    expect(set?.weightGrams).toBe(62_500);
+    expect((set as unknown as { weightKg?: number }).weightKg).toBeUndefined();
+    expect(set?.reps).toBe(8);
+    expect(set?.muscles).toEqual([]);
+  });
+
+  it('still reproduces the RC2 numbers it was carrying', async () => {
+    // The gym reshape must not have disturbed a single Wellbeing day.
+    await openDatabase();
+    const progression = await loadProgression();
+    expect(progression.current).toBeCloseTo(261.67367135576694, 10);
+    expect(progression.rank.id).toBe('contender');
+    expect(progression.lifetimeXp).toBe(90);
   });
 });

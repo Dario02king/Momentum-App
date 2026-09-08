@@ -1,0 +1,141 @@
+.body-renderer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.body-renderer__figures {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  /* Two figures at 132px need 280px plus the gap; below that they scale down
+     together rather than one of them being clipped. */
+  overflow: hidden;
+}
+
+.body-renderer__figure {
+  max-width: 50%;
+  height: auto;
+}
+
+.body-renderer__silhouette {
+  fill: var(--surface-secondary);
+  stroke: var(--separator-strong);
+  stroke-width: 1;
+}
+
+/*
+ * State is carried by fill *and* by the words in the legend. The fills are
+ * also separated by lightness rather than hue alone, so the figure still
+ * reads as a gradient of activity to someone who cannot separate red from
+ * green.
+ */
+.body-renderer__muscle {
+  transition: fill var(--duration-base) var(--ease-standard);
+}
+
+.body-renderer__muscle--noData {
+  fill: var(--band-none);
+}
+
+.body-renderer__muscle--awaitingBaseline {
+  fill: var(--sky-fill);
+  opacity: 0.55;
+}
+
+.body-renderer__muscle--improved {
+  fill: var(--scale-good-fill);
+}
+
+.body-renderer__muscle--unchanged {
+  fill: var(--scale-okay-fill);
+}
+
+.body-renderer__muscle--declined {
+  fill: var(--scale-poor-fill);
+}
+
+.body-renderer__muscle--selected {
+  stroke: var(--text-primary);
+  stroke-width: 2;
+}
+
+.body-renderer__legend {
+  display: flex;
+  flex-direction: column;
+}
+
+.body-renderer__row {
+  border-bottom: 1px solid var(--separator);
+}
+
+.body-renderer__row:last-child {
+  border-bottom: none;
+}
+
+.body-renderer__button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  background: none;
+}
+
+.body-renderer__button[aria-pressed='true'] .body-renderer__name {
+  font-weight: var(--weight-semibold);
+}
+
+.body-renderer__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.body-renderer__swatch--noData {
+  background: var(--band-none);
+}
+.body-renderer__swatch--awaitingBaseline {
+  background: var(--sky-fill);
+}
+.body-renderer__swatch--improved {
+  background: var(--scale-good-fill);
+}
+.body-renderer__swatch--unchanged {
+  background: var(--scale-okay-fill);
+}
+.body-renderer__swatch--declined {
+  background: var(--scale-poor-fill);
+}
+
+.body-renderer__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--type-subhead);
+  color: var(--text-primary);
+}
+
+.body-renderer__state {
+  font-size: var(--type-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.body-renderer__state--improved {
+  color: var(--scale-good-ink);
+}
+.body-renderer__state--declined {
+  color: var(--scale-poor-ink);
+}
+.body-renderer__state--unchanged {
+  color: var(--scale-okay-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body-renderer__muscle {
+    transition: none;
+  }
+}

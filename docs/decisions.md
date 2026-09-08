@@ -1119,3 +1119,105 @@ frosted glass at 148px and as a grey plate at 32px, which is what each size
 needs.
 
 The state is a word beside the badge, never the badge alone.
+
+## D84 — The exercise-day metric is the best set, and only the best set
+
+`max(reps × weight)` across the day's completed sets of one exercise. Ten at
+10 kg and six at 20 kg are both 100; eight at 15 kg is 120 and wins.
+
+It is not total volume, not the sum of the set scores, not their average, not
+the average weight, not an estimated one-rep max, and not the heaviest weight
+alone. Every one of those is a familiar fitness-app number and none of them is
+this one. Tied bests change nothing, because a maximum has no opinion about
+which set achieved it; a screen that needs to name a set takes the earliest by
+order, and nothing downstream reads it.
+
+Weights are stored in **whole grams**. `reps × weight` is compared against a
+previous workout's, and a comparison of floating-point products can call two
+identical sets different. Integers cannot drift, grams cover a 0.5 kg
+micro-plate with room to spare, and the displayed unit stays entirely the
+interface's business — which is what makes pounds a later change to one
+formatter rather than to the data.
+
+## D85 — A first workout has no baseline, and says so
+
+Four states, not a number: `noBaseline`, `improved`, `unchanged`, `declined`.
+A first-ever recording has nothing to compare against, and reporting that as
++0 % or −100 % would be inventing a baseline out of an absence.
+
+Two absences are deliberately not failures either. A **skipped** exercise is
+compared against the last day it was actually recorded, whether that was last
+Tuesday or in March. A **long gap** does not enter the comparison at all:
+coming back after two months and matching your old best is `unchanged`,
+because that is what happened.
+
+The join is the exercise's stable id. Renaming "Bench Press" continues one
+history; two exercises that happen to share a display name keep two.
+
+## D86 — Muscle groups are equal-weighted, and a two-muscle exercise counts once in each
+
+An exercise's ratio is the ratio of its most recent comparable day. Every
+group it is mapped to receives that ratio, a group's value is the plain mean
+of what it received, and the Gym aggregate is the **equal-weighted mean over
+groups**.
+
+Chest with five exercises and legs with two do not become five sevenths and
+two sevenths. And a deadlift mapped to back and hamstrings raises both, which
+is what "it trains both" means — it cannot amplify itself, because inside each
+group it is one voice among that group's exercises and the groups are equal
+above.
+
+Only groups with a measurable comparison enter the denominator. A group nobody
+has trained is `noData`, a group trained once is `insufficientBaseline`, and
+neither is an earned zero: the app has never treated absence as failure, and
+scoring an untrained calf as a failed calf would be the first time.
+
+Over a longer window the comparison is each exercise's **whole span** — most
+recent recorded best against its first — rather than day against day. That is
+what stops training frequency from becoming structural weight: benching twice
+a week produces more observations than benching fortnightly, and averaging
+them would let a frequent trainer's chest outvote their legs. Frequency
+changes how much evidence there is, never how much a muscle counts.
+
+## D87 — A set records the muscle groups it was logged under
+
+The one Gym fact that depends on configuration is the exercise→muscle mapping.
+Rather than snapshot the whole catalogue, each set stores the groups its
+exercise had at the moment it was written.
+
+That makes the replay independent of the catalogue entirely: correcting a
+mapping applies from that point forward and cannot reach into a workout
+already done, exactly as every other configuration change in this app behaves.
+It costs one short array per set row and it needs no snapshot growth at all,
+which is the smallest correct extension of the architecture that was already
+there.
+
+Nothing is ever inferred from an exercise's name. A wrong guess would send a
+user's work quietly to the wrong part of the body.
+
+## D88 — Gym's rank still counts sessions, and the screen says so
+
+The Gym day score that feeds the rating is unchanged by phase 4: sessions
+against the weekly quota. Performance is a *rate of change*, and mapping a
+rate of change onto a 0–1000 level requires deciding what rate equals what
+level — which the specification does not define and which is not a detail to
+settle in passing.
+
+So phase 4 computes performance, shows it, and does not feed it into the
+rating. The progress screen states that outright rather than leaving a user to
+work out why a good month did not move their rank. The mapping is the one
+product decision this phase deliberately leaves open.
+
+## D89 — The body is a diagram, not an illustration
+
+Rounded blocks laid out on a torso outline, front and back side by side. They
+read at 120 px on a phone, stay legible with ten of them lit, and can be
+maintained by anyone who can read a rectangle. An anatomical rendering would
+look better in a screenshot, cost far more to keep correct, and imply a
+medical precision the app has no business claiming.
+
+The renderer computes nothing. Every value arrives from
+`core/gym/performance.ts`, so a number here and a number on the progress
+screen cannot disagree. The figures are `aria-hidden` and the legend beneath
+carries every group, its state in words and its value — the answer to "which
+muscles are improving" never depends on telling two fills apart.

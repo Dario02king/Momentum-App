@@ -177,6 +177,39 @@ export const MIGRATIONS: Migration[] = [
       };
     },
   },
+  {
+    version: 3,
+    describe: 'gym: multi-muscle exercises, integer set weights',
+    up(_db, tx) {
+      /*
+       * Two shape changes in the gym stores, both additive in effect.
+       *
+       * Nothing on any device has ever written an exercise or a set — phase 1
+       * created the stores and phase 4 is the first code to fill them — so
+       * this is a migration over an empty store in practice. It is written
+       * properly anyway: a store that is empty everywhere today is exactly
+       * the store that turns out not to have been, and a backup restored from
+       * a hand-edited file can carry anything.
+       */
+      backfill(tx, STORES.exercises, (exercise) => {
+        if (Array.isArray(exercise.muscles)) return null;
+        const single = exercise.muscle;
+        const { muscle: _drop, ...rest } = exercise;
+        return { ...rest, muscles: typeof single === 'string' ? [single] : [] };
+      });
+
+      backfill(tx, STORES.gymSets, (set) => {
+        if (set.weightGrams !== undefined && Array.isArray(set.muscles)) return null;
+        const { weightKg, ...rest } = set;
+        return {
+          ...rest,
+          weightGrams:
+            set.weightGrams ?? (typeof weightKg === 'number' ? Math.round(weightKg * 1000) : 0),
+          muscles: Array.isArray(set.muscles) ? set.muscles : [],
+        };
+      });
+    },
+  },
 ];
 
 /**

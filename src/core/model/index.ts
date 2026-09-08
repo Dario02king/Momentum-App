@@ -12,7 +12,7 @@ import type { RankId } from '../config/constants';
  *    (`detail`), so version 2 can attach exercises, sets and weights as an
  *    additive write rather than a migration.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * The domains a user can have active.
@@ -406,8 +406,23 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
  * can be added later without touching the schema.
  */
 export interface ExerciseRecord {
+  /**
+   * Stable for the life of the exercise.
+   *
+   * A built-in carries a readable, permanent id (`ex_bench_press`); a custom
+   * one gets a generated id. Historical comparison joins on this and never on
+   * the name, so renaming "Bench Press" to "Flachbank" compares like with
+   * like rather than starting a new history.
+   */
   id: string;
-  muscle: MuscleGroup;
+  /**
+   * Every muscle group the exercise counts towards, most relevant first.
+   *
+   * Explicit, never inferred from the name. An exercise in two groups
+   * contributes to both; see `core/gym/performance.ts` for why that cannot
+   * amplify its weight.
+   */
+  muscles: MuscleGroup[];
   /** Exercise names stay English in both language modes, like rank names. */
   name: string;
   /** Ships with the app rather than created by the user. */
@@ -457,15 +472,34 @@ export interface GymSessionRecord {
   updatedAt: string;
 }
 
-/** One set. Never averaged: D24's primary metric is the best set of the day. */
+/** One set. Never averaged: the primary metric is the best set of the day. */
 export interface GymSetRecord {
   id: string;
   sessionId: string;
   exerciseId: string;
   date: DateKey;
-  weightKg: number;
+  /**
+   * Whole grams, not kilograms.
+   *
+   * `reps × weight` is compared against a previous workout's, and a
+   * comparison of floating-point products is a comparison that can call two
+   * identical sets different. Integers cannot drift. Grams also give the
+   * precision a 0.5 kg micro-plate needs with room to spare, and leave the
+   * displayed unit — kg today, pounds later — entirely to the interface.
+   */
+  weightGrams: number;
   reps: number;
   order: number;
+  /**
+   * The muscle groups this set counted towards, as they stood when it was
+   * logged.
+   *
+   * Recorded here rather than looked up, so correcting an exercise's mapping
+   * changes what it counts for *from now on* and cannot reach into a workout
+   * already done. The same rule as every other configuration change in the
+   * app, applied to the one Gym fact that depends on configuration.
+   */
+  muscles: MuscleGroup[];
   createdAt: string;
 }
 

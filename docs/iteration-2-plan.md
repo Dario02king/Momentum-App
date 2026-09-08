@@ -142,7 +142,7 @@ rating of every promotion.
 | 1 | `core/model`, `storage/db.ts` (migration 2), `core/domains/*`, `core/ledger/*`, `core/boss/*`, `core/decay/*`, `core/migration/legacySport.ts`, `storage/repositories/*`, `storage/services/bossService.ts`, `storage/services/legacySportService.ts` | **review stop** ← we are here |
 | 2 | `features/onboarding/*`, `domains/mental/*`, `features/progress/QuestionDetail.tsx`, `styles/tokens.css` (1–10 bands), `storage/services/configurationService.ts`, `checkInService.ts` | **review stop** ← we are here |
 | 3 | `features/ranking/*` (Boss UI, domain ranks, weights, mystery), `core/ranks/progress.ts`, `features/today/BossSummary.tsx` | **review stop** ← we are here |
-| 4 | `features/gym/*` (new), `components/BodyRenderer/*` (new), `core/gym/performance.ts` (D24/D26) | **review stop** |
+| 4 | `features/gym/*`, `components/BodyRenderer/*`, `core/gym/performance.ts`, `core/gym/catalogue.ts`, `storage/services/gymService.ts` | **review stop** ← we are here |
 | 5 | `features/running/*` (new), `core/running/*`, `RunSource` adapter shape | |
 | 6 | `features/food/*` (new), `core/food/*`, `FoodRepository` | **review stop** |
 | 7 | decay formula → **Gate 1**; nutrition targets → **Gate 2** | **two gates** |
@@ -257,3 +257,23 @@ rating of every promotion.
   and a line saying the change is forward only.
 - **Mystery ranks** keep name, threshold and silhouette; the emblem is
   withheld and the veil is drawn rather than filtered.
+
+## Phase 4 as built
+
+- **`core/gym/performance.ts`** holds the whole pipeline and touches neither
+  storage nor React: best set → comparison → muscle group → equal-weighted
+  aggregate, with a long-window variant that compares each exercise across its
+  whole span so training frequency cannot become weight.
+- **Schema 3**: an exercise carries `muscles: MuscleGroup[]` instead of one
+  group, and a set carries whole `weightGrams` plus the groups it was logged
+  under. Migrated properly, though no release has ever written either record.
+- **Logging** is one screen: sets save as they are typed, the next set arrives
+  pre-filled from the last, and the only sheet in the flow picks an exercise.
+- **Progress** runs Gym overall → muscle groups → exercises → best set per
+  day, with each number labelled in its own terms.
+
+### The open decision
+
+Gym's day score still counts sessions against the weekly quota. Performance is
+computed and shown but does not feed the rating, because mapping a rate of
+change onto a 0–1000 level is undefined by the specification (D88).

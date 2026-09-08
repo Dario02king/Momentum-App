@@ -8,6 +8,8 @@ import { formatDayAndMonth, formatTime, formatWeekday } from '../../i18n/format'
 import { useI18n, useT } from '../../i18n/I18nProvider';
 import type { TrainingSession } from '../../storage/services/checkInService';
 import type { TranslationKey } from '../../i18n';
+import { GymSessionScreen } from '../gym/GymSessionScreen';
+import { openSessionForDay } from '../../storage/services/gymService';
 import { BossSummary } from './BossSummary';
 import { CheckInItem } from './CheckInItem';
 import { useDay } from './useDay';
@@ -42,6 +44,12 @@ export function TodayScreen({
   const date = currentDay();
   const { state, answer, logSession, updateSession, deleteSession, reload } = useDay(date);
   const [editingSession, setEditingSession] = useState<TrainingSession | null>(null);
+  /*
+   * A gym session is not a diary line with a note on it — it holds exercises
+   * and sets — so tapping one opens the logging screen rather than the sheet
+   * the other training logs use.
+   */
+  const [gymSessionId, setGymSessionId] = useState<string | null>(null);
 
   // Three states, never collapsed into one: still loading, failed outright,
   // or loaded. What is *empty* is decided further down, from the day itself.
@@ -62,6 +70,29 @@ export function TodayScreen({
 
   const day = state.value;
   const mental = day.mental;
+
+  const openGym = (sessionId?: string) => {
+    if (sessionId) {
+      setGymSessionId(sessionId);
+      return;
+    }
+    void openSessionForDay(date)
+      .then((session) => setGymSessionId(session.id))
+      .catch(() => reload());
+  };
+
+  if (gymSessionId) {
+    return (
+      <GymSessionScreen
+        sessionId={gymSessionId}
+        date={date}
+        onClose={() => {
+          setGymSessionId(null);
+          void reload();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="screen">
@@ -196,7 +227,11 @@ export function TodayScreen({
                         {session.note ? ` · ${session.note}` : ''}
                       </span>
                     }
-                    onClick={() => setEditingSession(session)}
+                    onClick={() =>
+                      training.domain === 'gym'
+                        ? openGym(session.id)
+                        : setEditingSession(session)
+                    }
                     trailing={<ChevronRightIcon size={18} />}
                   />
                 ))}
@@ -210,7 +245,11 @@ export function TodayScreen({
                   <button
                     type="button"
                     className="week__log"
-                    onClick={() => logSession(training.domain)}
+                    onClick={() =>
+                      // Gym opens the session it just created, so logging and
+                      // filling it in are one gesture rather than two screens.
+                      training.domain === 'gym' ? openGym() : logSession(training.domain)
+                    }
                   >
                     <PlusIcon size={19} />
                     {t(copy.log)}
