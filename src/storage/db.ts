@@ -41,10 +41,32 @@ export type StoreName = (typeof STORES)[keyof typeof STORES];
 
 export const ALL_STORES: StoreName[] = Object.values(STORES);
 
+/** A per-record rewrite. Returns the new record, or `null` to leave it. */
+type RecordTransform = (record: Record<string, unknown>) => Record<string, unknown> | null;
+
 interface Migration {
   version: number;
   describe: string;
+  /** Structural work: stores, indexes, and anything that is not a rewrite. */
   up(db: IDBDatabase, tx: IDBTransaction): void;
+  /**
+   * Per-record rewrites, by store.
+   *
+   * Declared rather than performed, because **two migrations rewriting the
+   * same store must not each open their own cursor.** Requests inside one
+   * upgrade transaction are served in the order they were made, so two
+   * cursors over `exercises` would both read a record as it was before either
+   * of them wrote, and the later write would win with a value that never saw
+   * the earlier one. A device upgrading from version 2 straight to version 4
+   * would have lost version 3's reshape entirely — silently, and only on the
+   * devices that skipped a release.
+   *
+   * The runner composes every applicable migration's transform for a store,
+   * in version order, and applies the chain in a single pass. Each transform
+   * therefore sees exactly what the one before it produced, which is what
+   * running the versions in sequence was always supposed to mean.
+   */
+  transforms?: Partial<Record<StoreName, RecordTransform>>;
 }
 
 /**
@@ -180,7 +202,7 @@ export const MIGRATIONS: Migration[] = [
   {
     version: 3,
     describe: 'gym: multi-muscle exercises, integer set weights',
-    up(_db, tx) {
+    up() {
       /*
        * Two shape changes in the gym stores, both additive in effect.
        *
@@ -191,14 +213,15 @@ export const MIGRATIONS: Migration[] = [
        * the store that turns out not to have been, and a backup restored from
        * a hand-edited file can carry anything.
        */
-      backfill(tx, STORES.exercises, (exercise) => {
+    },
+    transforms: {
+      [STORES.exercises]: (exercise) => {
         if (Array.isArray(exercise.muscles)) return null;
         const single = exercise.muscle;
         const { muscle: _drop, ...rest } = exercise;
         return { ...rest, muscles: typeof single === 'string' ? [single] : [] };
-      });
-
-      backfill(tx, STORES.gymSets, (set) => {
+      },
+      [STORES.gymSets]: (set) => {
         if (set.weightGrams !== undefined && Array.isArray(set.muscles)) return null;
         const { weightKg, ...rest } = set;
         return {
@@ -207,7 +230,47 @@ export const MIGRATIONS: Migration[] = [
             set.weightGrams ?? (typeof weightKg === 'number' ? Math.round(weightKg * 1000) : 0),
           muscles: Array.isArray(set.muscles) ? set.muscles : [],
         };
-      });
+      },
+    },
+  },
+  {
+    version: 4,
+    describe: 'gym: primary/secondary muscle roles, exercise load types',
+    up() {
+      /*
+       * Additive, and pointedly incomplete on purpose.
+       *
+       * An exercise gains `loadType` and `primaryMuscles`, migrated from the
+       * `bodyweightBased` flag and from the "primary group first" ordering
+       * that phase 4's catalogue used as a display convention. That is a safe
+       * reading for an *exercise*: it is configuration, and configuration is
+       * allowed to change going forward.
+       *
+       * **A set is left alone.** A set written by phase 4 recorded no roles,
+       * because none existed, and it was aggregated with every one of its
+       * groups counting equally. Filling roles in now — from today's
+       * catalogue, or from an ordering nobody promised meant anything — would
+       * silently re-weight a workout already done, which is the one thing
+       * D87 exists to prevent. The absence of `primaryMuscles` on a set is
+       * therefore the record of how that set was actually scored, and the
+       * replay reads it as such.
+       *
+       * The same applies to `loadType`: absent means external, which is what
+       * every set written before load types existed was, since phase 4 had no
+       * way to log anything else.
+       */
+    },
+    transforms: {
+      [STORES.exercises]: (exercise) => {
+        if (exercise.loadType !== undefined && exercise.primaryMuscles !== undefined) return null;
+        const { bodyweightBased, addedWeightKg: _added, ...rest } = exercise;
+        const muscles = Array.isArray(exercise.muscles) ? exercise.muscles : [];
+        return {
+          ...rest,
+          loadType: exercise.loadType ?? (bodyweightBased === true ? 'bodyweight' : 'external'),
+          primaryMuscles: exercise.primaryMuscles ?? muscles.slice(0, 1),
+        };
+      },
     },
   },
 ];
@@ -233,11 +296,7 @@ const RC2_QUESTION_CATEGORIES: Record<string, QuestionCategory> = {
 };
 
 /** Walks every record in a store and writes back whatever `fn` returns. */
-function backfill(
-  tx: IDBTransaction,
-  store: StoreName,
-  fn: (record: Record<string, unknown>) => Record<string, unknown> | null,
-): void {
+function backfill(tx: IDBTransaction, store: StoreName, fn: RecordTransform): void {
   const request = tx.objectStore(store).openCursor();
   request.onsuccess = () => {
     const cursor = request.result;
@@ -246,6 +305,43 @@ function backfill(
     if (next) cursor.update(next);
     cursor.continue();
   };
+}
+
+/**
+ * Every applicable migration's transforms for one store, as a single pass.
+ *
+ * Composed in version order, and each transform is handed what the previous
+ * one produced — so a device jumping from version 2 to version 4 gets the
+ * same record as one that upgraded to 3 first and to 4 later. One cursor per
+ * store is the whole point: two cursors would both read the record as it was
+ * before either wrote, and one of the two versions would vanish.
+ */
+function applyTransforms(tx: IDBTransaction, from: number): void {
+  const chains = new Map<StoreName, RecordTransform[]>();
+  for (const migration of MIGRATIONS) {
+    if (migration.version <= from || !migration.transforms) continue;
+    for (const [store, transform] of Object.entries(migration.transforms)) {
+      if (!transform) continue;
+      const list = chains.get(store as StoreName);
+      if (list) list.push(transform);
+      else chains.set(store as StoreName, [transform]);
+    }
+  }
+
+  for (const [store, transforms] of chains) {
+    backfill(tx, store, (record) => {
+      let current = record;
+      let changed = false;
+      for (const transform of transforms) {
+        const next = transform(current);
+        if (next) {
+          current = next;
+          changed = true;
+        }
+      }
+      return changed ? current : null;
+    });
+  }
 }
 
 /**
@@ -318,6 +414,7 @@ export function openDatabase(): Promise<IDBDatabase> {
         for (const migration of MIGRATIONS) {
           if (migration.version > from) migration.up(db, tx);
         }
+        applyTransforms(tx, from);
       } catch (error) {
         // Abort rather than leave a half-migrated database behind; the open
         // then fails and the interface can offer a way out.

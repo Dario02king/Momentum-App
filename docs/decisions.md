@@ -1221,3 +1221,335 @@ The renderer computes nothing. Every value arrives from
 screen cannot disagree. The figures are `aria-hidden` and the legend beneath
 carries every group, its state in words and its value — the answer to "which
 muscles are improving" never depends on telling two fills apart.
+
+## D90 — Gym's rating is 40 % attendance and 60 % personal development
+
+*This closes the decision D88 deliberately left open.*
+
+Phase 4 computed performance, showed it, and did not feed it into the rating,
+because mapping a rate of change onto a 0–1000 level was undefined. It is now
+defined:
+
+```
+target = 0.40 × attendanceScore + 0.60 × performanceScore
+```
+
+The thing worth writing down is not the split but what the split is *about*.
+**A Gym rank is a statement about the user against their own history, and
+never about the user against anyone else.** Someone pressing 30 kg who turns
+up three times a week and adds a rep a month outranks someone pressing 120 kg
+who trains occasionally and has not moved in a year. That is not a compromise
+forced by having no population data; it is the product. Absolute strength is a
+real thing and it is measured somewhere else (D95).
+
+Two consequences follow directly:
+
+- **No population norms enter Gym rating, ever.** Not as a modifier, not as a
+  calibration, not as a "starting estimate".
+- **Performance is available from the second comparable training**, not after
+  a month. Waiting would have meant a user's first month did not count, and it
+  would then have had to be invented back.
+
+Where performance has no baseline yet, the target is attendance **alone** —
+the app's existing available-score rule, the same one that leaves an
+unanswered Wellbeing category out of the denominator rather than scoring it
+zero. Attendance plus a fabricated neutral 500 would be a claim about a user
+who has simply not repeated an exercise yet.
+
+The change is an era, marked the way every era in this app is marked: a config
+snapshot with no `scoring.gymModel` predates it and replays as attendance
+against the weekly quota, exactly as those days were actually scored. The new
+fold continues from the number the old one left, so the day the update lands
+moves the rating by one ordinary step rather than by a jump — the same
+continuity rule the Boss follows across its own boundary (D68a).
+
+## D91 — Effective load, so a pull-up is not a lift of nothing
+
+The primary metric is untouched: `max(reps × effectiveLoad)` over the day's
+sets, exactly as D84 defined it. What changes is that `effectiveLoad` is not
+always the number on the bar.
+
+```
+external    load = the weight lifted
+bodyweight  load = bodyweight + added weight
+assisted    load = bodyweight − assistance
+```
+
+**The bodyweight is replayed, not stored on the set.** It is a dated fact of
+its own in `weightEntries`, and the load uses the most recent measurement on
+or before the set's date. That is what makes replaying last March produce last
+March's numbers however often the user has weighed themselves since — and it
+is the same rule the whole app follows, not a special case for the gym.
+
+Three states are kept apart, and none of them is a zero:
+
+- a bodyweight set logged before the user ever weighed themselves has no
+  measurable load and is **dropped**, exactly as a zero-rep set is;
+- **assistance greater than or equal to the bodyweight is dropped too**, and
+  is never re-read as ordinary positive resistance. 85 − 90 is not a 5 kg
+  lift; flipping the sign would invent a workout, and clamping to a floor
+  would invent a different one;
+- everything else is a real load, in whole grams, so `reps × load` stays
+  integer arithmetic and two identical sets can never compare unequal.
+
+Load types are recorded on the set as well as on the exercise, for the reason
+D87 gives about muscle groups: reclassifying an exercise applies forward and
+cannot reach a workout already done.
+
+## D92 — Primary muscles take 70 %, secondaries share 30 %
+
+D86 gave an exercise's ratio to every group it mapped to at full strength.
+That made a bench press speak as loudly for triceps as a triceps pushdown
+does, and let a compound movement gain total influence simply by touching more
+of the body. **An exercise is now worth one exercise, however many groups it
+names.**
+
+```
+primaries   share 70 %, equally
+secondaries share 30 %, equally
+```
+
+Chest 70 %, triceps 15 %, front delts 15 % — and the three sum to 1, which is
+the invariant the tests assert rather than a property of those numbers. Two
+degenerate shapes keep the invariant: an exercise with no secondaries gives
+its primaries the whole 100 % (an isolation exercise is not worth less because
+nothing else is listed), and an exercise with no primaries shares itself
+equally.
+
+What survives from D86 is everything above the group: a group's value is the
+**weighted** mean of what it received, and the groups themselves are still
+equal-weighted, so chest with five exercises still does not outweigh legs with
+two.
+
+**Roles are stated, never positional.** Phase 4's catalogue relied on "primary
+first" as a display convention, which was fine while every group counted the
+same and is not fine now. An ordering convention is exactly the kind of
+implicit fact that becomes wrong the first time someone sorts a list.
+
+## D93 — A user may remap their own exercise, never a built-in
+
+A built-in's mapping ships with the app and is the same on every device.
+Letting one user's edit of "Bench Press" diverge from the catalogue would make
+a permanent id mean two different things, and `ex_bench_press` is what a
+two-year-old set row points at. A user who wants their own mapping makes their
+own exercise, which is one tap.
+
+Either way the change is forward-only without any special handling: every set
+already carries the mapping and roles it was logged under (D87), so a workout
+already done cannot be reinterpreted at all.
+
+## D94 — The Endurance Phase gates the first promotion, and nothing else
+
+A new Gym user starts in an Endurance Phase, and their **first** rank
+promotion waits until they have shown four net weeks of training.
+
+```
+a completed week that met the target   +1.0
+a completed week that missed it        −0.5
+floor                                   0
+unlock at                               4.0
+```
+
+Three things this deliberately is not:
+
+- **It is not a streak.** A miss costs half a week, not the balance. Resetting
+  to zero after one bad week would contradict the rule this app has held since
+  RC2: a single bad day — or week — never costs a tier.
+- **It is not a timer.** Four weeks elapsing is not the requirement; four net
+  weeks of actually training is. The worked example ends at 2.5 after four
+  calendar weeks, and the user needs more.
+- **It is not a delay on the arithmetic.** Performance is computed, the rating
+  moves, and every screen shows real numbers throughout. Only the promotion is
+  held back. Gating the arithmetic would mean the first month did not exist.
+
+Implemented as one optional argument to the existing `rankHistory`, so there
+is no second ladder, no second badge family and no parallel rank state — the
+rating rises normally and simply does not cross a threshold yet. Once reached,
+the gate is permanently complete, and nothing is awarded at the unlock: the
+rating the user has been building all along is allowed to show, and that is
+all that happens.
+
+The gate is on the **rank**. The rating still flows into the Boss through the
+ordinary weighting, because there is no separate Gym-to-Boss formula and this
+would have been one.
+
+## D95 — Gym rank is development; Tombstones are absolute
+
+Two motivational systems, and conflating them would ruin both.
+
+| | Answers |
+|---|---|
+| **Gym rank** | how am I progressing, against my own history |
+| **Tombstone** | have I hit this absolute benchmark |
+
+So no absolute-strength scaling goes inside Gym rating, and no personal-
+development percentage will go inside a Tombstone. The boundary is an API
+boundary as much as a conceptual one: `core/gym/rating.ts` never reads a
+benchmark table, and there is none to read.
+
+Tombstones remain future work. The store exists, the boundary is documented,
+and **no benchmark values are invented here** — picking what counts as a
+"100 kg bench" milestone is a product decision, not a detail to settle while
+building something else.
+
+## D96 — Abstinence decay reduces rank progress, and only that
+
+Distinct from the cooling-off gate, which is still open (D72). `core/decay`
+still holds RC2's provisional rating decay behind `DECAY_MODEL_APPROVED`, and
+this does not close it. What is approved is a Gym-specific rule.
+
+**Abstinence is seven consecutive days with no saved Gym session.** Missing
+the weekly target is *not* abstinence: a user who trained twice against a
+target of three has trained, Attendance already says so, and charging them
+again here would punish partial effort harder than the rule already measuring
+it. Decay begins only after the Endurance Phase is complete — before that
+there is no promotion to lose.
+
+It touches **only the progress inside the rank currently held**:
+
+```
+rankProgress = (rating − rankFloor) / (rankCeiling − rankFloor)
+```
+
+Sets, exercise performances, muscle-group figures, the performance
+percentages, past snapshots and Tombstones are facts about what happened, and
+not training this week does not change what happened last March. The user
+cannot fall out of their rank through this either — losing a tier to a
+fortnight's holiday would contradict the sustained-evidence rule demotion has
+always needed.
+
+Four schedules, keyed on Gym training age, and all four are one rule with a
+different number in it — a full seven-day block removes a fixed share, capped
+at everything:
+
+```
+months 1–2    50 % a block      months 5–12   20 % a block
+months 3–4    25 % a block      month 13+     10 % a block
+```
+
+**Cumulative against the baseline, never compounded against the remainder.**
+In the 25 % phase, 80 % of a rank runs 80 → 60 → 40 → 20 → 0, not 80 → 60 →
+45 → 33.75. Compounding never reaches zero and would make the fourth week of
+absence cost a quarter of what the first did. The baseline is the rating held
+when the episode began, read once; the decay is recomputed from it every time,
+which is what makes the schedule cumulative and is why nothing is stored.
+
+Any saved session ends the episode immediately. What was lost stays lost — the
+user rebuilds through attendance and performance like anyone else — and a
+later absence takes a fresh baseline at *its* start.
+
+One implementation note that is really a product rule. **Decay is judged
+before the day's own score status.** A week with nothing logged in it yet has
+no score, because a week still running cannot have missed its target — that
+rule is right and stays. But those are precisely the days an abstinence
+episode is made of, so requiring a scored day would have meant the schedule
+never ran during the only week it was written for.
+
+## D97 — The one-year Maintenance rule
+
+After twelve months of Gym training, holding steady is a legitimate outcome
+rather than a failure. Without a rule saying so it reads as one: 0 % maps to
+500, and a user who has honestly earned 780 would be dragged towards 500 for
+ever by doing exactly what they set out to do. "Improve every month or lose
+your rank" is not something this app should say to someone in their second
+year.
+
+So when **all** of these hold — training age ≥ 12 months, the week's
+attendance target fully met, aggregate performance genuinely about zero rather
+than missing, and enough performance history for that to mean something — the
+target may not pull the rating **down**.
+
+It is a floor under the target and nothing more, which is what keeps it
+narrow:
+
+- positive performance still raises the rating, because the blended target is
+  already above it and the floor never applies;
+- negative performance still lowers it, because the change is then outside the
+  tolerance and the rule does not fire;
+- missed attendance still lowers it, for the same reason;
+- abstinence decay is untouched: it is not a target, and the month-13 schedule
+  applies to a maintaining user exactly as it does to anyone else.
+
+The tolerance is **±0.25 percentage points**. Aggregating ratios across groups
+leaves floating-point dust in the last few bits, which without a tolerance
+would flick Maintenance on and off between two replays of identical data; a
+quarter of a point is far below one rep or one micro-plate on any real best
+set, so it can only ever absorb noise and never a change.
+
+## D98 — Two migrations rewriting one store must share a cursor
+
+Found while adding schema 4, and worth recording because it was silent.
+
+Migrations v3 and v4 both rewrite `exercises`. Each called `backfill`, and
+each opened its own cursor. Requests inside one IndexedDB upgrade transaction
+are served in the order they were made, so both cursors read the record as it
+was before either of them wrote, and the later write won with a value that had
+never seen the earlier one. **A device upgrading from version 2 straight to
+version 4 lost version 3's reshape entirely** — silently, and only on the
+devices that had skipped a release.
+
+Migrations now *declare* their per-record rewrites (`transforms`) instead of
+performing them. The runner composes every applicable transform for a store,
+in version order, and applies the chain in a single pass, so each one sees
+what the previous produced. That is what running the versions in sequence was
+always supposed to mean, and it removes the hazard for every future migration
+rather than for this pair.
+
+## D99 — The performance curve is one parameter, and the anchor table cannot be met as written
+
+```
+                            1000
+  score(x) =  ────────────────────────────
+                1 + 4 ^ (−x / 10)
+```
+
+A logistic written in base 4 rather than base e, because in that form it says
+something a reader can hold on to: **every ten points of improvement
+multiplies the odds by four.** The score's odds are `score / (1000 − score)`;
+at 0 % they are 1:1 and the score is 500, at +10 % they are 4:1 and it is 800,
+at −10 % they are 1:4 and it is 200. One constant, retunable without any of
+the required properties changing.
+
+The approved anchor table asks for −20 % → 0 **and** +20 % → 950. Those cannot
+both hold. Symmetry about 500 requires that if +20 scores 950 then −20 scores
+50; and an asymptotically bounded curve cannot reach exactly 0 at a finite
+input at all — a function that hits 0 at −20 % either stops being monotonic
+below it or clips, and clipping would make every collapse worse than −20 %
+indistinguishable. The approved priority order puts `score(0) = 500`,
+monotonicity, symmetry and diminishing returns above closeness to the table,
+so the two ±20 % anchors are the ones that give:
+
+```
+  change    approved    curve      
+   −20 %          0      58.82     forced by symmetry and the asymptote
+   −10 %        200     200.00     exact
+    −5 %        330     333.33     +3.33
+     0 %        500     500.00     exact
+    +5 %        670     666.67     −3.33
+   +10 %        800     800.00     exact
+   +20 %        950     941.18     −8.82
+```
+
+There is no cap on the input: a beginner tripling their best set is +200 % and
+scores 999.999. Large gains keep helping, and keep helping less.
+
+**The two windows are mapped and then averaged, never averaged and then
+mapped.** Running a non-linear curve over a blended rate would lose exactly
+what the two windows exist to keep apart: a user who has improved 20 % over
+the year and slipped 20 % in the last two months is not the same as one who
+has done nothing. There is a test that proves the code takes the first road.
+
+## D100 — Year-to-date means this year, not since you started
+
+`gymPerformanceOverSpan` anchors each exercise to its first-ever recorded day,
+which HANDOVER already listed as debt: a lifetime figure measured from where
+the user began keeps reporting a beginner's first month for ever.
+
+The two rating windows do not use it. Each takes the exercise's first and last
+recorded day **inside the window** — 60 rolling days for the trend, January
+the first for year-to-date — and requires two observations there before it
+says anything. One comparison per exercise per window, so training something
+often adds evidence and never weight.
+
+The lifetime variant stays, because the Progress screen's "overall" figure is
+a different question and answers it correctly.

@@ -189,5 +189,108 @@ export const BOSS = {
  */
 export const SCORING_MODEL = 'categoryMean' as const;
 
+/**
+ * The Gym scoring model this build writes into new config snapshots.
+ *
+ * Same rule as `SCORING_MODEL`: it decides what *future* days mean and
+ * nothing else. Every day already lived resolves to the snapshot it was lived
+ * under, and a snapshot with no `gymModel` predates this change — those days
+ * keep the attendance-only level the user actually saw.
+ */
+export const GYM_SCORING_MODEL = 'attendancePerformance' as const;
+
 /** Onboarding recommends three to five questions. */
 export const RECOMMENDED_QUESTION_COUNT = { min: 3, max: 5 } as const;
+
+/**
+ * The Gym rating model (Phase 4.1).
+ *
+ * Gym Rank is **40 % attendance and 60 % personal development**, and it is
+ * emphatically not a measure of absolute strength — that is what Tombstones
+ * are for. Every number below is relative to the user's own history, so
+ * someone lifting light weights consistently and improving reaches the same
+ * ranks as someone lifting heavy ones.
+ */
+export const GYM_RATING = {
+  /** The 40/60 split of the target rating. The two must sum to 1. */
+  ATTENDANCE_WEIGHT: 0.4,
+  PERFORMANCE_WEIGHT: 0.6,
+
+  /** The rolling short-term window, in days, ending on the calculation date. */
+  TREND_WINDOW_DAYS: 60,
+  /** Trend and year-to-date contribute equally to the Performance Score. */
+  TREND_WEIGHT: 0.5,
+  YTD_WEIGHT: 0.5,
+
+  /**
+   * The performance curve, as one parameter.
+   *
+   * `score / (1000 − score) = ODDS_PER_DECADE ^ (change% / DECADE_PERCENT)`,
+   * so every ten points of improvement multiplies the odds by four: 0 % is
+   * evens and scores 500, +10 % is 4:1 and scores 800, −10 % is 1:4 and
+   * scores 200. See `core/gym/score.ts` for the derivation and the fit.
+   */
+  CURVE_ODDS_PER_DECADE: 4,
+  CURVE_DECADE_PERCENT: 10,
+
+  /** How much of the remaining gap to the target one update closes. */
+  BASE_MOVEMENT: 0.1,
+  /**
+   * At or below this rating the full base movement applies, and above it the
+   * *upward* step is scaled by the remaining headroom. Downward movement is
+   * never slowed: a high rank is harder to climb, not protected from falling.
+   */
+  MOVEMENT_FULL_SPEED_BELOW: 500,
+
+  /** Net completed weeks the Endurance Phase asks for before a first promotion. */
+  ENDURANCE_WEEKS_REQUIRED: 4,
+  ENDURANCE_WEEK_MET: 1,
+  ENDURANCE_WEEK_MISSED: -0.5,
+
+  /** Consecutive days with no saved session that make one abstinence block. */
+  ABSTINENCE_BLOCK_DAYS: 7,
+
+  /** Gym training age at which Maintenance becomes a legitimate state. */
+  MAINTENANCE_MIN_MONTHS: 12,
+  /**
+   * How close to 0 % counts as "unchanged" for Maintenance, in percentage
+   * points. Aggregating ratios over groups leaves float dust well below
+   * 1e-9 %; a quarter of a point is far under one rep or one micro-plate on
+   * any real best set, so it can only ever absorb noise.
+   */
+  MAINTENANCE_TOLERANCE_PERCENT: 0.25,
+} as const;
+
+/**
+ * Primary and secondary muscle influence (D92).
+ *
+ * One exercise is worth 100 %, however many groups it touches. Primaries
+ * share the first number, secondaries the second, and each share is split
+ * equally inside its role.
+ */
+export const MUSCLE_ROLE_WEIGHTS = {
+  PRIMARY: 0.7,
+  SECONDARY: 0.3,
+} as const;
+
+/**
+ * Inactivity decay, by Gym training age (Phase 4.1 §14).
+ *
+ * Each phase is one number: the share of the rank progress held at the start
+ * of the abstinence episode that each completed 7-day block removes. They are
+ * **cumulative against that baseline and never compounded against the
+ * remainder**, so the 25 % phase runs 80 → 60 → 40 → 20 → 0, not 80 → 60 →
+ * 45 → 33.75.
+ *
+ * `fromMonth` is inclusive and phases are non-overlapping: a user whose Gym
+ * training age is 2 completed months is in their third month and decays at
+ * 25 % a block.
+ */
+export const GYM_DECAY_PHASES = [
+  { id: 'early', fromMonth: 0, perBlock: 0.5 },
+  { id: 'settling', fromMonth: 2, perBlock: 0.25 },
+  { id: 'established', fromMonth: 4, perBlock: 0.2 },
+  { id: 'mature', fromMonth: 12, perBlock: 0.1 },
+] as const;
+
+export type GymDecayPhaseId = (typeof GYM_DECAY_PHASES)[number]['id'];

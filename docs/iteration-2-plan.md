@@ -143,6 +143,7 @@ rating of every promotion.
 | 2 | `features/onboarding/*`, `domains/mental/*`, `features/progress/QuestionDetail.tsx`, `styles/tokens.css` (1–10 bands), `storage/services/configurationService.ts`, `checkInService.ts` | **review stop** ← we are here |
 | 3 | `features/ranking/*` (Boss UI, domain ranks, weights, mystery), `core/ranks/progress.ts`, `features/today/BossSummary.tsx` | **review stop** ← we are here |
 | 4 | `features/gym/*`, `components/BodyRenderer/*`, `core/gym/performance.ts`, `core/gym/catalogue.ts`, `storage/services/gymService.ts` | **review stop** ← we are here |
+| 4.1 | `core/gym/{score,rating,load,muscles,endurance,decay}.ts`, `storage/services/gymRatingService.ts`, `features/gym/GymOverview.tsx`, schema 4 | **review stop** ← we are here |
 | 5 | `features/running/*` (new), `core/running/*`, `RunSource` adapter shape | |
 | 6 | `features/food/*` (new), `core/food/*`, `FoodRepository` | **review stop** |
 | 7 | decay formula → **Gate 1**; nutrition targets → **Gate 2** | **two gates** |
@@ -274,6 +275,42 @@ rating of every promotion.
 
 ### The open decision
 
-Gym's day score still counts sessions against the weekly quota. Performance is
-computed and shown but does not feed the rating, because mapping a rate of
-change onto a 0–1000 level is undefined by the specification (D88).
+~~Gym's day score still counts sessions against the weekly quota. Performance
+is computed and shown but does not feed the rating, because mapping a rate of
+change onto a 0–1000 level is undefined by the specification (D88).~~
+**Resolved in phase 4.1.**
+
+## Phase 4.1 as built
+
+The gate D88 left open is closed. **Gym's rating is 40 % attendance and 60 %
+personal development** (D90) — a statement about the user against their own
+history and never against anyone else, which is why no population norm goes
+anywhere near it. Absolute strength is Tombstones (D95), and the boundary is
+an API boundary as much as a conceptual one.
+
+- **The curve is one parameter** (D99): `1000 / (1 + 4^(−x/10))`, so every ten
+  points of improvement multiplies the odds by four. The approved anchor table
+  cannot be satisfied as written — −20 % → 0 and +20 % → 950 are not symmetric,
+  and an asymptote cannot reach 0 — so the two ±20 % anchors give, per the
+  approved priority order, and every other anchor is met exactly or within 3.4.
+- **Two windows, mapped and then averaged** (D100). 60 rolling days and
+  year-to-date, each anchored inside its own window, each contributing one
+  comparison per exercise so frequency adds evidence and never weight.
+- **The rating moves towards its target** at 10 % of the gap, scaled down for
+  upward movement as the rating rises and never for downward movement.
+- **The Endurance Phase** (D94) gates the *first* promotion behind four net
+  weeks, +1 met and −0.5 missed. Not a streak, not a timer, and not a delay on
+  the arithmetic — the rating calculates throughout.
+- **Abstinence decay** (D96) reduces rank progress only, cumulatively against
+  the episode's baseline. It is Gym-specific and **does not close Gate 1**.
+- **Maintenance** (D97) stops a year-old rating being dragged down by holding
+  steady.
+- **Effective load** (D91) makes a pull-up a real lift, replaying the
+  bodyweight in force on the set's own day; **70/30 roles** (D92) stop a
+  compound movement gaining influence by touching more of the body.
+
+Schema 4 carries the load types and roles. It also surfaced a real bug in the
+migration runner: two migrations rewriting one store each opened their own
+cursor, so a device jumping from version 2 to version 4 silently lost version
+3's work (D98). Migrations now declare their rewrites and the runner composes
+them.

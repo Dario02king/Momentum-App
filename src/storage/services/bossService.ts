@@ -17,7 +17,9 @@ import { compareDateKeys } from '../../core/dates';
 import type { DayState } from '../../core/rating';
 import { rankHistory, rankForRating, type Rank, type RankChange } from '../../core/ranks';
 import type { XpDay, XpWeek } from '../../core/scoring/xp';
-import { configSnapshotsRepository } from '../repositories';
+import { configSnapshotsRepository, gymSessionsRepository } from '../repositories';
+import { buildGymRating, type GymRatingState } from './gymRatingService';
+import { loadExerciseDays } from './gymService';
 import type { History } from './historyService';
 import { loadProgression, progressionOrigin, type Progression } from './ratingService';
 
@@ -76,6 +78,17 @@ export interface BossProgression {
   history: History;
   /** The undivided RC2 progression, still the source for pre-upgrade days. */
   legacy: Progression;
+  /**
+   * Gym's own rating state — the Endurance Phase, the two performance
+   * windows, the abstinence episode and the era each day was scored in.
+   *
+   * The Gym *ledger* above is built from this and is an ordinary ledger like
+   * any other, which is the point: the Boss reads ladder positions and knows
+   * nothing about how Gym produced its rating (§22). There is no separate
+   * Gym-to-Boss formula, and this field exists so the Gym screens can explain
+   * a number the Boss simply consumes.
+   */
+  gym: GymRatingState;
 }
 
 /** Which era each day belongs to, resolved once rather than per domain. */
@@ -193,10 +206,47 @@ export async function loadBossProgression(
   const history = legacy.history;
   const dates = history.days.map((day) => day.date);
 
+  /*
+   * Gym is replayed from its own sets before the ledgers are built, because
+   * its rating is not the shared fold over day scores. Everything downstream
+   * — the ladder position, the rank, the Boss — reads the result exactly as
+   * it reads every other domain's.
+   */
+  const gymSessions = await gymSessionsRepository.getAll();
+  const gymDayStates = domainDayStates(history, 'gym');
+  const firstDate = dates[0];
+  const lastDate = dates[dates.length - 1];
+  const gym = buildGymRating({
+    history,
+    dayStates: gymDayStates,
+    snapshots,
+    sessionDates: new Set(gymSessions.map((session) => session.date)),
+    exerciseDays:
+      firstDate && lastDate ? await loadExerciseDays(firstDate, lastDate) : [],
+    reference,
+  });
+
   const domains: DomainProgression[] = DOMAIN_TYPES.map((domain) => {
     const xp = domainXp(history, domain);
-    const days = domainDayStates(history, domain);
-    const ledger = buildLedger({ domain, days, xpDays: xp.days, xpWeeks: xp.weeks });
+    const days = domain === 'gym' ? gymDayStates : domainDayStates(history, domain);
+    const ledger = buildLedger({
+      domain,
+      days,
+      xpDays: xp.days,
+      xpWeeks: xp.weeks,
+      ...(domain === 'gym'
+        ? {
+            rating: {
+              points: gym.points,
+              current: gym.rating,
+              peak: gym.peak,
+              currentStreak: 0,
+              bestStreak: 0,
+            },
+            promotionUnlocked: gym.promotionUnlocked,
+          }
+        : {}),
+    });
     return {
       ...ledger,
       series: ledger.points.map((point) => ratingToProgress(point.rating)),
@@ -243,6 +293,7 @@ export async function loadBossProgression(
     era: last ? last.era : 'legacy',
     history,
     legacy,
+    gym,
   };
 }
 

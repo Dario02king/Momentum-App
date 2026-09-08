@@ -1,8 +1,14 @@
 import { useMemo, useState } from 'react';
-import { MUSCLE_GROUPS, type ExerciseRecord, type MuscleGroup } from '../../core/model';
+import {
+  MUSCLE_GROUPS,
+  type ExerciseLoadType,
+  type ExerciseRecord,
+  type MuscleGroup,
+} from '../../core/model';
 import { Button, Sheet } from '../../components';
 import { MUSCLE_LABEL_KEYS } from '../../components/BodyRenderer';
 import { useT } from '../../i18n/I18nProvider';
+import type { NewExerciseInput } from '../../storage/services/gymService';
 import './gym.css';
 
 /**
@@ -14,9 +20,15 @@ import './gym.css';
  * *counts for*, and seeing them is how a user notices their session is all
  * chest.
  *
- * A custom exercise names its own muscle groups. Nothing is inferred from the
- * name — a wrong guess would quietly send a user's work to the wrong part of
- * the body, and that is the one thing this screen must never do.
+ * A custom exercise names its own muscle groups, which of them are primary,
+ * and how it is loaded. Nothing is inferred from the name — a wrong guess
+ * would quietly send a user's work to the wrong part of the body, and that is
+ * the one thing this screen must never do.
+ *
+ * Only a *custom* exercise is editable here. A built-in's mapping belongs to
+ * the catalogue and stays there (D93), so "Bench Press" means the same thing
+ * on every device; a user who wants their own version makes their own, which
+ * is the button at the bottom of this sheet.
  */
 export function ExercisePicker({
   open,
@@ -29,13 +41,15 @@ export function ExercisePicker({
   exercises: ExerciseRecord[];
   onClose(): void;
   onPick(exercise: ExerciseRecord): void;
-  onCreate(name: string, muscles: MuscleGroup[]): void;
+  onCreate(input: NewExerciseInput): void;
 }) {
   const t = useT();
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [muscles, setMuscles] = useState<MuscleGroup[]>([]);
+  const [primary, setPrimary] = useState<MuscleGroup[]>([]);
+  const [loadType, setLoadType] = useState<ExerciseLoadType>('external');
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -48,14 +62,32 @@ export function ExercisePicker({
     setCreating(false);
     setName('');
     setMuscles([]);
+    setPrimary([]);
+    setLoadType('external');
   };
 
-  const toggleMuscle = (muscle: MuscleGroup) =>
+  const toggleMuscle = (muscle: MuscleGroup) => {
     setMuscles((current) =>
       current.includes(muscle)
         ? current.filter((entry) => entry !== muscle)
         : [...current, muscle],
     );
+    // A group that is no longer trained cannot still be the primary one.
+    setPrimary((current) => current.filter((entry) => entry !== muscle || !muscles.includes(entry)));
+  };
+
+  const togglePrimary = (muscle: MuscleGroup) =>
+    setPrimary((current) =>
+      current.includes(muscle)
+        ? current.filter((entry) => entry !== muscle)
+        : [...current, muscle],
+    );
+
+  const LOAD_TYPES: { id: ExerciseLoadType; label: 'gym.load.external' | 'gym.load.bodyweight' | 'gym.load.assisted' }[] = [
+    { id: 'external', label: 'gym.load.external' },
+    { id: 'bodyweight', label: 'gym.load.bodyweight' },
+    { id: 'assisted', label: 'gym.load.assisted' },
+  ];
 
   return (
     <Sheet
@@ -72,7 +104,14 @@ export function ExercisePicker({
             block
             disabled={name.trim().length === 0 || muscles.length === 0}
             onClick={() => {
-              onCreate(name.trim(), muscles);
+              onCreate({
+                name: name.trim(),
+                muscles,
+                // No primary picked means the first group chosen, which is
+                // what the ordering in this list already implies.
+                primaryMuscles: primary.length > 0 ? primary : muscles.slice(0, 1),
+                loadType,
+              });
               reset();
             }}
           >
@@ -115,6 +154,43 @@ export function ExercisePicker({
                   onClick={() => toggleMuscle(muscle)}
                 >
                   {t(MUSCLE_LABEL_KEYS[muscle])}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <span className="field-label">{t('gym.picker.primary')}</span>
+            <div
+              className="gym-picker__muscles"
+              role="group"
+              aria-label={t('gym.picker.primary')}
+            >
+              {muscles.map((muscle) => (
+                <button
+                  key={muscle}
+                  type="button"
+                  className="gym-picker__muscle"
+                  aria-pressed={primary.includes(muscle)}
+                  onClick={() => togglePrimary(muscle)}
+                >
+                  {t(MUSCLE_LABEL_KEYS[muscle])}
+                </button>
+              ))}
+            </div>
+            <p className="gym-picker__empty">{t('gym.picker.primaryHint')}</p>
+          </div>
+          <div>
+            <span className="field-label">{t('gym.load.title')}</span>
+            <div className="gym-picker__muscles" role="group" aria-label={t('gym.load.title')}>
+              {LOAD_TYPES.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className="gym-picker__muscle"
+                  aria-pressed={loadType === entry.id}
+                  onClick={() => setLoadType(entry.id)}
+                >
+                  {t(entry.label)}
                 </button>
               ))}
             </div>

@@ -408,7 +408,82 @@ export const de = {
     'Jede Muskelgruppe zählt gleich viel, unabhängig davon, wie viele Übungen sie enthält.',
   'gym.progress.explainMetric': 'Übungswert = bester Satz des Tages (Wdh. × kg).',
   'gym.progress.ratingNote':
-    'Der Gym-Rang zählt weiterhin deine Trainings pro Woche. Die Leistungsentwicklung ist noch nicht Teil der Wertung.',
+    'Der Gym-Rang misst deine eigene Entwicklung, nicht absolute Stärke: 40 % Anwesenheit, 60 % persönliche Leistungsentwicklung.',
+
+  'gym.rating.title': 'Gym-Rating',
+  'gym.rating.value': '{value} von 1000',
+  'gym.rating.explain':
+    'Setzt sich zusammen aus 40 % Anwesenheit und 60 % persönlicher Leistungsentwicklung. Verglichen wird immer mit deiner eigenen Historie.',
+  'gym.rating.movesGradually':
+    'Das Rating bewegt sich schrittweise auf den Zielwert zu, nicht in einem Sprung.',
+  'gym.rating.notStarted': 'Noch kein Gym-Training aufgezeichnet.',
+
+  'gym.ytd.title': 'Leistung seit Jahresbeginn',
+  'gym.ytd.explain':
+    'Verglichen wird der zuletzt aufgezeichnete beste Satz jeder Übung mit ihrem ersten in diesem Jahr.',
+  'gym.trend.title': 'Aktueller Trend',
+  'gym.trend.window': 'Letzte {days} Tage',
+  'gym.performance.title': 'Leistungsentwicklung',
+  'gym.performance.none': 'Noch kein Vergleich möglich',
+  'gym.performance.needsSecond':
+    'Sobald du eine Übung ein zweites Mal aufzeichnest, beginnt die Leistungsentwicklung zu zählen.',
+  'gym.performance.onlyTrend': 'Nur der aktuelle Trend hat bisher eine Vergleichsbasis.',
+  'gym.performance.onlyYtd': 'Nur der Jahreswert hat bisher eine Vergleichsbasis.',
+
+  'gym.attendance.title': 'Anwesenheit',
+  'gym.attendance.value': '{sessions} von {target} Sessions',
+  'gym.attendance.thisWeek': 'Diese Woche',
+  'gym.attendance.explain':
+    'Mehr Sessions als dein Wochenziel bringen hier nichts zusätzlich. Laufen zählt nicht zum Gym.',
+
+  'gym.endurance.title': 'Ausdauerphase',
+  'gym.endurance.progress': '{progress} von {required} Wochen',
+  'gym.endurance.explain':
+    'Dein erster Rang wird freigeschaltet, sobald du vier Wochen netto geschafft hast. Eine erreichte Woche zählt +1, eine verpasste −0,5.',
+  'gym.endurance.locked': 'Erster Rang noch gesperrt',
+  'gym.endurance.unlocked': 'Ausdauerphase abgeschlossen',
+  'gym.endurance.stillCounts':
+    'Dein Rating wird bereits normal berechnet. Gesperrt ist nur die Beförderung.',
+  'gym.endurance.remaining': 'Noch {remaining} Wochen',
+  'gym.endurance.weekMet': 'Woche erreicht',
+  'gym.endurance.weekMissed': 'Woche verpasst',
+
+  'gym.decay.title': 'Trainingspause',
+  'gym.decay.days': '{days} Tage ohne Session',
+  'gym.decay.lost': '{percent} % deines Rangfortschritts abgebaut',
+  'gym.decay.explain':
+    'Abgebaut wird nur der Fortschritt innerhalb deines aktuellen Rangs. Deine aufgezeichneten Sätze und deine Leistungswerte bleiben unverändert.',
+  'gym.decay.floor': 'Du fällst dadurch nicht unter deinen aktuellen Rang.',
+  'gym.decay.resume': 'Eine gespeicherte Session beendet die Pause sofort.',
+
+  'gym.maintenance.title': 'Erhaltung',
+  'gym.maintenance.body':
+    'Nach einem Jahr Training hält eine unveränderte Leistung bei erfülltem Wochenziel dein Rating. Du musst dich nicht ewig steigern.',
+
+  'gym.bodyweight.title': 'Körpergewicht',
+  'gym.bodyweight.label': 'Körpergewicht in Kilogramm',
+  'gym.bodyweight.value': '{kg} kg',
+  'gym.bodyweight.none': 'Noch nicht eingetragen',
+  'gym.bodyweight.needed':
+    'Für Körpergewichtsübungen brauchst du dein Körpergewicht. Ohne Eintrag werden diese Sätze nicht gewertet.',
+  'gym.bodyweight.save': 'Gewicht sichern',
+  'gym.bodyweight.asOf': 'Zuletzt gewogen am {date}',
+
+  'gym.load.external': 'Gewicht',
+  'gym.load.bodyweight': 'Zusatzgewicht',
+  'gym.load.assisted': 'Hilfsgewicht',
+  'gym.load.title': 'Belastungsart',
+  'gym.load.externalHint': 'Das Gewicht an der Stange oder am Gerät.',
+  'gym.load.bodyweightHint': 'Dein Körpergewicht plus, was du zusätzlich trägst.',
+  'gym.load.assistedHint': 'Dein Körpergewicht minus der Unterstützung der Maschine.',
+
+  'gym.picker.primary': 'Hauptmuskel',
+  'gym.picker.primaryHint':
+    'Hauptmuskeln teilen sich 70 % der Übung, die übrigen 30 %.',
+  'gym.picker.builtInProtected': 'Mitgelieferte Übungen behalten ihre Zuordnung.',
+
+  'gym.tombstone.boundary':
+    'Absolute Bestleistungen gehören zu den Meilensteinen, nicht zum Gym-Rang.',
   'gym.change.improved': '+{percent} %',
   'gym.change.declined': '{percent} %',
   'gym.change.unchanged': 'Gehalten',

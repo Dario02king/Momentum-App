@@ -6,6 +6,7 @@ import {
   compareExerciseDays,
   exerciseDays,
   gymPerformance,
+  gymPerformanceInWindow,
   gymPerformanceOverSpan,
   isScorableSet,
   latestComparisons,
@@ -31,7 +32,14 @@ const day = (
   exerciseId: string,
   sets: SetInput[],
   muscles: MuscleGroup[] = ['chest'],
-): ExerciseDayInput => ({ date, exerciseId, muscles, sets });
+  primaryMuscles?: MuscleGroup[],
+): ExerciseDayInput => ({
+  date,
+  exerciseId,
+  muscles,
+  ...(primaryMuscles === undefined ? {} : { primaryMuscles }),
+  sets,
+});
 
 describe('the exercise-day metric', () => {
   it('is the best set, by the numbers the decision names', () => {
@@ -381,5 +389,107 @@ describe('the longer view', () => {
     );
     expect(span.ratio).toBeNull();
     expect(span.measured).toEqual([]);
+  });
+});
+
+/* ── The trend and year-to-date windows (Phase 4.1) ─────────────────────── */
+
+describe('performance over an explicit window', () => {
+  const build = (entries: [string, string, number][]) =>
+    exerciseDays(
+      entries.map(([date, exerciseId, weight]) =>
+        day(date, exerciseId, [set(5, weight)], ['chest']),
+      ),
+    );
+
+  it('compares the first and last observation inside the window', () => {
+    const days = build([
+      ['2026-01-01', 'ex_a', 100],
+      ['2026-02-01', 'ex_a', 150],
+      ['2026-03-01', 'ex_a', 200],
+    ]);
+    // Whole span: 100 → 200.
+    expect(gymPerformanceInWindow(days, '2026-01-01', '2026-03-01').ratio).toBeCloseTo(2, 10);
+    // February onwards: 150 → 200.
+    expect(gymPerformanceInWindow(days, '2026-02-01', '2026-03-01').ratio).toBeCloseTo(4 / 3, 10);
+  });
+
+  it('has no baseline with only one observation in the window', () => {
+    const days = build([
+      ['2026-01-01', 'ex_a', 100],
+      ['2026-03-01', 'ex_a', 200],
+    ]);
+    const window = gymPerformanceInWindow(days, '2026-02-01', '2026-03-01');
+    expect(window.ratio).toBeNull();
+    expect(window.awaitingBaseline).toContain('chest');
+    // And emphatically not a decline, or a zero.
+    expect(window.measured).toEqual([]);
+  });
+
+  it('excludes everything outside the window at both ends', () => {
+    const days = build([
+      ['2025-12-31', 'ex_a', 50],
+      ['2026-01-01', 'ex_a', 100],
+      ['2026-03-01', 'ex_a', 200],
+      ['2026-03-02', 'ex_a', 400],
+    ]);
+    // Neither the day before nor the day after is in the answer.
+    expect(gymPerformanceInWindow(days, '2026-01-01', '2026-03-01').ratio).toBeCloseTo(2, 10);
+  });
+
+  it('takes a rolling 60-day window inclusive of both ends', () => {
+    const days = build([
+      ['2026-01-01', 'ex_a', 100],
+      ['2026-03-01', 'ex_a', 200],
+    ]);
+    // 2026-01-01 to 2026-03-01 is 60 days inclusive: the anchor is in.
+    expect(gymPerformanceInWindow(days, '2026-01-01', '2026-03-01').ratio).toBeCloseTo(2, 10);
+    // One day later and the anchor has rolled out; nothing left to compare.
+    expect(gymPerformanceInWindow(days, '2026-01-02', '2026-03-02').ratio).toBeNull();
+  });
+
+  it('anchors year-to-date at January the first, not at the first-ever session', () => {
+    const days = build([
+      ['2025-06-01', 'ex_a', 50],
+      ['2026-01-05', 'ex_a', 100],
+      ['2026-06-01', 'ex_a', 120],
+    ]);
+    // This year: 100 → 120, and not 50 → 120 from where the user started.
+    expect(gymPerformanceInWindow(days, '2026-01-01', '2026-06-01').ratio).toBeCloseTo(1.2, 10);
+    expect(gymPerformanceInWindow(days, '2026-01-01', '2026-06-01').ratio).not.toBeCloseTo(2.4, 3);
+  });
+
+  it('leaves last year out of this year entirely', () => {
+    const days = build([
+      ['2025-11-01', 'ex_a', 100],
+      ['2025-12-31', 'ex_a', 300],
+      ['2026-01-02', 'ex_a', 310],
+    ]);
+    // One observation this year, so no baseline yet — December is not it.
+    expect(gymPerformanceInWindow(days, '2026-01-01', '2026-01-02').ratio).toBeNull();
+  });
+
+  it('gives each exercise one voice however often it was trained', () => {
+    const days = exerciseDays([
+      // Bench eight times, squat twice. Both double.
+      ...Array.from({ length: 8 }, (_, index) =>
+        day(`2026-02-0${index + 1}`, 'ex_bp', [set(5, 100 + index * 10)], ['chest'], ['chest']),
+      ),
+      day('2026-02-01', 'ex_sq', [set(5, 100)], ['quadriceps'], ['quadriceps']),
+      day('2026-02-08', 'ex_sq', [set(5, 200)], ['quadriceps'], ['quadriceps']),
+    ]);
+    const window = gymPerformanceInWindow(days, '2026-02-01', '2026-02-28');
+    // Chest 170/100, quads 2. Two groups, equal weight — frequency is
+    // evidence, not weight.
+    expect(window.measured).toEqual(['chest', 'quadriceps']);
+    expect(window.ratio).toBeCloseTo((1.7 + 2) / 2, 10);
+  });
+
+  it('says nothing at all about an empty window', () => {
+    const days = build([['2026-01-01', 'ex_a', 100]]);
+    const window = gymPerformanceInWindow(days, '2026-05-01', '2026-05-31');
+    expect(window.ratio).toBeNull();
+    expect(window.measured).toEqual([]);
+    expect(window.untrained).toHaveLength(MUSCLE_GROUPS.length);
   });
 });

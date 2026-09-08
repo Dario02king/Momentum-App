@@ -12,7 +12,7 @@ import type { RankId } from '../config/constants';
  *    (`detail`), so version 2 can attach exercises, sets and weights as an
  *    additive write rather than a migration.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * The domains a user can have active.
@@ -235,6 +235,21 @@ export interface QuestionConfigSnapshot {
  */
 export type ScoringModel = 'flat' | 'categoryMean';
 
+/**
+ * How a Gym day's rating level is produced (D90).
+ *
+ * - `attendance` — sessions against the weekly quota, folded by the shared
+ *   rating engine. What phase 4 shipped, and what every day lived before the
+ *   gym scoring model landed was scored by.
+ * - `attendancePerformance` — 40 % attendance + 60 % personal performance,
+ *   moved towards by a gap step rather than an EWMA.
+ *
+ * **Absent means `attendance`.** A snapshot with no `gymModel` was written
+ * before this change, and the days it covers keep the number the user saw —
+ * the same era rule that `model` above follows, and `boss` before it.
+ */
+export type GymScoringModel = 'attendance' | 'attendancePerformance';
+
 export type DomainConfigSnapshot = {
   [T in StoredDomainType]: {
     id: string;
@@ -278,6 +293,8 @@ export interface AppConfigSnapshot {
     scaleMax: number;
     /** Absent means `flat`: the snapshot predates category scoring. */
     model?: ScoringModel;
+    /** Absent means `attendance`: the snapshot predates Gym performance scoring. */
+    gymModel?: GymScoringModel;
   };
   /** Absent on every snapshot RC2 wrote. Absence means the RC2 era. */
   boss?: BossConfigSnapshot;
@@ -396,14 +413,30 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
 ];
 
 /**
+ * How an exercise is loaded, which decides what `weightGrams` on its sets
+ * means and how the effective load is reconstructed (D91).
+ *
+ * - `external`   — the load is the weight on the bar. `weightGrams` is it.
+ * - `bodyweight` — the load is the user's body plus anything added.
+ *                  `weightGrams` is the *added* weight, and may be zero.
+ * - `assisted`   — the load is the user's body minus the machine's help.
+ *                  `weightGrams` is the *assistance*, and is subtracted.
+ *
+ * The bodyweight itself is never stored on the set: it is a dated fact of its
+ * own in `weightEntries`, and replaying it forward from the entries in force
+ * on the set's day is what keeps a measurement taken next month out of last
+ * month's arithmetic.
+ */
+export type ExerciseLoadType = 'external' | 'bodyweight' | 'assisted';
+
+/**
  * An exercise. One per muscle group ships as prototype content (D22), but the
  * shape is many-per-muscle from the start so adding a catalogue later is data,
  * not a migration.
  *
- * The three unused fields are deliberate (D23): this prototype only ships
- * externally loaded exercises, where `weight × reps` is well defined, and
- * carrying the bodyweight and duration fields now means a pull-up or a plank
- * can be added later without touching the schema.
+ * `durationSeconds` is still unused and still deliberate (D23): a plank is
+ * scored on reps × load like everything else until there is a product
+ * decision that says otherwise.
  */
 export interface ExerciseRecord {
   /**
@@ -423,12 +456,21 @@ export interface ExerciseRecord {
    * amplify its weight.
    */
   muscles: MuscleGroup[];
+  /**
+   * The subset of `muscles` the exercise trains *primarily* (D92).
+   *
+   * Primaries share 70 % of the exercise's influence and the rest share 30 %,
+   * so a compound movement does not gain total weight by touching more of the
+   * body. Absent on a record written before roles existed, which is read as
+   * the equal weighting those records were logged under.
+   */
+  primaryMuscles?: MuscleGroup[];
   /** Exercise names stay English in both language modes, like rank names. */
   name: string;
   /** Ships with the app rather than created by the user. */
   builtIn: boolean;
-  bodyweightBased: boolean;
-  addedWeightKg: number | null;
+  /** Absent on a record written before load types existed: `external`. */
+  loadType?: ExerciseLoadType;
   durationSeconds: number | null;
   /** Reserved for equipment constraints, favourites and injury constraints. */
   attributes: Record<string, unknown>;
@@ -479,7 +521,9 @@ export interface GymSetRecord {
   exerciseId: string;
   date: DateKey;
   /**
-   * Whole grams, not kilograms.
+   * What the user entered for this set, in whole grams, read through
+   * `loadType`: the bar for an external lift, the added weight for a
+   * bodyweight one, the assistance for an assisted one.
    *
    * `reps × weight` is compared against a previous workout's, and a
    * comparison of floating-point products is a comparison that can call two
@@ -500,6 +544,24 @@ export interface GymSetRecord {
    * app, applied to the one Gym fact that depends on configuration.
    */
   muscles: MuscleGroup[];
+  /**
+   * The primary groups the set counted towards, as they stood when it was
+   * logged. Recorded for the same reason `muscles` is: a mapping corrected
+   * today applies forward and cannot reach a workout already done.
+   *
+   * **Absent marks the era before roles.** A set written by phase 4 has no
+   * roles because none were recorded, and it replays under the equal
+   * weighting it was actually logged under rather than under a split
+   * reconstructed from today's catalogue.
+   */
+  primaryMuscles?: MuscleGroup[];
+  /**
+   * How this set was loaded, recorded rather than looked up.
+   *
+   * Absent means `external`, which is what every set written before load
+   * types existed was.
+   */
+  loadType?: ExerciseLoadType;
   createdAt: string;
 }
 

@@ -403,7 +403,82 @@ export const en: Translations = {
     'Every muscle group counts the same, however many exercises it contains.',
   'gym.progress.explainMetric': 'Exercise value = the best set of the day (reps × kg).',
   'gym.progress.ratingNote':
-    'The Gym rank still counts your sessions per week. Performance progress does not feed the score yet.',
+    'The Gym rank measures your own development rather than absolute strength: 40 % attendance, 60 % personal performance development.',
+
+  'gym.rating.title': 'Gym rating',
+  'gym.rating.value': '{value} of 1000',
+  'gym.rating.explain':
+    'Made up of 40 % attendance and 60 % personal performance development. The comparison is always against your own history.',
+  'gym.rating.movesGradually':
+    'The rating moves towards its target step by step rather than in one jump.',
+  'gym.rating.notStarted': 'No gym training recorded yet.',
+
+  'gym.ytd.title': 'Performance year to date',
+  'gym.ytd.explain':
+    'Each exercise’s most recent best set is compared with its first one this year.',
+  'gym.trend.title': 'Current trend',
+  'gym.trend.window': 'Last {days} days',
+  'gym.performance.title': 'Performance development',
+  'gym.performance.none': 'No comparison possible yet',
+  'gym.performance.needsSecond':
+    'As soon as you record an exercise a second time, performance development starts to count.',
+  'gym.performance.onlyTrend': 'Only the current trend has something to compare against so far.',
+  'gym.performance.onlyYtd': 'Only the year-to-date figure has something to compare against so far.',
+
+  'gym.attendance.title': 'Attendance',
+  'gym.attendance.value': '{sessions} of {target} sessions',
+  'gym.attendance.thisWeek': 'This week',
+  'gym.attendance.explain':
+    'Sessions beyond your weekly target add nothing here. Running does not count towards the gym.',
+
+  'gym.endurance.title': 'Endurance phase',
+  'gym.endurance.progress': '{progress} of {required} weeks',
+  'gym.endurance.explain':
+    'Your first rank unlocks once you have four net weeks. A week you meet counts +1, a week you miss −0.5.',
+  'gym.endurance.locked': 'First rank still locked',
+  'gym.endurance.unlocked': 'Endurance phase complete',
+  'gym.endurance.stillCounts':
+    'Your rating is already being calculated normally. Only the promotion is held back.',
+  'gym.endurance.remaining': '{remaining} weeks to go',
+  'gym.endurance.weekMet': 'Week met',
+  'gym.endurance.weekMissed': 'Week missed',
+
+  'gym.decay.title': 'Training break',
+  'gym.decay.days': '{days} days without a session',
+  'gym.decay.lost': '{percent} % of your rank progress reduced',
+  'gym.decay.explain':
+    'Only your progress inside your current rank is reduced. Your recorded sets and your performance figures stay exactly as they were.',
+  'gym.decay.floor': 'This alone cannot drop you below your current rank.',
+  'gym.decay.resume': 'One saved session ends the break immediately.',
+
+  'gym.maintenance.title': 'Maintenance',
+  'gym.maintenance.body':
+    'After a year of training, unchanged performance with your weekly target met holds your rating. You do not have to improve for ever.',
+
+  'gym.bodyweight.title': 'Body weight',
+  'gym.bodyweight.label': 'Body weight in kilograms',
+  'gym.bodyweight.value': '{kg} kg',
+  'gym.bodyweight.none': 'Not recorded yet',
+  'gym.bodyweight.needed':
+    'Bodyweight exercises need your body weight. Without an entry those sets are not scored.',
+  'gym.bodyweight.save': 'Save weight',
+  'gym.bodyweight.asOf': 'Last weighed on {date}',
+
+  'gym.load.external': 'Weight',
+  'gym.load.bodyweight': 'Added weight',
+  'gym.load.assisted': 'Assistance',
+  'gym.load.title': 'Load type',
+  'gym.load.externalHint': 'The weight on the bar or the machine.',
+  'gym.load.bodyweightHint': 'Your body weight plus anything you carry on top.',
+  'gym.load.assistedHint': 'Your body weight minus the machine’s help.',
+
+  'gym.picker.primary': 'Primary muscle',
+  'gym.picker.primaryHint':
+    'Primary muscles share 70 % of the exercise, the rest share 30 %.',
+  'gym.picker.builtInProtected': 'Built-in exercises keep their mapping.',
+
+  'gym.tombstone.boundary':
+    'Absolute personal bests belong to the milestones, not to the Gym rank.',
   'gym.change.improved': '+{percent} %',
   'gym.change.declined': '{percent} %',
   'gym.change.unchanged': 'Held',

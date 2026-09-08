@@ -157,8 +157,12 @@ async function fillSet(page, index, reps, weight) {
   check('it explains the equal weighting',
     await page.getByText(/Jede Muskelgruppe zählt gleich viel/).isVisible());
   check('it names the metric', await page.getByText(/bester Satz des Tages/).isVisible());
-  check('it separates the Gym rank from the performance number',
-    await page.getByText(/Gym-Rang zählt weiterhin deine Trainings/).isVisible());
+  // Phase 4.1 replaced this copy: performance now feeds the rating, and what
+  // the screen has to keep separate is development from absolute strength.
+  check('it says what the Gym rank actually measures',
+    await page.getByText(/40 % Anwesenheit, 60 % persönliche Leistungsentwicklung/).isVisible());
+  check('it keeps the Tombstone boundary visible',
+    await page.getByText(/Absolute Bestleistungen gehören zu den Meilensteinen/).isVisible());
 
   check('the body renderer draws two figures',
     (await page.locator('.body-renderer__figure').count()) === 2);

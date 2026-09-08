@@ -68,11 +68,22 @@ describe('the exercise catalogue', () => {
     for (const entry of EXERCISE_CATALOGUE) {
       expect(entry.muscles.length, entry.id).toBeGreaterThan(0);
     }
-    // Deadlift reaches two groups, and says so.
+    // Deadlift reaches three groups, and says so.
     expect((await exercisesRepository.get('ex_deadlift'))?.muscles).toEqual([
       'back',
       'hamstringsGlutes',
+      'forearms',
     ]);
+    // And it says which of them are primary, rather than leaving it to the
+    // order they happen to be listed in (D92).
+    expect((await exercisesRepository.get('ex_deadlift'))?.primaryMuscles).toEqual([
+      'back',
+      'hamstringsGlutes',
+    ]);
+    for (const entry of EXERCISE_CATALOGUE) {
+      expect(entry.primary.length, entry.id).toBeGreaterThan(0);
+      for (const muscle of entry.primary) expect(entry.muscles, entry.id).toContain(muscle);
+    }
   });
 
   it('never overwrites an exercise the user has renamed', async () => {
@@ -107,7 +118,10 @@ describe('logging a session', () => {
       reps: 5,
       weightGrams: kg(100),
     });
-    expect(set.muscles).toEqual(['back', 'hamstringsGlutes']);
+    expect(set.muscles).toEqual(['back', 'hamstringsGlutes', 'forearms']);
+    // The roles and the load type travel with the set for the same reason.
+    expect(set.primaryMuscles).toEqual(['back', 'hamstringsGlutes']);
+    expect(set.loadType).toBe('external');
   });
 
   it('groups sets under their exercise, in the order they were added', async () => {
@@ -246,7 +260,7 @@ describe('the replay over sets', () => {
     await exercisesRepository.put({ ...stored, muscles: ['calves'] });
 
     const history = await loadGymHistory(MONDAY, MONDAY);
-    expect(history.days[0]?.muscles).toEqual(['quadriceps', 'hamstringsGlutes']);
+    expect(history.days[0]?.muscles).toEqual(['quadriceps', 'hamstringsGlutes', 'core']);
     const calves = history.overall.muscles.find((entry) => entry.muscle === 'calves');
     expect(calves?.status).toBe('noData');
   });

@@ -1,4 +1,4 @@
-import { computeRating, type DayState, type RatingPoint } from '../rating';
+import { computeRating, type DayState, type RatingPoint, type RatingResult } from '../rating';
 import {
   rankForRating,
   rankHistory,
@@ -38,6 +38,22 @@ export interface LedgerInput {
   days: DayState[];
   xpDays: XpDay[];
   xpWeeks: XpWeek[];
+  /**
+   * A rating series computed elsewhere, for a domain whose level is not the
+   * shared EWMA over day scores.
+   *
+   * Gym is the one domain that supplies this: its rating is 40 % attendance
+   * and 60 % personal development moved towards by a gap step, which is a
+   * different fold rather than different inputs to this one (D90). The three
+   * quantities, the rank ladder, hysteresis and the Boss all stay exactly
+   * where they are — only the series feeding them is produced elsewhere.
+   */
+  rating?: RatingResult;
+  /**
+   * Whether a promotion is allowed on each day, aligned with `days`.
+   * Gym's Endurance Phase is the only thing that sets it (D94).
+   */
+  promotionUnlocked?: readonly boolean[];
 }
 
 export interface DomainLedger {
@@ -61,9 +77,12 @@ export interface DomainLedger {
 }
 
 export function buildLedger(input: LedgerInput): DomainLedger {
-  const rating = computeRating(input.days);
+  const rating = input.rating ?? computeRating(input.days);
   const ranks = rankHistory(
     rating.points.map((point) => ({ date: point.date, rating: point.rating })),
+    input.promotionUnlocked === undefined
+      ? {}
+      : { promotionUnlocked: input.promotionUnlocked },
   );
 
   /*
@@ -71,9 +90,18 @@ export function buildLedger(input: LedgerInput): DomainLedger {
    * and "the rank the peak rating falls in". The two differ when a rating
    * crossed a threshold and fell back before hysteresis let the promotion
    * stick; the user reached it, so it counts.
+   *
+   * While a promotion gate is closed, the rank the peak *rating* falls in is
+   * not a rank the user has reached — the whole point of the gate is that
+   * they have not reached it yet. So the fallback is only consulted once
+   * something has actually been unlocked.
    */
+  const everUnlocked =
+    input.promotionUnlocked === undefined || input.promotionUnlocked.some(Boolean);
   const peakRank =
-    ranks.peak.index >= ranks.current.index ? ranks.peak : rankForRating(rating.peak);
+    ranks.peak.index >= ranks.current.index || !everUnlocked
+      ? ranks.peak
+      : rankForRating(rating.peak);
 
   return {
     domain: input.domain,

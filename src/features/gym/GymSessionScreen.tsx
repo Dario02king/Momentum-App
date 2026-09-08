@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatDayAndMonth } from '../../i18n/format';
 import type { DateKey } from '../../core/dates';
-import type { ExerciseRecord, GymSetRecord, MuscleGroup } from '../../core/model';
+import type { ExerciseLoadType, ExerciseRecord, GymSetRecord } from '../../core/model';
 import { Button, Card, EmptyState, LoadFailure, Section } from '../../components';
 import { ChevronLeftIcon, MinusIcon, PlusIcon } from '../../components/Icons';
 import { MUSCLE_LABEL_KEYS } from '../../components/BodyRenderer';
@@ -9,13 +9,16 @@ import { useI18n, useT } from '../../i18n/I18nProvider';
 import { useLoadable } from '../../app/useLoadable';
 import {
   addSet,
+  bodyweightFor,
   createExercise,
   ensureExerciseCatalogue,
   loadSession,
+  recordBodyweight,
   removeExerciseFromSession,
   removeSet,
   updateSet,
   type GymSessionView,
+  type NewExerciseInput,
 } from '../../storage/services/gymService';
 import { ExercisePicker } from './ExercisePicker';
 import './gym.css';
@@ -50,10 +53,30 @@ const kgText = (weightGrams: number): string => {
   return Number.isInteger(kg) ? String(kg) : String(Number(kg.toFixed(3)));
 };
 
+/**
+ * What the weight box on a set actually means, which is not always "weight".
+ *
+ * A pull-up logged as 0 kg is not a lift of nothing and an assisted pull-up
+ * logged as 25 kg is not a 25 kg lift, so the field says which number it is
+ * asking for rather than leaving the user to infer it from the exercise.
+ */
+const LOAD_LABEL_KEYS = {
+  external: 'gym.load.external',
+  bodyweight: 'gym.load.bodyweight',
+  assisted: 'gym.load.assisted',
+} as const satisfies Record<ExerciseLoadType, string>;
+
+const LOAD_HINT_KEYS = {
+  external: 'gym.load.externalHint',
+  bodyweight: 'gym.load.bodyweightHint',
+  assisted: 'gym.load.assistedHint',
+} as const satisfies Record<ExerciseLoadType, string>;
+
 function SetRow({
   set,
   index,
   exerciseName,
+  loadType,
   editable,
   onChange,
   onRemove,
@@ -61,6 +84,7 @@ function SetRow({
   set: GymSetRecord;
   index: number;
   exerciseName: string;
+  loadType: ExerciseLoadType;
   editable: boolean;
   onChange(patch: { reps?: number; weightGrams?: number }): void;
   onRemove(): void;
@@ -101,7 +125,10 @@ function SetRow({
 
       <label className="gym-set__field">
         <span className="visually-hidden">
-          {t('gym.weightFor', { exercise: exerciseName, number: index + 1 })}
+          {`${t(LOAD_LABEL_KEYS[loadType])} — ${t('gym.weightFor', {
+            exercise: exerciseName,
+            number: index + 1,
+          })}`}
         </span>
         <input
           className="field gym-set__input"
@@ -129,6 +156,77 @@ function SetRow({
   );
 }
 
+/**
+ * Recording what the user weighs, where they need it.
+ *
+ * It sits in the session rather than in a profile screen because that is
+ * where it is missed: a pull-up cannot be scored without it, and being told
+ * so on the screen that will not score it is more use than a setting
+ * somewhere else. Entering it is optional and nothing nags — the card only
+ * insists when a bodyweight exercise is actually in the session.
+ */
+function BodyweightCard({
+  date,
+  current,
+  editable,
+  needed,
+  onSave,
+}: {
+  date: DateKey;
+  current: number | null;
+  editable: boolean;
+  needed: boolean;
+  onSave(kg: number): void;
+}) {
+  const t = useT();
+  const { language } = useI18n();
+  const [value, setValue] = useState(current === null ? '' : String(current));
+
+  useEffect(() => {
+    setValue(current === null ? '' : String(current));
+  }, [current]);
+
+  const parsed = Number.parseFloat(value.replace(',', '.'));
+  const valid = Number.isFinite(parsed) && parsed > 0;
+
+  return (
+    <Section label={t('gym.bodyweight.title')}>
+      <Card>
+        <label className="gym-bodyweight">
+          <span className="visually-hidden">{t('gym.bodyweight.label')}</span>
+          <input
+            className="field gym-bodyweight__input"
+            value={value}
+            inputMode="decimal"
+            disabled={!editable}
+            onChange={(event) => setValue(event.target.value.replace(/[^0-9.,]/g, ''))}
+          />
+          <span className="gym-set__unit" aria-hidden="true">
+            {t('gym.weightUnit')}
+          </span>
+          <Button
+            variant="secondary"
+            disabled={!editable || !valid}
+            onClick={() => valid && onSave(parsed)}
+          >
+            {t('gym.bodyweight.save')}
+          </Button>
+        </label>
+        <p className="gym-exercise__best">
+          {current === null
+            ? t('gym.bodyweight.none')
+            : t('gym.bodyweight.asOf', { date: formatDayAndMonth(language, date) })}
+        </p>
+        {needed && current === null ? (
+          <p className="gym-session__closed" role="status">
+            {t('gym.bodyweight.needed')}
+          </p>
+        ) : null}
+      </Card>
+    </Section>
+  );
+}
+
 export function GymSessionScreen({
   sessionId,
   date,
@@ -142,6 +240,7 @@ export function GymSessionScreen({
   const { language } = useI18n();
   const [picking, setPicking] = useState(false);
   const [exercises, setExercises] = useState<ExerciseRecord[]>([]);
+  const [bodyweight, setBodyweight] = useState<number | null>(null);
   const busy = useRef(false);
 
   const load = useCallback(async () => {
@@ -153,6 +252,12 @@ export function GymSessionScreen({
   useEffect(() => {
     void ensureExerciseCatalogue().then(setExercises);
   }, []);
+
+  // The weight in force on the session's own day, not today's: a session
+  // opened inside the edit window still reads the body that performed it.
+  useEffect(() => {
+    void bodyweightFor(date).then(setBodyweight);
+  }, [date]);
 
   /** Writes are serialised so a fast tapper cannot interleave two reloads. */
   const run = useCallback(
@@ -194,6 +299,10 @@ export function GymSessionScreen({
 
   const view: GymSessionView = state.value;
   const editable = view.editable;
+  /* Only asked for when a set in this session actually depends on it. */
+  const needsBodyweight = view.exercises.some(
+    (entry) => entry.exercise.loadType === 'bodyweight' || entry.exercise.loadType === 'assisted',
+  );
 
   const addExercise = (exercise: ExerciseRecord) => {
     setPicking(false);
@@ -204,10 +313,10 @@ export function GymSessionScreen({
     );
   };
 
-  const createAndAdd = (name: string, muscles: MuscleGroup[]) => {
+  const createAndAdd = (input: NewExerciseInput) => {
     setPicking(false);
     run(async () => {
-      const exercise = await createExercise({ name, muscles });
+      const exercise = await createExercise(input);
       setExercises(await ensureExerciseCatalogue());
       await addSet({ sessionId, exerciseId: exercise.id, reps: 0, weightGrams: 0 });
     });
@@ -239,6 +348,21 @@ export function GymSessionScreen({
           </p>
         ) : null}
 
+        {needsBodyweight ? (
+          <BodyweightCard
+            date={date}
+            current={bodyweight}
+            editable={editable}
+            needed
+            onSave={(kg) =>
+              run(async () => {
+                await recordBodyweight(kg, date);
+                setBodyweight(kg);
+              })
+            }
+          />
+        ) : null}
+
         {view.exercises.length === 0 ? (
           <Card>
             <EmptyState
@@ -266,6 +390,11 @@ export function GymSessionScreen({
                           .map((muscle) => t(MUSCLE_LABEL_KEYS[muscle]))
                           .join(' · ')}
                       </span>
+                      {entry.exercise.loadType && entry.exercise.loadType !== 'external' ? (
+                        <span className="gym-exercise__muscles">
+                          {t(LOAD_HINT_KEYS[entry.exercise.loadType])}
+                        </span>
+                      ) : null}
                     </span>
                     <button
                       type="button"
@@ -286,6 +415,7 @@ export function GymSessionScreen({
                       set={set}
                       index={index}
                       exerciseName={entry.exercise.name}
+                      loadType={entry.exercise.loadType ?? 'external'}
                       editable={editable}
                       onChange={(patch) => run(() => updateSet(set.id, patch))}
                       onRemove={() => run(() => removeSet(set.id))}

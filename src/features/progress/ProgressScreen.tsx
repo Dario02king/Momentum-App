@@ -5,8 +5,10 @@ import { Card, EmptyState, LoadFailure, Section, Segmented, StaleNotice } from '
 import { ProgressIcon } from '../../components/Icons';
 import { formatDayAndMonth } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
+import { GymOverview } from '../gym/GymOverview';
 import { GymProgress } from '../gym/GymProgress';
 import { useGymHistory } from '../gym/useGymHistory';
+import { useGymRating } from '../gym/useGymRating';
 import { Heatmap, type HeatmapRow } from './Heatmap';
 import { QuestionDetail } from './QuestionDetail';
 import { TrendCurve } from './TrendCurve';
@@ -29,6 +31,9 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
   // Gym replays from its own sets rather than from the day scores, so it
   // loads alongside rather than inside the progression.
   const gym = useGymHistory(range);
+  // The rating, the Endurance Phase and the two performance windows. Loaded
+  // separately from the sets, so a failure in one does not empty the other.
+  const gymRating = useGymRating();
 
   /** The last `range` days of the replay, for both views. */
   const window = useMemo(() => {
@@ -137,9 +142,22 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
    * reading one as the other.
    */
   const gymSection =
-    gym && gym.days.length > 0 ? (
+    gymRating?.started || (gym && gym.days.length > 0) ? (
       <Section label={t('gym.progress.title')}>
-        <GymProgress history={gym} />
+        {/*
+          The rating first, then the year-to-date performance, then
+          attendance — and only then the muscle groups, the exercises and the
+          best set per day. The hierarchy is the product decision; this is
+          where it is expressed.
+        */}
+        {gymRating ? (
+          <GymOverview
+            state={gymRating.state}
+            rank={gymRating.rank}
+            started={gymRating.started}
+          />
+        ) : null}
+        {gym && gym.days.length > 0 ? <GymProgress history={gym} /> : null}
       </Section>
     ) : null;
   const rangeSelector = (
@@ -199,7 +217,7 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
         {gymSection}
 
         {empty ? (
-          gym && gym.days.length > 0 ? null : (
+          gymSection !== null ? null : (
             <Card>
               <EmptyState
                 icon={<ProgressIcon size={26} />}

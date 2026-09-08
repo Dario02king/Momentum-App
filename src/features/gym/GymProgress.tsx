@@ -15,18 +15,19 @@ import { ExerciseDetail } from './ExerciseDetail';
 import './gym.css';
 
 /**
- * Gym, from the top down.
+ * Gym's detail, below the overview.
  *
  * ```
  *   Gym overall → muscle groups → exercises → best set per day
  * ```
  *
  * Four different numbers live on these screens and confusing them would make
- * all four useless, so each is labelled in its own terms: the **Gym rank**
- * belongs to the Rank screen and counts sessions per week; **group progress**
- * and **exercise progress** here are percentages of change against a previous
- * performance; and the raw **reps × kg** is always shown as reps × kg. No
- * number is presented as a score out of a hundred, because none of them is.
+ * all four useless, so each is labelled in its own terms: the **Gym rating**
+ * is on the overview above and is 40 % attendance and 60 % development;
+ * **group progress** and **exercise progress** here are percentages of change
+ * against a previous performance; and the raw **reps × kg** is always shown
+ * as reps × kg. No number is presented as a score out of a hundred, because
+ * none of them is.
  */
 
 /** The five states the body renderer draws, from one group's performance. */
@@ -124,10 +125,15 @@ export function GymProgress({ history }: { history: GymHistory }) {
           </div>
           <p className="gym-progress__note">{t('gym.progress.explainGroups')}</p>
           <p className="gym-progress__note">{t('gym.progress.explainMetric')}</p>
-          {/* The one place the two numbers could be confused, said plainly. */}
+          {/*
+            The one place the two numbers could be confused, said plainly:
+            these are percentages of personal change, and the rank they feed
+            is a statement about development rather than about strength.
+          */}
           <p className="gym-progress__note gym-progress__note--strong">
             {t('gym.progress.ratingNote')}
           </p>
+          <p className="gym-progress__note">{t('gym.tombstone.boundary')}</p>
         </Card>
       </Section>
 

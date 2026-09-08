@@ -234,11 +234,16 @@ describe('upgrading a database with months of history', () => {
   });
 });
 
-describe('the gym stores at version 3', () => {
+describe('the gym stores at version 3 and 4', () => {
   /**
    * Version 3 reshapes two gym stores: an exercise gains `muscles` in place
    * of a single `muscle`, and a set stores whole grams in place of a
-   * floating-point kilogram figure.
+   * floating-point kilogram figure. Version 4 then gives an exercise a load
+   * type and explicit muscle roles.
+   *
+   * The seed here is a **version 2** database, so both migrations run in one
+   * upgrade — which is the case that matters, because two migrations
+   * rewriting the same store used to be able to overwrite each other.
    *
    * No release has ever written either record — phase 1 created the stores
    * and phase 4 is the first code to fill them — so on a real device this
@@ -292,9 +297,9 @@ describe('the gym stores at version 3', () => {
     await seedVersion2Gym();
   });
 
-  it('opens at version 3 with every store still present', async () => {
+  it('opens at the current version with every store still present', async () => {
     const db = await openDatabase();
-    expect(db.version).toBe(3);
+    expect(db.version).toBe(SCHEMA_VERSION);
     for (const store of ALL_STORES) expect(db.objectStoreNames.contains(store)).toBe(true);
   });
 
@@ -305,6 +310,53 @@ describe('the gym stores at version 3', () => {
     expect((exercise as unknown as { muscle?: string }).muscle).toBeUndefined();
     // And it keeps the name it had, which is what history joins on after id.
     expect(exercise?.name).toBe('Bench Press');
+  });
+
+  it('gives an exercise a load type and explicit roles', async () => {
+    await openDatabase();
+    const exercise = await exercisesRepository.get('ex_old');
+    // Both migrations reached the same record, in order, in one upgrade.
+    expect(exercise?.muscles).toEqual(['chest']);
+    expect(exercise?.loadType).toBe('external');
+    expect(exercise?.primaryMuscles).toEqual(['chest']);
+    expect((exercise as unknown as { bodyweightBased?: boolean }).bodyweightBased).toBeUndefined();
+  });
+
+  it('reads a bodyweight-flagged exercise as a bodyweight load type', async () => {
+    await openDatabase();
+    await exercisesRepository.put({
+      id: 'ex_flagged',
+      muscles: ['back'],
+      name: 'Pull-Up',
+      builtIn: false,
+      durationSeconds: null,
+      attributes: {},
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-01T00:00:00.000Z',
+      // As a version-3 record carried it.
+      ...({ bodyweightBased: true } as object),
+    });
+    const transform = MIGRATIONS[3]!.transforms![STORES.exercises]!;
+    const migrated = transform({
+      id: 'ex_flagged',
+      muscles: ['back', 'biceps'],
+      bodyweightBased: true,
+      addedWeightKg: 5,
+    })!;
+    expect(migrated.loadType).toBe('bodyweight');
+    expect(migrated.primaryMuscles).toEqual(['back']);
+    expect(migrated.bodyweightBased).toBeUndefined();
+    expect(migrated.addedWeightKg).toBeUndefined();
+  });
+
+  it('leaves a set with no roles alone, because that is how it was scored', async () => {
+    await openDatabase();
+    const set = (await gymSetsRepository.getAll()).find((entry) => entry.id === 'set_old');
+    // Filling roles in from today's catalogue would silently re-weight a
+    // workout already done. Absent is the record of the equal weighting it
+    // was actually aggregated under.
+    expect(set?.primaryMuscles).toBeUndefined();
+    expect(set?.loadType).toBeUndefined();
   });
 
   it('converts a set to whole grams without losing the weight', async () => {

@@ -417,3 +417,118 @@
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Overview: rating, performance, attendance ──────────────────────────── */
+
+.gym-overview__hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.gym-overview__heroBody {
+  min-width: 0;
+}
+
+.gym-overview__rank {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+.gym-overview__rating {
+  font-size: var(--type-large-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.8px;
+  /* Long German labels and a 320px screen: the number wraps rather than
+     pushing the badge off the card. */
+  overflow-wrap: anywhere;
+}
+
+.gym-overview__empty {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+.gym-overview__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.gym-overview__lineLabel {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gym-overview__lineValue {
+  font-size: var(--type-body);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.gym-overview__lineValue--large {
+  font-size: var(--type-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.4px;
+}
+
+.gym-overview__note {
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+  padding-top: var(--space-2);
+}
+
+.gym-overview__note--strong {
+  color: var(--text-primary);
+}
+
+/*
+ * The bar is an image with a name, never the only carrier of the number: the
+ * figure it draws is always printed beside it.
+ */
+.gym-meter {
+  position: relative;
+  height: 8px;
+  margin-top: var(--space-3);
+  border-radius: 999px;
+  background: var(--surface-secondary);
+  overflow: hidden;
+}
+
+.gym-meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--domain-gym-mid);
+  transition: width 240ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gym-meter__fill {
+    transition: none;
+  }
+}
+
+/* ── Bodyweight ─────────────────────────────────────────────────────────── */
+
+.gym-bodyweight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.gym-bodyweight__input {
+  flex: 1 1 96px;
+  min-width: 88px;
+  min-height: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

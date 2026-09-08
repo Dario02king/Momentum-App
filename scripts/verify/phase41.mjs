@@ -1,0 +1,331 @@
+import { chromium } from 'playwright-core';
+import { URL_APP, check, summary, phone, onboard, clipped, smallTargets } from './lib.mjs';
+
+/**
+ * Phase 4.1: the Gym scoring model on the screen.
+ *
+ * What phase 4 verified was the pipeline reaching the progress hierarchy.
+ * What this verifies is the *rating* — the 40/60 headline, the year-to-date
+ * performance beneath it, attendance beside that, and the three states a Gym
+ * user can be in that did not exist before: inside the Endurance Phase, out
+ * of it, and on a break long enough to decay.
+ */
+
+const browser = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+});
+
+const pad = (n, l = 2) => String(n).padStart(l, '0');
+
+/**
+ * Writes gym sessions and sets straight into IndexedDB.
+ *
+ * Weeks are counted back from today so the fixture means the same thing
+ * whenever it is run. `metWeeks` weeks of three sessions each, then
+ * `silentDays` of nothing.
+ */
+async function seedGym(page, { metWeeks, silentDays = 0, improving = true }) {
+  return page.evaluate(
+    async ({ metWeeks, silentDays, improving }) => {
+      const open = () =>
+        new Promise((res, rej) => {
+          const r = indexedDB.open('momentum');
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        });
+      const all = (db, s) =>
+        new Promise((res, rej) => {
+          const r = db.transaction([s], 'readonly').objectStore(s).getAll();
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        });
+      const putAll = (db, s, recs) =>
+        new Promise((res, rej) => {
+          const tx = db.transaction([s], 'readwrite');
+          for (const r of recs) tx.objectStore(s).put(r);
+          tx.oncomplete = () => res();
+          tx.onerror = () => rej(tx.error);
+        });
+      const p = (n, l = 2) => String(n).padStart(l, '0');
+      const key = (d) => `${p(d.getFullYear(), 4)}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+      const shift = (n) => {
+        const d = new Date();
+        d.setHours(12, 0, 0, 0);
+        d.setDate(d.getDate() + n);
+        return d;
+      };
+      const isoWeek = (d) => {
+        const t = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+        t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + 3);
+        const y = t.getFullYear();
+        const f = new Date(y, 0, 4, 12);
+        f.setDate(f.getDate() - ((f.getDay() + 6) % 7) + 3);
+        return `${p(y, 4)}-W${p(1 + Math.round((t - f) / (7 * 86400000)))}`;
+      };
+
+      const db = await open();
+      const snaps = await all(db, 'configSnapshots');
+      const settings = await all(db, 'settings');
+      const totalDays = metWeeks * 7 + silentDays;
+      const origin = key(shift(-(totalDays + 2)));
+      await putAll(db, 'configSnapshots', snaps.map((s, i) => (i === 0 ? { ...s, effectiveFrom: origin } : s)));
+      await putAll(db, 'settings', [{ ...settings[0], firstUseDate: origin }]);
+
+      const sessions = [];
+      const sets = [];
+      let setIndex = 0;
+      for (let week = 0; week < metWeeks; week += 1) {
+        for (const offset of [0, 2, 4]) {
+          const back = totalDays - (week * 7 + offset);
+          const at = shift(-back);
+          const date = key(at);
+          const id = `seed-${date}`;
+          sessions.push({
+            id,
+            date,
+            weekKey: isoWeek(at),
+            performedAt: new Date(at.setHours(18, 0, 0, 0)).toISOString(),
+            planId: null,
+            note: null,
+            legacyCarryOver: false,
+            configSnapshotId: snaps[0].id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          const kg = improving ? 100 + week * 10 : 100;
+          sets.push({
+            id: `seedset-${setIndex}`,
+            sessionId: id,
+            exerciseId: 'ex_squat',
+            date,
+            weightGrams: Math.round(kg * 1000),
+            reps: 5,
+            order: 0,
+            muscles: ['quadriceps', 'hamstringsGlutes', 'core'],
+            primaryMuscles: ['quadriceps'],
+            loadType: 'external',
+            createdAt: new Date().toISOString(),
+          });
+          setIndex += 1;
+        }
+      }
+      await putAll(db, 'gymSessions', sessions);
+      await putAll(db, 'gymSets', sets);
+      return { sessions: sessions.length, sets: sets.length };
+    },
+    { metWeeks, silentDays, improving },
+  );
+}
+
+async function ready(opts = {}, seedOpts = null) {
+  const ctx = await browser.newContext({ ...phone, ...opts });
+  const page = await ctx.newPage();
+  await page.goto(URL_APP, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await onboard(page, { gym: 3, running: 0 });
+  if (seedOpts) {
+    await seedGym(page, seedOpts);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1400);
+  }
+  return { ctx, page };
+}
+
+async function openProgress(page) {
+  await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
+  await page.waitForTimeout(1400);
+}
+
+/* ── The Endurance Phase, with the first rank still locked ──────────────── */
+{
+  const { ctx, page } = await ready({}, { metWeeks: 2 });
+  await openProgress(page);
+
+  check('the Gym rating is the headline', await page.locator('.gym-overview__rating').isVisible());
+  const rating = await page.locator('.gym-overview__rating').textContent();
+  check('and it is stated out of 1000', /von 1000/.test(rating ?? ''), rating?.trim());
+
+  check('the Endurance Phase is named', await page.getByText('Ausdauerphase').first().isVisible());
+  check('the first rank is said to be locked',
+    await page.getByText('Erster Rang noch gesperrt').isVisible());
+  const progress = await page.locator('.gym-overview__lineValue').first().textContent();
+  check('endurance progress is stated in weeks', /von 4 Wochen/.test(progress ?? ''), progress?.trim());
+  check('it is not mislabelled as performance',
+    !/Leistungsentwicklung/.test((await page.locator('.gym-overview__lineLabel').first().textContent()) ?? ''));
+  check('it says the rating is calculating anyway',
+    await page.getByText(/Rating wird bereits normal berechnet/).isVisible());
+  check('the rank shown is still the first one',
+    /Rookie/.test((await page.locator('.gym-overview__rank').textContent()) ?? ''));
+
+  check('the year-to-date performance is a visible secondary headline',
+    await page.getByText('Leistung seit Jahresbeginn').isVisible());
+  check('attendance is visible and separate',
+    await page.getByText('Anwesenheit').first().isVisible());
+  const attendance = await page.locator('.gym-overview__lineValue').nth(2).textContent();
+  check('attendance is stated as sessions against the target',
+    /von 3 Sessions/.test(attendance ?? ''), attendance?.trim());
+
+  let clip = await clipped(page);
+  check('the Endurance state is not clipped', clip.length === 0, clip.slice(0, 2).join('; '));
+  let small = await smallTargets(page);
+  check('its targets hold', small.length === 0, small.slice(0, 2).join('; '));
+  await ctx.close();
+}
+
+/* ── A setback: a missed week costs half, and does not reset ────────────── */
+{
+  const { ctx, page } = await ready({}, { metWeeks: 3 });
+  // Remove the middle week's sessions, which is the setback.
+  await page.evaluate(async () => {
+    const db = await new Promise((res, rej) => {
+      const r = indexedDB.open('momentum');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    const rows = await new Promise((res, rej) => {
+      const r = db.transaction(['gymSessions'], 'readonly').objectStore('gymSessions').getAll();
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    const weeks = [...new Set(rows.map((s) => s.weekKey))].sort();
+    const drop = rows.filter((s) => s.weekKey === weeks[1]).map((s) => s.id);
+    await new Promise((res, rej) => {
+      const tx = db.transaction(['gymSessions'], 'readwrite');
+      for (const id of drop) tx.objectStore('gymSessions').delete(id);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1400);
+  await openProgress(page);
+
+  const progress = await page.locator('.gym-overview__lineValue').first().textContent();
+  check('a missed week costs half a week rather than the balance',
+    /1\.5 von 4 Wochen/.test(progress ?? ''), progress?.trim());
+  check('and the gate is still shut', await page.getByText('Erster Rang noch gesperrt').isVisible());
+  await ctx.close();
+}
+
+/* ── Unlocked: a mature Gym state ───────────────────────────────────────── */
+{
+  const { ctx, page } = await ready({}, { metWeeks: 6 });
+  await openProgress(page);
+
+  check('the Endurance Phase is gone once it is complete',
+    !(await page.getByText('Erster Rang noch gesperrt').isVisible().catch(() => false)));
+  const rank = await page.locator('.gym-overview__rank').textContent();
+  check('the rank has moved off the first one', !/Rookie/.test(rank ?? ''), rank?.trim());
+  check('the 40/60 split is explained',
+    await page.getByText(/40 % Anwesenheit und 60 % persönlicher Leistungsentwicklung/).isVisible());
+
+  const ytd = await page.locator('.gym-overview__lineValue--large').textContent();
+  check('the year-to-date figure is a real percentage', /%|Gehalten/.test(ytd ?? ''), ytd?.trim());
+
+  check('the detail hierarchy is still below it',
+    await page.locator('.gym-progress__headline').isVisible());
+  check('and the body renderer is still there',
+    (await page.locator('.body-renderer__figure').count()) === 2);
+
+  let clip = await clipped(page);
+  check('the mature Gym state is not clipped', clip.length === 0, clip.slice(0, 2).join('; '));
+  await ctx.close();
+}
+
+/* ── A break long enough to decay ───────────────────────────────────────── */
+{
+  const { ctx, page } = await ready({}, { metWeeks: 6, silentDays: 16 });
+  await openProgress(page);
+
+  check('a training break is surfaced', await page.getByText('Trainingspause').isVisible());
+  const days = await page.getByText(/Tage ohne Session/).textContent();
+  check('it says how long the break has been', /\d+ Tage ohne Session/.test(days ?? ''), days?.trim());
+  check('it says what has been reduced',
+    await page.getByText(/deines Rangfortschritts abgebaut/).isVisible());
+  check('it says what has not been touched',
+    await page.getByText(/aufgezeichneten Sätze und deine Leistungswerte bleiben unverändert/).isVisible());
+  check('it says the rank floor holds',
+    await page.getByText(/fällst dadurch nicht unter deinen aktuellen Rang/).isVisible());
+  check('it says how to stop it',
+    await page.getByText(/gespeicherte Session beendet die Pause sofort/).isVisible());
+  // The performance figures are untouched by the break.
+  check('the performance detail is still shown', await page.locator('.gym-progress__headline').isVisible());
+  await ctx.close();
+}
+
+/* ── Bodyweight entry ───────────────────────────────────────────────────── */
+{
+  const { ctx, page } = await ready();
+  await page.getByRole('button', { name: 'Session eintragen' }).click();
+  await page.waitForTimeout(800);
+  await page.getByRole('button', { name: /Übung hinzufügen/ }).first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole('textbox', { name: 'Suchen' }).fill('Pull-Up');
+  await page.waitForTimeout(300);
+  // Exact, because "Assisted Pull-Up" sorts first and is a different load type.
+  await page.locator('.gym-picker__name', { hasText: /^Pull-Up$/ }).first().click();
+  await page.waitForTimeout(800);
+
+  check('a bodyweight exercise asks for a body weight',
+    await page.getByText('Körpergewicht').first().isVisible());
+  check('and says why it needs one',
+    await page.getByText(/Für Körpergewichtsübungen brauchst du dein Körpergewicht/).isVisible());
+  check('the set field is labelled as added weight, not weight',
+    await page.getByText('Dein Körpergewicht plus, was du zusätzlich trägst.').isVisible());
+
+  await page.locator('.gym-bodyweight__input').fill('85');
+  await page.getByRole('button', { name: 'Gewicht sichern' }).click();
+  await page.waitForTimeout(900);
+  check('saving a body weight clears the warning',
+    !(await page.getByText(/Ohne Eintrag werden diese Sätze nicht gewertet/).isVisible().catch(() => false)));
+
+  const clip = await clipped(page);
+  check('the bodyweight card is not clipped', clip.length === 0, clip.slice(0, 2).join('; '));
+  const small = await smallTargets(page);
+  check('the bodyweight card keeps its targets', small.length === 0, small.slice(0, 2).join('; '));
+  await ctx.close();
+}
+
+/* ── The custom-exercise sheet: roles and load type ─────────────────────── */
+{
+  const { ctx, page } = await ready();
+  await page.getByRole('button', { name: 'Session eintragen' }).click();
+  await page.waitForTimeout(800);
+  await page.getByRole('button', { name: /Übung hinzufügen/ }).first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Eigene Übung' }).click();
+  await page.waitForTimeout(400);
+
+  check('a custom exercise can name its primary muscle',
+    await page.getByText('Hauptmuskel', { exact: true }).isVisible());
+  check('and the 70/30 split is explained',
+    await page.getByText(/Hauptmuskeln teilen sich 70 % der Übung/).isVisible());
+  check('and it can say how it is loaded',
+    await page.getByText('Belastungsart').isVisible());
+
+  const clip = await clipped(page);
+  check('the custom sheet is not clipped', clip.length === 0, clip.slice(0, 2).join('; '));
+  const small = await smallTargets(page);
+  check('the custom sheet keeps its targets', small.length === 0, small.slice(0, 2).join('; '));
+  await ctx.close();
+}
+
+/* ── Four widths, and long German labels ────────────────────────────────── */
+for (const width of [320, 360, 393, 430]) {
+  const { ctx, page } = await ready({ viewport: { width, height: 780 } }, { metWeeks: 6, silentDays: 16 });
+  await openProgress(page);
+
+  const clip = await clipped(page);
+  check(`the Gym overview is not clipped at ${width}px`, clip.length === 0, clip.slice(0, 2).join('; '));
+  const small = await smallTargets(page);
+  check(`its targets hold at ${width}px`, small.length === 0, small.slice(0, 2).join('; '));
+
+  const noScroll = await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+  );
+  check(`the page does not scroll sideways at ${width}px`, noScroll);
+  await ctx.close();
+}
+
+await browser.close();
+process.exit(summary() ? 0 : 1);

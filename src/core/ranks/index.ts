@@ -84,12 +84,34 @@ export interface RankChange {
   rating: number;
 }
 
+export interface RankHistoryOptions {
+  sustainDays?: number;
+  /**
+   * Whether a **promotion** is allowed on each point, aligned with `series`.
+   *
+   * This is the Endurance Phase's one hook into the rank ladder (D94), and it
+   * is deliberately the only one. There is no second ladder, no second badge
+   * family and no parallel rank state: while the gate is closed the user's
+   * rating rises normally and simply does not cross a threshold yet. Absent
+   * means every promotion is allowed, which is every caller but Gym's.
+   *
+   * Demotion is not gated. A gate that also held a rank *up* would be a
+   * protection rather than a requirement, and nobody can be demoted below the
+   * rank they have not yet left anyway.
+   */
+  promotionUnlocked?: readonly boolean[];
+}
+
 /**
  * Walks a rating series and reports the crossings, so the log matches what
  * the user actually saw.
  *
  * Promotion is immediate: reaching a rank is an achievement the moment it
- * happens. Demotion is deliberately harder — the rating must sit below the
+ * happens — with one exception, and only one. A caller may pass
+ * `promotionUnlocked` to hold the *first* climb behind a requirement the user
+ * has still to meet; Gym's Endurance Phase is the only thing that does, and
+ * while it is closed the rating still moves and simply does not cross.
+ * Demotion is deliberately harder — the rating must sit below the
  * hysteresis buffer for several scored days running. A dip that recovers
  * within a couple of days was never a change in standing, and this is what
  * makes "a single bad day must never cost a tier" hold for the whole tail of
@@ -97,27 +119,34 @@ export interface RankChange {
  */
 export function rankHistory(
   series: { date: string; rating: number }[],
-  sustainDays: number = RANK_DEMOTION_SUSTAIN_DAYS,
+  options: RankHistoryOptions = {},
 ): {
   changes: RankChange[];
   current: Rank;
   peak: Rank;
 } {
+  const sustainDays = options.sustainDays ?? RANK_DEMOTION_SUSTAIN_DAYS;
+  const unlocked = options.promotionUnlocked;
   let current: Rank | null = null;
   let peak: Rank = RANK_LIST[0]!;
   let daysBelow = 0;
   const changes: RankChange[] = [];
 
-  for (const point of series) {
+  for (const [index, point] of series.entries()) {
+    const mayPromote = unlocked === undefined || unlocked[index] === true;
+
     if (current === null) {
-      current = rankForRating(point.rating);
+      // The opening rank is where the rating already is, not a promotion —
+      // except while the gate is closed, where the user starts at the bottom
+      // of the ladder and stays there until they have earned the first climb.
+      current = mayPromote ? rankForRating(point.rating) : RANK_LIST[0]!;
       peak = current;
       continue;
     }
 
     const natural = rankForRating(point.rating);
 
-    if (natural.index > current.index) {
+    if (natural.index > current.index && mayPromote) {
       changes.push({
         date: point.date,
         kind: 'promotion',

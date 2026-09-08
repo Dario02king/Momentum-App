@@ -42,8 +42,30 @@ no `scoring.model` means the flat Wellbeing model. Never backfill those into
 old snapshots — the absence *is* the information.
 
 Where a fact is cheaper to record than to snapshot, record it on the row: a
-gym set stores the muscle groups it was logged under. Same principle, smaller
-extension.
+gym set stores the muscle groups it was logged under, which of them were
+primary, and how it was loaded. Same principle, smaller extension — and the
+absence of those fields on an older row is itself an era, never something to
+backfill from today's catalogue.
+
+A fact that is already dated and stored is **replayed, not copied**: a
+bodyweight set's load reads the most recent weight entry on or before its own
+date, so a measurement taken next month can never enter a session already
+logged.
+
+## An absence is charged for once
+
+Two mechanisms may not both bill the same silence. A missed weekly target is a
+real result and already lowers the rating through the ordinary target. From
+seven consecutive days with no session it becomes an *abstinence episode*, and
+from that day the decay schedule sets the rating instead of the gap movement
+running as well.
+
+Decay of that kind touches **only the progress inside the rank currently
+held**, and it is cumulative against the progress held when the episode began
+— never compounded against what is left. Compounding never reaches zero and
+makes a fourth week of absence cost a quarter of what the first did. Nothing
+historical moves: sets, exercise performances, muscle-group figures, past
+snapshots and Tombstones are facts about what happened.
 
 ## Absence is not failure
 
@@ -77,10 +99,25 @@ Never conflate them.
   ladder, no "strength rank", no separate emblem set.
 - Eight ranks, no divisions. Rank names stay English in every language.
 - Promotion is immediate; demotion needs hysteresis *and* sustained days. A
-  single bad day may never cost a tier.
+  single bad day may never cost a tier. The **one** exception is Gym's
+  Endurance Phase, which holds a new user's *first* promotion until four net
+  weeks are earned — one optional argument to the existing rank resolver, not
+  a second ladder, and it gates the rank while the rating moves normally.
+- **A domain rank measures the user against their own history, never against
+  anyone else.** No population norms, no absolute-strength scaling, no
+  calibration against other people — not as a modifier and not as a starting
+  estimate. Absolute benchmarks are Tombstones, which are a separate system
+  and stay separate in both directions.
 - Wellbeing questions are asked **daily**. There is no rhythm engine, no
   per-question schedule, and there never will be.
 - Gym and Running are independent weekly quotas, never a combined one.
+- Gym's rating is **40 % attendance and 60 % personal development**. Extra
+  sessions beyond the weekly target buy no more attendance; a rate of change
+  reaches the level through one documented curve
+  (`src/core/gym/score.ts`), never through a table of branches.
+- A rating **moves towards** its target rather than becoming it. Climbing gets
+  slower as the rating rises; falling never does — a high rank is harder to
+  reach, not protected.
 - The generic `sports` domain is **retired**. It exists as a stored
   discriminator so RC2 history replays; nothing in the product may create one.
 - Colour is never the only carrier of meaning.
@@ -97,6 +134,16 @@ Never conflate them.
   "service worker", "snapshot".
 - German is the source of truth for strings; English is typed against it and
   placeholder parity is enforced by `src/i18n/catalogue.test.ts`.
+
+## Migrations
+
+Two migrations that rewrite the same store must not each open their own
+cursor. Requests inside one upgrade transaction are served in the order they
+were made, so both read the record as it was before either wrote and the later
+write wins with a stale value — losing a version's work silently, and only on
+devices that skipped a release. Migrations therefore **declare** their
+per-record rewrites (`transforms` in `storage/db.ts`); the runner composes them
+in version order and applies the chain in one pass.
 
 ## Build and test discipline
 
@@ -123,6 +170,17 @@ avatar editor, no muscle-group ranks, no automatic plan changes without the
 user's approval.
 
 Do not introduce a backend because it would simplify something.
+
+## What is measured where
+
+| | Answers |
+|---|---|
+| domain rank | how am I progressing, against my own history |
+| Tombstone | have I hit this absolute benchmark |
+
+Conflating them would ruin both, so the boundary is an API boundary as much as
+a conceptual one: nothing in `core/gym/rating.ts` reads a benchmark table, and
+no personal-development percentage belongs inside a Tombstone.
 
 ## When a product decision is not settled
 

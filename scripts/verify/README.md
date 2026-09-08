@@ -32,6 +32,19 @@ scripts rather than running `npx playwright install`.
 | `phase3-a11y.mjs` | Progress bars as named images, weight steppers, ladder state in words, reduced motion |
 | `phase4.mjs` | Gym: empty state, picker, sets, several exercises, best-set display, decimal kg, progress hierarchy, body renderer, exercise history, rank integration, four widths |
 | `phase4-a11y.mjs` | Set/reps/weight field names, add and remove controls, body figures decorative with the legend carrying the facts, focus order, reduced motion |
+| `phase41.mjs` | The Gym rating headline, the Endurance Phase and its setback, the locked first rank, a mature unlocked state, year-to-date performance, attendance, the decay state, bodyweight entry, the custom-exercise roles and load type, four widths |
+| `phase41-a11y.mjs` | Every bar named and its number printed beside it, the Endurance Phase announced as attendance rather than performance, section order (rating → year-to-date → attendance), focus order, reduced motion |
+
+Two things worth knowing before writing another suite, both of which produced
+false failures here first:
+
+- **Chrome's accessibility tree calls `role="img"` an `image`.** Filtering the
+  CDP tree for `img` silently finds nothing and passes an "everything is
+  named" check by vacuum.
+- **Reduced motion collapses durations to `0.001ms`, not to zero.** That is
+  the standard idiom — it keeps `transitionend` firing — so a check for
+  `> 0` counts every transition in the app. Assert that no keyframe animation
+  runs and that no duration is long enough to perceive.
 
 ## Conventions
 

@@ -1,5 +1,6 @@
 import type { DateKey } from '../dates';
 import { MUSCLE_GROUPS, type MuscleGroup } from '../model';
+import { muscleWeights } from './muscles';
 
 /**
  * Gym performance: the whole pipeline, and nothing that touches storage or
@@ -21,7 +22,19 @@ import { MUSCLE_GROUPS, type MuscleGroup } from '../model';
 export interface SetInput {
   id: string;
   reps: number;
-  /** Whole grams. Integers, so two identical sets always compare equal. */
+  /**
+   * The **effective load** in whole grams — what the set actually asked of
+   * the body, not necessarily the number the user typed.
+   *
+   * For an external lift the two are the same. For a bodyweight or assisted
+   * one the caller has already added the bodyweight in force on that day or
+   * subtracted the machine's help (`core/gym/load.ts`), because that
+   * resolution needs a dated weight history and this module is pure
+   * arithmetic over one workout. A set whose load could not be resolved is
+   * not passed in at all, which is the same treatment a zero-rep set gets.
+   *
+   * Integers, so two identical sets always compare equal.
+   */
   weightGrams: number;
   /** Position within the exercise on that day, for a deterministic tie-break. */
   order: number;
@@ -87,6 +100,14 @@ export interface ExerciseDay {
   exerciseId: string;
   /** The groups the sets were logged under, not the ones mapped today. */
   muscles: MuscleGroup[];
+  /**
+   * Which of those were primary, as recorded at the time.
+   *
+   * **Absent is the pre-roles era**, not an empty list of primaries: a set
+   * logged by phase 4 recorded no roles and replays under the equal weighting
+   * it was actually logged under (D92).
+   */
+  primaryMuscles?: MuscleGroup[];
   best: BestSet;
 }
 
@@ -94,6 +115,7 @@ export interface ExerciseDayInput {
   date: DateKey;
   exerciseId: string;
   muscles: MuscleGroup[];
+  primaryMuscles?: MuscleGroup[];
   sets: readonly SetInput[];
 }
 
@@ -109,7 +131,13 @@ export function exerciseDays(inputs: readonly ExerciseDayInput[]): ExerciseDay[]
   for (const input of inputs) {
     const best = bestSet(input.sets);
     if (!best) continue;
-    days.push({ date: input.date, exerciseId: input.exerciseId, muscles: input.muscles, best });
+    days.push({
+      date: input.date,
+      exerciseId: input.exerciseId,
+      muscles: input.muscles,
+      ...(input.primaryMuscles === undefined ? {} : { primaryMuscles: input.primaryMuscles }),
+      best,
+    });
   }
   return days.sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -246,15 +274,19 @@ export interface MusclePerformance {
  *
  * **The rule, written down.** An exercise's progress ratio is the ratio for
  * its most recent comparable day. Every group the exercise is mapped to
- * receives that ratio, and a group's value is the plain mean of the ratios it
- * received. Groups are then equal-weighted above (`gymPerformance`), so:
+ * receives that ratio *at the share the exercise gives that group* — 70 % to
+ * the primaries and 30 % to the secondaries, split inside each role
+ * (`core/gym/muscles.ts`) — and a group's value is the **weighted mean** of
+ * what it received. Groups are then equal-weighted above (`gymPerformance`),
+ * so:
  *
  * - a group with five exercises does not outweigh a group with one;
- * - an exercise in two groups counts once *in each*, which is what "it trains
- *   both" means, and cannot amplify itself, because within each group it is
- *   one voice among that group's exercises and the groups are equal above.
- *   Deadlift raises back and hamstrings; it does not raise the Gym score
- *   twice for being one movement.
+ * - **an exercise is worth one exercise, however many groups it touches.**
+ *   Bench press speaks with 70 % of a voice for chest and 15 % for triceps,
+ *   so it cannot outvote a triceps pushdown inside the triceps group and
+ *   cannot gain total influence by being a compound movement.
+ * - a set recorded before roles existed carries none, and its groups share it
+ *   equally — the weighting it was actually logged under.
  *
  * A group with recorded work but no exercise that has a baseline yet is
  * `insufficientBaseline` — it has data and no progress, which is not the same
@@ -265,30 +297,45 @@ export function musclePerformance(days: readonly ExerciseDay[]): MusclePerforman
 
   /** Latest score per exercise, for the groups that cannot be compared yet. */
   const latestScore = new Map<string, number>();
-  const musclesOf = new Map<string, MuscleGroup[]>();
+  const rolesOf = new Map<string, { muscles: MuscleGroup[]; primary?: MuscleGroup[] }>();
   for (const day of days) {
     latestScore.set(day.exerciseId, day.best.score);
-    musclesOf.set(day.exerciseId, day.muscles);
+    rolesOf.set(day.exerciseId, {
+      muscles: day.muscles,
+      ...(day.primaryMuscles === undefined ? {} : { primary: day.primaryMuscles }),
+    });
   }
 
-  const byMuscle = new Map<MuscleGroup, { ratios: number[]; exercises: Set<string>; best: number | null }>();
-  const bucket = (muscle: MuscleGroup) => {
+  interface Bucket {
+    /** Σ weight × ratio, and Σ weight — a weighted mean, kept as two sums. */
+    weightedRatio: number;
+    weight: number;
+    compared: number;
+    exercises: Set<string>;
+    best: number | null;
+  }
+  const byMuscle = new Map<MuscleGroup, Bucket>();
+  const bucket = (muscle: MuscleGroup): Bucket => {
     let entry = byMuscle.get(muscle);
     if (!entry) {
-      entry = { ratios: [], exercises: new Set(), best: null };
+      entry = { weightedRatio: 0, weight: 0, compared: 0, exercises: new Set(), best: null };
       byMuscle.set(muscle, entry);
     }
     return entry;
   };
 
-  for (const [exerciseId, muscles] of musclesOf) {
+  for (const [exerciseId, roles] of rolesOf) {
     const comparison = comparisons.get(exerciseId);
     const score = latestScore.get(exerciseId) ?? null;
-    for (const muscle of muscles) {
+    for (const { muscle, weight } of muscleWeights(roles)) {
       const entry = bucket(muscle);
       entry.exercises.add(exerciseId);
       if (score !== null) entry.best = Math.max(entry.best ?? 0, score);
-      if (comparison && comparison.ratio !== null) entry.ratios.push(comparison.ratio);
+      if (comparison && comparison.ratio !== null && weight > 0) {
+        entry.weightedRatio += weight * comparison.ratio;
+        entry.weight += weight;
+        entry.compared += 1;
+      }
     }
   }
 
@@ -304,7 +351,7 @@ export function musclePerformance(days: readonly ExerciseDay[]): MusclePerforman
         latestScore: null,
       };
     }
-    if (entry.ratios.length === 0) {
+    if (entry.weight <= 0) {
       return {
         muscle,
         status: 'insufficientBaseline' as const,
@@ -317,9 +364,9 @@ export function musclePerformance(days: readonly ExerciseDay[]): MusclePerforman
     return {
       muscle,
       status: 'measured' as const,
-      ratio: entry.ratios.reduce((sum, value) => sum + value, 0) / entry.ratios.length,
+      ratio: entry.weightedRatio / entry.weight,
       exercises: entry.exercises.size,
-      compared: entry.ratios.length,
+      compared: entry.compared,
       latestScore: entry.best,
     };
   });
@@ -405,6 +452,39 @@ export function gymPerformanceOverSpan(days: readonly ExerciseDay[]): GymPerform
   }
 
   return gymPerformance(spans);
+}
+
+/**
+ * The same aggregation over an explicit date window.
+ *
+ * This is what the trend and year-to-date components run on, and the window
+ * is the whole of the difference between them: 60 rolling days for one,
+ * January the first for the other.
+ *
+ * Each exercise contributes **one** comparison, its last recorded best inside
+ * the window against its first inside the window, and only when it was
+ * actually recorded on two or more days there. Two consequences are the
+ * reason it is written this way:
+ *
+ * - **Frequency is evidence, not weight.** Benching eight times in the window
+ *   and squatting twice produces one chest comparison and one quad
+ *   comparison, so training something often cannot make it count for more.
+ * - **The anchor moves with the window.** A year-to-date figure measured from
+ *   an exercise's first-ever session would keep reporting a beginner's first
+ *   month for ever; measured from the first session *this year* it reports
+ *   this year, which is what year-to-date means.
+ *
+ * Days outside the window are not compared against, and not treated as a
+ * decline either — they are simply not in this question.
+ */
+export function gymPerformanceInWindow(
+  days: readonly ExerciseDay[],
+  from: DateKey,
+  to: DateKey,
+): GymPerformance {
+  return gymPerformanceOverSpan(
+    days.filter((day) => day.date >= from && day.date <= to),
+  );
 }
 
 /** A ratio as a percentage change: 1.2 → +20. `null` stays `null`. */

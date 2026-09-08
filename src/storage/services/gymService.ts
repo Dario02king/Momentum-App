@@ -1,6 +1,7 @@
 import { nowIso, today } from '../../core/clock';
 import { isSameWeek, type DateKey } from '../../core/dates';
 import { catalogueRecords } from '../../core/gym/catalogue';
+import { bodyweightOn, effectiveLoadGrams, type BodyweightPoint } from '../../core/gym/load';
 import {
   exerciseDays,
   gymPerformance,
@@ -13,9 +14,20 @@ import {
   type SetInput,
 } from '../../core/gym/performance';
 import { createId } from '../../core/ids';
-import type { ExerciseRecord, GymSessionRecord, GymSetRecord, MuscleGroup } from '../../core/model';
+import type {
+  ExerciseLoadType,
+  ExerciseRecord,
+  GymSessionRecord,
+  GymSetRecord,
+  MuscleGroup,
+} from '../../core/model';
 import { ensureCurrentSnapshot } from '../configService';
-import { exercisesRepository, gymSessionsRepository, gymSetsRepository } from '../repositories';
+import {
+  exercisesRepository,
+  gymSessionsRepository,
+  gymSetsRepository,
+  weightEntriesRepository,
+} from '../repositories';
 import { EditWindowError } from './checkInService';
 
 /**
@@ -51,18 +63,25 @@ export async function listExercises(): Promise<ExerciseRecord[]> {
 export interface NewExerciseInput {
   name: string;
   muscles: MuscleGroup[];
+  /** Defaults to the first listed group, which is the picker's own ordering. */
+  primaryMuscles?: MuscleGroup[];
+  loadType?: ExerciseLoadType;
 }
 
 /** A user's own exercise. Its id is generated once and never changes. */
 export async function createExercise(input: NewExerciseInput): Promise<ExerciseRecord> {
   const stamp = nowIso();
+  const primary =
+    input.primaryMuscles && input.primaryMuscles.length > 0
+      ? input.primaryMuscles.filter((muscle) => input.muscles.includes(muscle))
+      : input.muscles.slice(0, 1);
   const record: ExerciseRecord = {
     id: createId('ex'),
     name: input.name.trim(),
     muscles: input.muscles,
+    primaryMuscles: primary,
     builtIn: false,
-    bodyweightBased: false,
-    addedWeightKg: null,
+    loadType: input.loadType ?? 'external',
     durationSeconds: null,
     attributes: {},
     createdAt: stamp,
@@ -70,6 +89,76 @@ export async function createExercise(input: NewExerciseInput): Promise<ExerciseR
   };
   await exercisesRepository.put(record);
   return record;
+}
+
+/**
+ * Remaps one exercise's muscle groups and roles.
+ *
+ * **Only a custom exercise.** A built-in's mapping belongs to the catalogue
+ * (D93): it ships with the app, it is the same on every device, and letting
+ * one user's edit of "Bench Press" silently diverge from the catalogue would
+ * make the built-in id mean two different things. A user who wants their own
+ * mapping makes their own exercise, which is one tap and keeps both histories
+ * honest.
+ *
+ * The change applies **forward only**, and not by special handling: every set
+ * already recorded carries the mapping it was logged under, so a workout
+ * already done cannot be reinterpreted by this at all (D87).
+ */
+export class BuiltInExerciseError extends Error {
+  constructor(readonly exerciseId: string) {
+    super(`${exerciseId} is a built-in exercise; its mapping is the catalogue's`);
+    this.name = 'BuiltInExerciseError';
+  }
+}
+
+export async function remapExercise(
+  exerciseId: string,
+  muscles: MuscleGroup[],
+  primaryMuscles: MuscleGroup[],
+): Promise<ExerciseRecord | undefined> {
+  const exercise = await exercisesRepository.get(exerciseId);
+  if (!exercise) return undefined;
+  if (exercise.builtIn) throw new BuiltInExerciseError(exerciseId);
+  const next: ExerciseRecord = {
+    ...exercise,
+    muscles,
+    primaryMuscles: primaryMuscles.filter((muscle) => muscles.includes(muscle)),
+    updatedAt: nowIso(),
+  };
+  await exercisesRepository.put(next);
+  return next;
+}
+
+/* ── Bodyweight ─────────────────────────────────────────────────────────── */
+
+/**
+ * Records what the user weighs on a day.
+ *
+ * A bodyweight exercise cannot be scored without this, and the entry is a
+ * dated fact of its own rather than a property of the session: the same
+ * measurement serves every set on that day and every set after it until the
+ * next one. One entry per day — weighing yourself twice on a Tuesday replaces
+ * Tuesday's number rather than creating a second history.
+ */
+export async function recordBodyweight(kg: number, date: DateKey = today()) {
+  const existing = (await weightEntriesRepository.listByDateRange(date, date))[0];
+  const stamp = nowIso();
+  const record = {
+    id: existing?.id ?? createId('wt'),
+    date,
+    kg,
+    createdAt: existing?.createdAt ?? stamp,
+    updatedAt: stamp,
+  };
+  await weightEntriesRepository.put(record);
+  return record;
+}
+
+/** The bodyweight in force on a day, in kilograms, or `null` if none is. */
+export async function bodyweightFor(date: DateKey = today()): Promise<number | null> {
+  const entry = await weightEntriesRepository.latestOnOrBefore(date);
+  return entry?.kg ?? null;
 }
 
 /* ── A session and what it contains ─────────────────────────────────────── */
@@ -105,18 +194,30 @@ export async function loadSession(
 ): Promise<GymSessionView | null> {
   const session = await gymSessionsRepository.get(sessionId);
   if (!session) return null;
-  const [sets, exercises] = await Promise.all([
+  const [sets, exercises, bodyweight] = await Promise.all([
     gymSetsRepository.listBySession(sessionId),
     listExercises(),
+    // The weight in force on the session's own day, never today's: a session
+    // opened in the edit window still reads the body it was performed with.
+    weightEntriesRepository.latestOnOrBefore(session.date),
   ]);
   return {
     session,
-    exercises: groupSets(sets, exercises),
+    exercises: groupSets(sets, exercises, toGrams(bodyweight?.kg ?? null)),
     editable: isSameWeek(session.date, reference),
   };
 }
 
-function groupSets(sets: GymSetRecord[], exercises: ExerciseRecord[]): SessionExercise[] {
+/** Kilograms as whole grams, or `null`. One place, so rounding is one rule. */
+function toGrams(kg: number | null): number | null {
+  return kg === null || !Number.isFinite(kg) || kg <= 0 ? null : Math.round(kg * 1000);
+}
+
+function groupSets(
+  sets: GymSetRecord[],
+  exercises: ExerciseRecord[],
+  bodyweightGrams: number | null,
+): SessionExercise[] {
   const byId = new Map(exercises.map((exercise) => [exercise.id, exercise]));
   const order: string[] = [];
   const grouped = new Map<string, GymSetRecord[]>();
@@ -131,7 +232,7 @@ function groupSets(sets: GymSetRecord[], exercises: ExerciseRecord[]): SessionEx
 
   return order.map((exerciseId) => {
     const list = grouped.get(exerciseId)!;
-    const best = bestScoreOf(list);
+    const best = bestScoreOf(list, bodyweightGrams);
     return {
       exercise:
         byId.get(exerciseId) ??
@@ -141,9 +242,11 @@ function groupSets(sets: GymSetRecord[], exercises: ExerciseRecord[]): SessionEx
           id: exerciseId,
           name: exerciseId,
           muscles: list[0]?.muscles ?? [],
+          ...(list[0]?.primaryMuscles === undefined
+            ? {}
+            : { primaryMuscles: list[0].primaryMuscles }),
           builtIn: false,
-          bodyweightBased: false,
-          addedWeightKg: null,
+          loadType: list[0]?.loadType ?? 'external',
           durationSeconds: null,
           attributes: {},
           createdAt: '',
@@ -155,18 +258,32 @@ function groupSets(sets: GymSetRecord[], exercises: ExerciseRecord[]): SessionEx
   });
 }
 
-const toSetInput = (set: GymSetRecord): SetInput => ({
-  id: set.id,
-  reps: set.reps,
-  weightGrams: set.weightGrams,
-  order: set.order,
-});
+/**
+ * A stored set as the pure pipeline wants it: reps and the **effective load**.
+ *
+ * The load is resolved here rather than in `core/gym/performance.ts` because
+ * resolving it needs the user's dated bodyweight history, which is storage's
+ * business. A set whose load cannot be resolved — a pull-up before the user
+ * ever weighed themselves, an assistance heavier than they are — comes back
+ * `null` and is dropped, exactly as a zero-rep set already is. Dropped is not
+ * scored zero: it describes no work anyone can measure, and this app does not
+ * turn "we cannot tell" into "you failed".
+ */
+const toSetInput = (set: GymSetRecord, bodyweightGrams: number | null): SetInput | null => {
+  const load = effectiveLoadGrams({
+    ...(set.loadType === undefined ? {} : { loadType: set.loadType }),
+    weightGrams: set.weightGrams,
+    bodyweightGrams,
+  });
+  if (load === null) return null;
+  return { id: set.id, reps: set.reps, weightGrams: load, order: set.order };
+};
 
-function bestScoreOf(sets: GymSetRecord[]): number | null {
+function bestScoreOf(sets: GymSetRecord[], bodyweightGrams: number | null): number | null {
   let best: number | null = null;
   for (const set of sets) {
-    const input = toSetInput(set);
-    if (input.reps <= 0 || input.weightGrams <= 0) continue;
+    const input = toSetInput(set, bodyweightGrams);
+    if (!input || input.reps <= 0 || input.weightGrams <= 0) continue;
     const score = input.reps * input.weightGrams;
     if (best === null || score > best) best = score;
   }
@@ -177,6 +294,11 @@ export interface AddSetInput {
   sessionId: string;
   exerciseId: string;
   reps: number;
+  /**
+   * What the user entered: the bar for an external lift, the added weight for
+   * a bodyweight one, the assistance for an assisted one. Which of the three
+   * it is comes from the exercise's load type, and is recorded on the set.
+   */
   weightGrams: number;
 }
 
@@ -209,6 +331,11 @@ export async function addSet(
     reps: Math.max(0, Math.round(input.reps)),
     order: existing.length,
     muscles: exercise?.muscles ?? [],
+    // Roles and load type are copied **now**, for the same reason the groups
+    // are: remapping or reclassifying an exercise later changes what it counts
+    // for from that point forward and cannot reach a workout already done.
+    primaryMuscles: exercise?.primaryMuscles ?? exercise?.muscles.slice(0, 1) ?? [],
+    loadType: exercise?.loadType ?? 'external',
     createdAt: nowIso(),
   };
   await gymSetsRepository.put(record);
@@ -285,6 +412,82 @@ export interface GymHistory {
   overall: GymPerformance;
   /** Names for whatever the screens need to label, by exercise id. */
   names: Map<string, string>;
+  /** Exercises whose sets could not be scored for want of a bodyweight. */
+  awaitingBodyweight: string[];
+}
+
+/**
+ * Every exercise-day in a range, with each set's load already resolved.
+ *
+ * Split out of `loadGymHistory` because the rating replay needs the same
+ * exercise-days over a much longer range than any screen shows, and reading
+ * the sets twice would be the expensive half of the work done twice.
+ */
+async function buildExerciseDays(
+  from: DateKey,
+  to: DateKey,
+  exercises: ExerciseRecord[],
+): Promise<{ days: ExerciseDay[]; awaitingBodyweight: string[] }> {
+  const [sets, weights] = await Promise.all([
+    gymSetsRepository.listByDateRange(from, to),
+    weightEntriesRepository.getAll(),
+  ]);
+
+  /*
+   * Every bodyweight the user has ever recorded, not merely those inside the
+   * range: a set logged in March is loaded with the last measurement on or
+   * before it, and that measurement may well be from February. Filtering to
+   * the range would silently drop the baseline and make the same March
+   * replay differently depending on which window it was asked about.
+   */
+  const points: BodyweightPoint[] = [];
+  for (const entry of weights) {
+    const grams = toGrams(entry.kg);
+    if (grams !== null) points.push({ date: entry.date, grams });
+  }
+
+  const byId = new Map(exercises.map((exercise) => [exercise.id, exercise]));
+  /** One lookup per date rather than per set; the history is walked a lot. */
+  const bodyweightCache = new Map<DateKey, number | null>();
+  const bodyweightFor = (date: DateKey): number | null => {
+    const cached = bodyweightCache.get(date);
+    if (cached !== undefined) return cached;
+    const value = bodyweightOn(points, date);
+    bodyweightCache.set(date, value);
+    return value;
+  };
+
+  const awaiting = new Set<string>();
+  const buckets = new Map<string, ExerciseDayInput>();
+  for (const set of sets) {
+    const key = `${set.date}#${set.exerciseId}`;
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      const exercise = byId.get(set.exerciseId);
+      // The set carries the mapping it was logged under; the catalogue is
+      // consulted only when a legacy row has none of its own.
+      const muscles = set.muscles.length > 0 ? set.muscles : (exercise?.muscles ?? []);
+      const primary = set.primaryMuscles ?? undefined;
+      bucket = {
+        date: set.date,
+        exerciseId: set.exerciseId,
+        muscles,
+        // Absent stays absent. A phase-4 set recorded no roles, and filling
+        // them in from today's catalogue would reinterpret a workout already
+        // done — the one thing D87 exists to prevent.
+        ...(primary === undefined ? {} : { primaryMuscles: primary }),
+        sets: [],
+      };
+      buckets.set(key, bucket);
+    }
+    const input = toSetInput(set, bodyweightFor(set.date));
+    if (input) (bucket.sets as SetInput[]).push(input);
+    else if (set.loadType === 'bodyweight' || set.loadType === 'assisted') {
+      awaiting.add(set.exerciseId);
+    }
+  }
+
+  return { days: exerciseDays([...buckets.values()]), awaitingBodyweight: [...awaiting] };
 }
 
 /**
@@ -295,44 +498,23 @@ export interface GymHistory {
  * edit window simply produces a different answer next time — and an edit is
  * the only thing that can.
  */
-export async function loadGymHistory(
-  from: DateKey,
-  to: DateKey,
-): Promise<GymHistory> {
-  const [sets, exercises] = await Promise.all([
-    gymSetsRepository.listByDateRange(from, to),
-    listExercises(),
-  ]);
-
-  const names = new Map(exercises.map((exercise) => [exercise.id, exercise.name]));
-
-  /** One bucket per exercise per day. */
-  const buckets = new Map<string, ExerciseDayInput>();
-  for (const set of sets) {
-    const key = `${set.date}#${set.exerciseId}`;
-    let bucket = buckets.get(key);
-    if (!bucket) {
-      bucket = {
-        date: set.date,
-        exerciseId: set.exerciseId,
-        // The set carries the mapping it was logged under; the catalogue is
-        // consulted only when a legacy row has none.
-        muscles: set.muscles.length > 0 ? set.muscles : (names.has(set.exerciseId) ? exercises.find((entry) => entry.id === set.exerciseId)!.muscles : []),
-        sets: [],
-      };
-      buckets.set(key, bucket);
-    }
-    (bucket.sets as SetInput[]).push(toSetInput(set));
-  }
-
-  const days = exerciseDays([...buckets.values()]);
+export async function loadGymHistory(from: DateKey, to: DateKey): Promise<GymHistory> {
+  const exercises = await listExercises();
+  const { days, awaitingBodyweight } = await buildExerciseDays(from, to, exercises);
   return {
     days,
     comparisons: latestComparisons(days),
     recent: gymPerformance(days),
     overall: gymPerformanceOverSpan(days),
-    names,
+    names: new Map(exercises.map((exercise) => [exercise.id, exercise.name])),
+    awaitingBodyweight,
   };
+}
+
+/** The exercise-days a rating replay needs, over its own long range. */
+export async function loadExerciseDays(from: DateKey, to: DateKey): Promise<ExerciseDay[]> {
+  const exercises = await listExercises();
+  return (await buildExerciseDays(from, to, exercises)).days;
 }
 
 /** Every recorded day of one exercise, newest first, for its detail screen. */

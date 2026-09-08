@@ -1,4 +1,10 @@
-import { EDIT_WINDOW_DAYS, SCALE_MAX, SCALE_MIN, SCORING_MODEL } from './constants';
+import {
+  EDIT_WINDOW_DAYS,
+  GYM_SCORING_MODEL,
+  SCALE_MAX,
+  SCALE_MIN,
+  SCORING_MODEL,
+} from './constants';
 import type {
   AppConfigSnapshot,
   DomainConfigSnapshot,
@@ -84,6 +90,16 @@ export function buildConfigSnapshot(
        * predates the change and is flat, which is what those days were.
        */
       model: SCORING_MODEL,
+      /*
+       * And the same, one level along, for Gym (D90).
+       *
+       * A snapshot with no `gymModel` was written before Gym performance
+       * reached the rating, and the days it covers are replayed as attendance
+       * against the weekly quota — which is what those days actually were.
+       * Absence marks the era here exactly as it does for `model` above and
+       * for `boss` before it, and it is never backfilled.
+       */
+      gymModel: GYM_SCORING_MODEL,
     },
   };
 }
