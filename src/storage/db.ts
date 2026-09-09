@@ -31,6 +31,8 @@ export const STORES = {
   gymSets: 'gymSets',
   runs: 'runs',
   foodEntries: 'foodEntries',
+  /** One nutrition adherence rating per calendar day, keyed by the date. */
+  foodDays: 'foodDays',
   weightEntries: 'weightEntries',
   restDays: 'restDays',
   pausePeriods: 'pausePeriods',
@@ -271,6 +273,25 @@ export const MIGRATIONS: Migration[] = [
           primaryMuscles: exercise.primaryMuscles ?? muscles.slice(0, 1),
         };
       },
+    },
+  },
+  {
+    version: 5,
+    describe: 'food: one adherence rating per day',
+    up(db) {
+      /*
+       * One new store and nothing else. Purely additive, with no transform:
+       * there is no earlier record anywhere that could be read as an
+       * adherence rating, and inventing one from the food entries a user
+       * happened to log would be fabricating an answer they never gave.
+       *
+       * A device that had Food switched on before this version simply has no
+       * ratings for those days, which is what actually happened — Food
+       * contributed nothing to the Boss then and its absence is the record of
+       * that, not a gap to fill.
+       */
+      const foodDays = db.createObjectStore(STORES.foodDays, { keyPath: 'id' });
+      foodDays.createIndex('by_date', 'date', { unique: false });
     },
   },
 ];

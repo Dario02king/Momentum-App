@@ -25,6 +25,8 @@ import {
   configSnapshotsRepository,
   domainsRepository,
   exercisesRepository,
+  foodDaysRepository,
+  foodEntriesRepository,
   gymSetsRepository,
   questionsRepository,
   runsRepository,
@@ -402,5 +404,83 @@ describe('the gym stores at version 3 and 4', () => {
     expect(progression.current).toBeCloseTo(261.67367135576694, 10);
     expect(progression.rank.id).toBe('contender');
     expect(progression.lifetimeXp).toBe(90);
+  });
+});
+
+
+describe('the food ratings store at version 5', () => {
+  /**
+   * Version 5 adds one store and rewrites nothing.
+   *
+   * The case that matters is a device that had Food switched on before there
+   * was anything to rate with: it must come out with an empty ratings store,
+   * not with ratings guessed from the entries it happens to carry. What a
+   * person ate is not a statement about how the day went, and putting a
+   * number in the history that nobody entered is exactly the failure the
+   * whole "store what happened" rule exists to prevent.
+   */
+  async function seedVersion4WithFoodEntries(): Promise<void> {
+    await seedVersion1(fixture('rc2-export.json').data);
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 4);
+      request.onupgradeneeded = () => {
+        for (const migration of MIGRATIONS) {
+          if (migration.version < 2 || migration.version > 4) continue;
+          migration.up(request.result, request.transaction!);
+        }
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction([STORES.foodEntries], 'readwrite');
+        tx.objectStore(STORES.foodEntries).put({
+          id: 'food_old',
+          date: '2026-09-07',
+          foodId: null,
+          label: 'Znüni',
+          grams: 80,
+          kcal: 310,
+          proteinG: null,
+          carbsG: null,
+          fatG: null,
+          detail: null,
+          sensitivity: 'private',
+          configSnapshotId: 'cfg_1',
+          createdAt: '2026-09-07T10:00:00.000Z',
+          updatedAt: '2026-09-07T10:00:00.000Z',
+        });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      };
+    });
+  }
+
+  beforeEach(async () => {
+    setClock({ now: () => new Date(2026, 8, 7, 21, 0, 0) });
+    await seedVersion4WithFoodEntries();
+  });
+
+  it('opens at the current version with the new store in place', async () => {
+    const db = await openDatabase();
+    expect(db.version).toBe(SCHEMA_VERSION);
+    expect(db.objectStoreNames.contains(STORES.foodDays)).toBe(true);
+    for (const store of ALL_STORES) expect(db.objectStoreNames.contains(store)).toBe(true);
+  });
+
+  it('invents no rating from the entries that were already there', async () => {
+    await openDatabase();
+    expect(await foodDaysRepository.getAll()).toEqual([]);
+    // And the entry itself is untouched.
+    const entry = await foodEntriesRepository.get('food_old');
+    expect(entry?.kcal).toBe(310);
+  });
+
+  it('declares no per-record rewrite, so it cannot collide with another', () => {
+    const migration = MIGRATIONS.find((entry) => entry.version === 5)!;
+    expect(migration.transforms).toBeUndefined();
   });
 });

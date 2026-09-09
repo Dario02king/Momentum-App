@@ -3,13 +3,18 @@ import { today } from '../../core/clock';
 import type { AnswerValue, StoredDomainType } from '../../core/model';
 import { useLoadable, type Loadable } from '../../app/useLoadable';
 import {
+  addFoodEntry,
+  clearAdherence,
   clearAnswer,
   deleteSession,
   loadDay,
   logSession,
+  removeFoodEntry,
+  saveAdherence,
   saveAnswer,
   updateSession,
   type DayView,
+  type FoodEntryInput,
   type SessionInput,
 } from '../../storage/services/checkInService';
 
@@ -55,6 +60,15 @@ export function useDay(date: string = today()) {
     updateSession: (domain: StoredDomainType, id: string, input: SessionInput) =>
       run(() => updateSession(domain, id, input)),
     deleteSession: (domain: StoredDomainType, id: string) => run(() => deleteSession(domain, id)),
+    /*
+     * Food goes through the same write-then-reload path as everything else,
+     * so what is on screen is what is on disk and the edit-window rule is
+     * enforced in one place rather than in the card.
+     */
+    rateFood: (adherence: number) => run(() => saveAdherence(date, adherence)),
+    clearFoodRating: () => run(() => clearAdherence(date)),
+    addFoodEntry: (input: FoodEntryInput) => run(() => addFoodEntry(date, input)),
+    removeFoodEntry: (id: string) => run(() => removeFoodEntry(date, id)),
     reload,
   };
 }

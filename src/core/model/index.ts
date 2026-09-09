@@ -12,7 +12,7 @@ import type { RankId } from '../config/constants';
  *    (`detail`), so version 2 can attach exercises, sets and weights as an
  *    additive write rather than a migration.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /**
  * The domains a user can have active.
@@ -58,8 +58,22 @@ export interface RunningDomainSettings {
   targetPerWeek: number;
 }
 
-/** Food has no weekly quota — adherence is judged daily against a target. */
-export type FoodDomainSettings = Record<string, never>;
+/**
+ * Food has no weekly quota — one adherence rating per calendar day.
+ *
+ * `focus` is the user's own sentence for what they are trying to eat like,
+ * in their words. It is deliberately **not** a calorie or macro target: what
+ * those targets should be is a product decision that is still open, and a
+ * number invented here would be indistinguishable from one that had been
+ * decided. Adherence asks how closely the day matched the intention the user
+ * wrote down, which is answerable without either.
+ *
+ * Absent on a snapshot written before the question was asked, and absent on
+ * one where the user left it blank. Food scores identically either way.
+ */
+export interface FoodDomainSettings {
+  focus?: string;
+}
 
 interface DomainBase {
   id: string;
@@ -619,6 +633,37 @@ export interface FoodEntryRecord {
   configSnapshotId: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * One day's nutrition adherence, on the 1–10 scale the user actually saw.
+ *
+ * **The stored number is the number the user chose.** Not a percentage, not
+ * a distance from a target, not anything derived — so a day recorded today
+ * still reads back as that same 1–10 in a year, whatever the scoring layer
+ * above it has become. Everything else about Food's score is computed from
+ * this on every replay, like every other derived value in the app.
+ *
+ * The id *is* the date: one rating per calendar day, enforced by the key
+ * rather than by a rule somebody has to remember. Re-rating a day inside the
+ * edit window replaces it, which is a correction, not a second reading.
+ */
+export interface FoodDayRecord {
+  id: string;
+  date: DateKey;
+  /** 1–10, exactly as entered. */
+  adherence: number;
+  note: string | null;
+  sensitivity: Sensitivity;
+  /** The configuration in force when this rating was written (§18). */
+  configSnapshotId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One rating per calendar day — the id enforces it. */
+export function foodDayId(date: DateKey): string {
+  return date;
 }
 
 export interface WeightEntryRecord {

@@ -156,6 +156,53 @@ export async function setWeeklyTarget(
   return enableDomain(type, targetPerWeek);
 }
 
+/** The user's own sentence for what they are eating towards, or `null`. */
+export function foodFocusOf(configuration: AppConfiguration): string | null {
+  const domain = configuration.domains.food;
+  if (!domain || !domain.enabled) return null;
+  const settings = domain.settings as { focus?: unknown };
+  return typeof settings.focus === 'string' && settings.focus.trim() !== ''
+    ? settings.focus
+    : null;
+}
+
+/** How long a focus may be. It is a sentence, not a plan document. */
+export const FOOD_FOCUS_MAX_LENGTH = 140;
+
+/**
+ * Sets what the user is aiming at, in their words.
+ *
+ * This is Food's whole setup, and what it is *not* is the point: there is no
+ * calorie target here, no macro split, no basal-rate estimate and no
+ * weight-goal model. What those should be has not been decided, and a number
+ * invented to fill the gap would be indistinguishable afterwards from one
+ * that had been. A sentence the user wrote is theirs, needs no model behind
+ * it, and is enough to make "how closely did today match that?" a question
+ * with an answer.
+ *
+ * It appends a snapshot like every other domain setting, so the intention a
+ * past day was rated against stays readable as what it was on that day.
+ * Clearing it is allowed; Food scores identically with it empty.
+ */
+export async function setFoodFocus(focus: string): Promise<DomainRecord> {
+  const trimmed = focus.trim().slice(0, FOOD_FOCUS_MAX_LENGTH);
+  const existing = await domainsRepository.findByType('food');
+  const domain = existing
+    ? ((await domainsRepository.setEnabled(existing.id, true)) ?? existing)
+    : await domainsRepository.ensure(
+        'food',
+        DOMAIN_DEFINITIONS.food.order,
+        DOMAIN_DEFINITIONS.food.defaultSettings as never,
+      );
+  const updated =
+    (await domainsRepository.updateSettings(
+      domain.id,
+      (trimmed === '' ? {} : { focus: trimmed }) as never,
+    )) ?? domain;
+  await ensureCurrentSnapshot();
+  return updated;
+}
+
 /**
  * The relative parts the user has set for each domain, and the shares they
  * work out to.

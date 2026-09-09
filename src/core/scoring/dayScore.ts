@@ -1,3 +1,4 @@
+import { adherencePercent } from '../food/adherence';
 import type { DateKey, DayEditState } from '../dates';
 import type { QuestionCategory, QuestionType, ScoringModel, StoredDomainType } from '../model';
 import { scaleValueToPercent } from './scale';
@@ -59,6 +60,18 @@ export interface WeeklyDayInput {
   weekInProgress: boolean;
 }
 
+/**
+ * Food for one day: the 1–10 adherence the user recorded, or nothing.
+ *
+ * One item, due every day the domain is enabled — the same daily obligation
+ * Wellbeing has, with one question instead of several. There is no target in
+ * here and no calorie arithmetic; see `core/food/adherence.ts`.
+ */
+export interface FoodDayInput {
+  /** Exactly what the user entered, or `null` if they have not yet. */
+  adherence: number | null;
+}
+
 export interface DayInput {
   date: DateKey;
   editState: DayEditState;
@@ -66,6 +79,8 @@ export interface DayInput {
   mental: MentalDayInput | null;
   /** Every weekly-quota domain enabled on this day. Empty when none are. */
   weekly: WeeklyDayInput[];
+  /** `null` when Food is disabled or was never enabled. */
+  food: FoodDayInput | null;
 }
 
 export interface DomainScore {
@@ -239,6 +254,28 @@ function scoreWeekly(input: WeeklyDayInput): number | null {
   return Math.min(100, (input.sessionsInWeek / target) * 100);
 }
 
+/**
+ * Food for one day, under the same two-numbers rule as everything else.
+ *
+ * - **`score`** is for history, so on a closed day an unrecorded rating is a
+ *   miss and scores zero — the day was asked for and nothing came back.
+ * - **`recorded`** is for the rating, so an unrecorded day is *no data* and
+ *   leaves the denominator entirely. Anything else would make honestly
+ *   admitting a bad day cost more than saying nothing.
+ *
+ * This is the existing rule applied unchanged, not a Food-specific one.
+ */
+function scoreFood(
+  input: FoodDayInput,
+  countUnrecordedAsMissed: boolean,
+): { score: number | null; recorded: number | null; answered: number } {
+  if (input.adherence === null) {
+    return { score: countUnrecordedAsMissed ? 0 : null, recorded: null, answered: 0 };
+  }
+  const percent = adherencePercent(input.adherence);
+  return { score: percent, recorded: percent, answered: 1 };
+}
+
 export function scoreDay(input: DayInput): DayScore {
   const closed = input.editState === 'closed';
   const domains: DomainScore[] = [];
@@ -277,12 +314,36 @@ export function scoreDay(input: DayInput): DayScore {
     });
   }
 
+  /*
+   * Food is a daily obligation, so an unrecorded day inside the edit window
+   * leaves the day open exactly as an unanswered question does.
+   *
+   * It deliberately does *not* add to the day-level `dueItems` and
+   * `answeredItems`. Those weight the legacy fold by how much of the
+   * *check-in* was reported, which is a Wellbeing quantity; Gym and Running
+   * do not contribute to them either, for the same reason.
+   */
+  let foodDue = false;
+  let foodIncomplete = false;
+  if (input.food) {
+    foodDue = true;
+    const result = scoreFood(input.food, closed);
+    foodIncomplete = result.answered === 0;
+    recordedDomains.push(result.recorded);
+    domains.push({
+      domain: 'food',
+      score: result.score,
+      itemsDue: 1,
+      itemsAnswered: result.answered,
+    });
+  }
+
   const recordedScored = recordedDomains.filter((value): value is number => value !== null);
   const recordedScore = recordedScored.length
     ? recordedScored.reduce((sum, value) => sum + value, 0) / recordedScored.length
     : null;
 
-  const nothingDue = !mentalHasDue && input.weekly.length === 0;
+  const nothingDue = !mentalHasDue && input.weekly.length === 0 && !foodDue;
   if (nothingDue) {
     return {
       date: input.date,
@@ -298,7 +359,7 @@ export function scoreDay(input: DayInput): DayScore {
 
   // Still inside the edit window with work outstanding: the day is open, and
   // an open day is never counted against the user.
-  if (!closed && mentalIncomplete) {
+  if (!closed && (mentalIncomplete || foodIncomplete)) {
     return {
       date: input.date,
       status: 'open',
@@ -320,8 +381,8 @@ export function scoreDay(input: DayInput): DayScore {
   if (scored.length === 0) {
     return {
       date: input.date,
-      status: closed && mentalHasDue ? 'scored' : 'neutral',
-      score: closed && mentalHasDue ? 0 : null,
+      status: closed && (mentalHasDue || foodDue) ? 'scored' : 'neutral',
+      score: closed && (mentalHasDue || foodDue) ? 0 : null,
       recordedScore,
       domains,
       dueItems,

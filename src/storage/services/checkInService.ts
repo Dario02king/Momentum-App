@@ -1,4 +1,4 @@
-import { today } from '../../core/clock';
+import { nowIso, today } from '../../core/clock';
 import { EDIT_WINDOW_DAYS } from '../../core/config/constants';
 import {
   dayEditState,
@@ -9,10 +9,13 @@ import {
   type WeekKey,
 } from '../../core/dates';
 import { WEEKLY_DOMAIN_TYPES, weeklyTargetOf } from '../../core/domains';
+import { isValidAdherence } from '../../core/food';
+import { createId } from '../../core/ids';
 import { isValidScaleValue } from '../../core/scoring/scale';
 import type {
   AnswerRecord,
   AnswerValue,
+  FoodEntryRecord,
   QuestionRecord,
   StoredDomainType,
 } from '../../core/model';
@@ -21,6 +24,8 @@ import { ensureCurrentSnapshot } from '../configService';
 import {
   answersRepository,
   domainsRepository,
+  foodDaysRepository,
+  foodEntriesRepository,
   gymSessionsRepository,
   questionsRepository,
   runsRepository,
@@ -111,6 +116,32 @@ export interface TrainingDayView {
   sessionsToday: TrainingSession[];
 }
 
+/** What a day's food entries add up to. Shown, never scored. */
+export interface FoodTotals {
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
+export interface FoodDayView {
+  /** The 1–10 the user chose, or `null` if they have not rated the day. */
+  adherence: number | null;
+  note: string | null;
+  /** What the user is aiming at, in their words. Empty is allowed. */
+  focus: string | null;
+  /** Everything logged on this day, oldest first. */
+  entries: FoodEntryRecord[];
+  /**
+   * The day's totals.
+   *
+   * Informational, and that is a rule rather than a phase-6 shortcut: what a
+   * person's calorie and macro targets should be has not been decided, so
+   * nothing here reaches the score. Food is ranked on `adherence`.
+   */
+  totals: FoodTotals;
+}
+
 export interface DayView {
   date: DateKey;
   editState: DayEditState;
@@ -119,6 +150,8 @@ export interface DayView {
   mental: MentalDayView | null;
   /** One entry per enabled weekly-quota domain, in display order. */
   training: TrainingDayView[];
+  /** `null` when Food is disabled or was never enabled. */
+  food: FoodDayView | null;
   /** True when nothing is set up — the day has nothing to ask. */
   empty: boolean;
 }
@@ -218,6 +251,23 @@ export async function loadDay(date: DateKey = today(), reference: DateKey = toda
     });
   }
 
+  const foodDomain = domains.find((entry) => entry.type === 'food');
+  let food: FoodDayView | null = null;
+  if (foodDomain?.enabled) {
+    const [rating, entries] = await Promise.all([
+      foodDaysRepository.get(date),
+      foodEntriesRepository.listByDate(date),
+    ]);
+    const ordered = [...entries].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    food = {
+      adherence: rating?.adherence ?? null,
+      note: rating?.note ?? null,
+      focus: focusOf(foodDomain) ?? null,
+      entries: ordered,
+      totals: foodTotals(ordered),
+    };
+  }
+
   const editState = dayEditState(date, reference, EDIT_WINDOW_DAYS);
   return {
     date,
@@ -225,7 +275,27 @@ export async function loadDay(date: DateKey = today(), reference: DateKey = toda
     editable: editState === 'open',
     mental,
     training,
-    empty: mental === null && training.length === 0,
+    food,
+    empty: mental === null && training.length === 0 && food === null,
+  };
+}
+
+/** The user's own sentence for what they are eating towards, if they wrote one. */
+function focusOf(domain: { settings: unknown }): string | null {
+  const settings = domain.settings as { focus?: unknown };
+  return typeof settings.focus === 'string' && settings.focus.trim() !== ''
+    ? settings.focus
+    : null;
+}
+
+function foodTotals(entries: readonly FoodEntryRecord[]): FoodTotals {
+  const sum = (pick: (entry: FoodEntryRecord) => number | null): number =>
+    Math.round(entries.reduce((total, entry) => total + (pick(entry) ?? 0), 0));
+  return {
+    kcal: sum((entry) => entry.kcal),
+    proteinG: sum((entry) => entry.proteinG),
+    carbsG: sum((entry) => entry.carbsG),
+    fatG: sum((entry) => entry.fatG),
   };
 }
 
@@ -457,4 +527,109 @@ export async function deleteSession(
   if (!session) return;
   assertSessionWeekEditable(session.date, reference);
   await sportsSessionsRepository.remove(id);
+}
+
+/* ── Food ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Writes the day's adherence rating.
+ *
+ * Under exactly the same edit-window rule as a Wellbeing answer, because it
+ * is the same kind of act: a judgement about a calendar day, correctable
+ * while the day is still open and fixed once it closes. It is not a diary
+ * entry, so it does not get the session rule.
+ *
+ * The number written is the number the user chose. Nothing here converts it
+ * to a percentage, compares it to a target or looks at what was eaten.
+ */
+export async function saveAdherence(
+  date: DateKey,
+  adherence: number,
+  note: string | null = null,
+  reference: DateKey = today(),
+): Promise<void> {
+  assertEditable(date, reference);
+  if (!isValidAdherence(adherence)) {
+    throw new InvalidAnswerError('Adherence is a whole number from 1 to 10');
+  }
+  const snapshot = await ensureCurrentSnapshot();
+  await foodDaysRepository.save({
+    date,
+    adherence,
+    note,
+    configSnapshotId: snapshot.id,
+  });
+}
+
+/** Clearing a rating returns the day to "not rated", never to a bad day. */
+export async function clearAdherence(
+  date: DateKey,
+  reference: DateKey = today(),
+): Promise<void> {
+  assertEditable(date, reference);
+  await foodDaysRepository.clear(date);
+}
+
+export interface FoodEntryInput {
+  /** The demo food this came from, or `null` for something typed by hand. */
+  foodId: string | null;
+  label: string;
+  grams: number | null;
+  kcal: number;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+}
+
+/**
+ * Logs one thing eaten.
+ *
+ * The figures are copied onto the entry rather than referenced, so an entry
+ * keeps saying what it said even if the catalogue behind it changes — the
+ * same reason a gym set records the muscle groups it was logged under.
+ */
+export async function addFoodEntry(
+  date: DateKey,
+  input: FoodEntryInput,
+  reference: DateKey = today(),
+): Promise<FoodEntryRecord> {
+  assertEditable(date, reference);
+  const label = input.label.trim();
+  if (label === '') throw new InvalidAnswerError('A food entry needs a name');
+  if (!Number.isFinite(input.kcal) || input.kcal < 0) {
+    throw new InvalidAnswerError('A food entry needs a non-negative energy value');
+  }
+  const snapshot = await ensureCurrentSnapshot();
+  const stamp = nowIso();
+  const record: FoodEntryRecord = {
+    id: createId('food'),
+    date,
+    foodId: input.foodId,
+    label,
+    grams: input.grams,
+    kcal: Math.round(input.kcal),
+    proteinG: input.proteinG,
+    carbsG: input.carbsG,
+    fatG: input.fatG,
+    detail: null,
+    // Food defaults to private, like Wellbeing (D47). Nothing reads it yet.
+    sensitivity: 'private',
+    configSnapshotId: snapshot.id,
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+  await foodEntriesRepository.put(record);
+  return record;
+}
+
+export async function removeFoodEntry(
+  date: DateKey,
+  id: string,
+  reference: DateKey = today(),
+): Promise<void> {
+  assertEditable(date, reference);
+  const existing = await foodEntriesRepository.get(id);
+  // A stale screen could ask to delete something from a day it is not on.
+  if (!existing || existing.date !== date) return;
+  await foodEntriesRepository.remove(id);
 }

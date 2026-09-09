@@ -1781,3 +1781,105 @@ by identical code.
 
 No generic framework was built for domains that do not exist yet. Food has no
 scoring engine and gains nothing here.
+
+## D106 — Food is ranked on the adherence the user entered, not on what they ate
+
+Phase 6 had to give Food a rank while the nutrition-target decision (Gate 2)
+stayed open. Those two facts are usually taken to be in tension, and they are
+not: what a person's calorie and macro targets ought to be is undecided, but
+whether their day went the way they intended is something only they can say
+and something they can say without any model at all.
+
+So Food's evidence is **one number per day, chosen by the user, on the 1–10
+scale the rest of the app already uses**. That number is stored verbatim
+(`FoodDayRecord.adherence`); the percentage, the day score, the rating and the
+rank are derived from it on every replay, like everything else.
+
+Two consequences worth stating.
+
+**No target was invented.** There is no calorie figure, no macro split, no
+basal-rate estimate and no weight-goal model anywhere in the scoring path — a
+number chosen here to make the arithmetic work would be indistinguishable
+afterwards from one that had actually been decided, and Gate 2 would be closed
+by accident. `core/food/adherence.ts` says so where the code is.
+
+**Entries are shown and never scored.** The app records what was eaten and
+totals it, because a log is useful in itself, but nothing about kcal or macros
+reaches the score. The Food card says this in words rather than leaving the
+juxtaposition to imply the opposite.
+
+Reusing the 1–10 scale is not a shortcut. A user who has learned what "7"
+means from a Wellbeing question has learned what it means here; the bands, the
+colours and the words are the same, and a second scale with its own arithmetic
+would be a second thing to learn and a second thing to get wrong.
+
+## D107 — Food is scored by the rules that already existed, and gets no rules of its own
+
+Food is a daily domain with one due item, so it is scored by the day-score
+rules unchanged:
+
+- A rated day scores `adherence × 10`, the same mapping a scale answer uses.
+- An unrated day inside the edit window leaves the day **open** — it costs
+  nothing and can still be answered, exactly as an unanswered Wellbeing
+  question does.
+- An unrated day that has closed is a **miss for history** (score 0) and
+  **no data for the rating** (`recorded` is null). That is the existing
+  two-numbers rule (D35), not a Food variant of it.
+- A day before Food was switched on has no food entry at all. Absence is not
+  failure, and enabling Food in June cannot fill the spring with misses.
+
+Its rating is then the shared fold over day states — the same one Wellbeing
+has had since RC2 — and its ledger, ladder position, rank and Boss
+contribution are the ordinary ones. **Food is not a training domain**: it has
+no attendance, no 40/60 target, no performance curve, no Endurance Phase and
+no abstinence decay. Those belong to Gym and Running because those domains
+have sessions and comparable observations; Food has neither.
+
+This is deliberately not a decision *about* Food decay. **D72 remains open**
+and `DECAY_MODEL_APPROVED` is still `false`. Giving Food a decay rule
+inferred from Gym or Running would close a gate nobody opened, and the shape
+of the two mechanisms is not even the same — a training domain decays after
+seven days with no session, and Food has no sessions to be without.
+
+**Food does not add to the day-level `dueItems`/`answeredItems`.** Those
+weight the legacy fold by how much of the *check-in* was reported and drive
+the Wellbeing check-in streak; Gym and Running do not contribute to them
+either. The consequence, stated plainly rather than papered over: a rated
+Food day earns XP in Food's own ledger but does not move the single lifetime
+XP figure the Boss shows. What a rated day should be worth against a gym
+session is a product decision, and Phase 6 did not make it.
+
+## D108 — Food's setup is a sentence, because that is all adherence needs
+
+"How closely did today match what you set out to do?" needs the user to have
+set out to do something. It does not need a computed target.
+
+So Food's whole setup is one optional free-text line — `focus` in
+`FoodDomainSettings`, carried in the config snapshot like every other domain
+setting, so the intention a past day was rated against stays readable as what
+it was on that day. Food scores identically with it empty.
+
+This is the smallest thing that makes the daily question answerable, and it is
+the only thing that could be built without pre-empting Gate 2. A profile form
+(age, sex, height, activity, goal weight) would have been building the *input*
+to the undecided model, which is the same commitment in a different order.
+
+## D109 — Version 5 adds a store and invents nothing
+
+The `foodDays` store is created empty and declares no per-record transform.
+A device that had Food switched on before there was anything to rate with
+comes out with no ratings for those days — which is what actually happened.
+Food contributed nothing to the Boss then, and that absence is the record of
+it.
+
+The tempting alternative was to derive a rating for those days from the food
+entries already stored. That would put a number in someone's history that they
+never entered, which is the exact failure "store what happened" exists to
+prevent, and it would be indistinguishable afterwards from a rating they had
+given.
+
+`BACKUP_FORMAT_VERSION` moves 2 → 3 for the same reason it moved 1 → 2: a new
+collection in the envelope. The ratings are the one piece of Food data that
+cannot be recomputed from anything else, so a backup without them would lose
+history outright. Older files still import — every collection a later version
+introduced reads as empty when absent.

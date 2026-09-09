@@ -23,11 +23,13 @@ import {
   scoreDay,
   type DayScore,
   type DueQuestion,
+  type FoodDayInput,
   type WeeklyDayInput,
 } from '../../core/scoring/dayScore';
 import {
   answersRepository,
   configSnapshotsRepository,
+  foodDaysRepository,
   gymSessionsRepository,
   questionsRepository,
   runsRepository,
@@ -90,6 +92,7 @@ export interface History {
   sports: (number | null)[];
   gym: (number | null)[];
   running: (number | null)[];
+  food: (number | null)[];
   /** Every question that was due at some point in the range. */
   questions: HistoryQuestionRow[];
   /** Whether anything at all was recorded on each day, aligned with `days`.
@@ -137,6 +140,18 @@ function mentalDueOn(config: AppConfigSnapshot): DueQuestion[] {
 }
 
 /**
+ * Whether Food was switched on for a day, from that day's own snapshot.
+ *
+ * A day before the user enabled Food has no food obligation at all — not an
+ * unrated one. That is what keeps switching Food on in June from filling the
+ * spring with misses it was never asked about.
+ */
+function foodEnabledIn(config: AppConfigSnapshot): boolean {
+  const domain = config.domains.find((entry) => entry.type === 'food');
+  return Boolean(domain?.enabled);
+}
+
+/**
  * Which arithmetic a day was lived under.
  *
  * Read from the day's own snapshot and never from today's configuration —
@@ -163,6 +178,7 @@ export async function loadHistory(
       sports: [],
       gym: [],
       running: [],
+      food: [],
       questions: [],
       activity: [],
       weeks: [],
@@ -172,14 +188,20 @@ export async function loadHistory(
 
   // Sessions are counted by week, and the range's edge days belong to weeks
   // that reach beyond it — so the query has to cover those whole weeks.
-  const [snapshots, answers, sessions, gymSessions, runs, liveQuestions] = await Promise.all([
-    configSnapshotsRepository.list(),
-    answersRepository.listByDateRange(from, to),
-    sportsSessionsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
-    gymSessionsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
-    runsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
-    questionsRepository.list(),
-  ]);
+  const [snapshots, answers, sessions, gymSessions, runs, foodDays, liveQuestions] =
+    await Promise.all([
+      configSnapshotsRepository.list(),
+      answersRepository.listByDateRange(from, to),
+      sportsSessionsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
+      gymSessionsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
+      runsRepository.listByDateRange(startOfWeek(from), endOfWeek(to)),
+      // Adherence is a daily rating, so unlike a session it needs no week
+      // either side of the range.
+      foodDaysRepository.listByDateRange(from, to),
+      questionsRepository.list(),
+    ]);
+
+  const adherenceByDate = new Map(foodDays.map((day) => [day.date, day.adherence]));
 
   // Snapshots store questions sorted by id, which is meaningless to a reader.
   // The drill-down follows the order the questions appear in Areas.
@@ -247,6 +269,11 @@ export async function loadHistory(
         }))
       : [];
 
+    const food: FoodDayInput | null =
+      config && foodEnabledIn(config)
+        ? { adherence: adherenceByDate.get(date) ?? null }
+        : null;
+
     return scoreDay({
       date,
       editState: dayEditState(date, reference),
@@ -258,6 +285,7 @@ export async function loadHistory(
           }
         : null,
       weekly,
+      food,
     });
   });
 
@@ -339,7 +367,10 @@ export async function loadHistory(
     ...runs.map((run) => run.date),
   ]);
   const activity = dates.map(
-    (date) => (answersByDate.get(date)?.size ?? 0) > 0 || sessionDates.has(date),
+    (date) =>
+      (answersByDate.get(date)?.size ?? 0) > 0 ||
+      sessionDates.has(date) ||
+      adherenceByDate.has(date),
   );
 
   const overall = days.map((day) => day.score);
@@ -352,6 +383,7 @@ export async function loadHistory(
     sports: domainSeries('sports'),
     gym: domainSeries('gym'),
     running: domainSeries('running'),
+    food: domainSeries('food'),
     questions,
     activity,
     weeks,

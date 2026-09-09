@@ -36,6 +36,8 @@ scripts rather than running `npx playwright install`.
 | `phase41-a11y.mjs` | Every bar named and its number printed beside it, the Endurance Phase announced as attendance rather than performance, section order (rating → year-to-date → attendance), focus order, reduced motion |
 | `phase5.mjs` | Running: one-tap logging with no distance, the optional distance field and derived pace, the rating headline, the Endurance Phase, a mature unlocked state, distance ranges labelled in kilometres, the break state, no grid mechanics in the copy, four widths |
 | `phase5-a11y.mjs` | Every Running bar named and its number printed beside it, the distance field's accessible name, distance ranges spoken as kilometres rather than band indices, section order, reduced motion |
+| `phase6.mjs` | Food: the ratings store exists and starts empty, rating and re-rating and clearing a day, the stored value being the 1–10 the user chose, the log and its totals, that logging food does **not** rate the day, the setup sentence, that no calorie target is asked for anywhere, four widths including the logging sheet |
+| `phase6-a11y.mjs` | The rating as one named radio group scoped to the Food card, each value spoken with its band, one tab stop with arrow-key movement, the chosen value in a live region, the sheet's field names, the remove control naming its entry, reduced motion |
 
 Two things worth knowing before writing another suite, both of which produced
 false failures here first:
@@ -47,6 +49,17 @@ false failures here first:
   the standard idiom — it keeps `transitionend` firing — so a check for
   `> 0` counts every transition in the app. Assert that no keyframe animation
   runs and that no duration is long enough to perceive.
+
+Two more, found in phase 6:
+
+- **A page-wide selector for a shared control counts every instance of it.**
+  Food's rating uses the same `ScaleAnswer` Wellbeing renders per scale
+  question, so "ten radios, one tab stop" was really thirty and three. Scope
+  to the card under test (`.food__scale`), not to the document.
+- **A button name can be a prefix of another.** `getByRole('button', { name:
+  'Eintragen' })` also matches "Essen eintragen", and `'Heute'` matches a
+  question containing the word. Use `exact: true`, or address the tab bar by
+  `.tab-bar__tab`.
 
 ## Conventions
 

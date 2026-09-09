@@ -14,6 +14,6 @@ export {
   gymSetsRepository,
 } from './gym';
 export { runsRepository } from './running';
-export { foodEntriesRepository, weightEntriesRepository } from './food';
+export { foodDaysRepository, foodEntriesRepository, weightEntriesRepository } from './food';
 export { restDaysRepository, pausePeriodsRepository, tombstonesRepository } from './journal';
 export type { Repository } from './base';

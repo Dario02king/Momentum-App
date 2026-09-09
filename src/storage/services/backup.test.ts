@@ -14,7 +14,7 @@ import {
   setWeeklyTarget,
   weeklyTargetOfDomain,
 } from './configurationService';
-import { logSession, saveAnswer } from './checkInService';
+import { addFoodEntry, logSession, saveAdherence, saveAnswer } from './checkInService';
 import { loadHistory } from './historyService';
 import { loadProgression } from './ratingService';
 import { exportBackup, exportBackupFile, importBackup, inspectBackup } from './backupService';
@@ -95,6 +95,7 @@ describe('the exported file', () => {
       'configSnapshots',
       'domains',
       'exercises',
+      'foodDays',
       'foodEntries',
       'gymPlans',
       'gymSessions',
@@ -187,6 +188,40 @@ describe('round trips', () => {
     expect(configuration.questions.some((question) => question.status === 'archived')).toBe(true);
     expect(weeklyTargetOfDomain(configuration.domains.gym))
       .toBe(5);
+  });
+
+  it('restores a profile with Food ratings and entries', async () => {
+    await applyOnboarding({ questions: [], food: true });
+    for (let index = 0; index < 12; index += 1) {
+      const date = addDays(ORIGIN, index);
+      freezeAt(date);
+      await saveAdherence(date, ((index % 10) + 1), null, date);
+      if (index % 4 === 0) {
+        await addFoodEntry(
+          date,
+          {
+            foodId: 'food_oats',
+            label: 'Haferflocken',
+            grams: 60,
+            kcal: 223,
+            proteinG: 8,
+            carbsG: 35,
+            fatG: 4,
+          },
+          date,
+        );
+      }
+    }
+
+    const before = await loadHistory(ORIGIN, addDays(ORIGIN, 11), addDays(ORIGIN, 20));
+    const { before: file, after } = await roundTrip();
+    expect(JSON.parse(after).data).toEqual(JSON.parse(file).data);
+
+    // The ratings are the one piece of Food data that cannot be recomputed
+    // from anything else, so losing them would be losing history outright.
+    const restored = await loadHistory(ORIGIN, addDays(ORIGIN, 11), addDays(ORIGIN, 20));
+    expect(restored.food).toEqual(before.food);
+    expect(restored.food.filter((value) => value !== null)).toHaveLength(12);
   });
 
   it('exporting twice around an import gives the same file', async () => {

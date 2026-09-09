@@ -14,6 +14,7 @@ import {
   loadConfiguration,
   pauseQuestion,
   resumeQuestion,
+  setFoodFocus,
   setBossWeights,
   setWeeklyTarget,
   updateQuestion,
@@ -127,6 +128,7 @@ export function useMomentum() {
     pauseQuestion: (id) => run(() => pauseQuestion(id)),
     resumeQuestion: (id) => run(() => resumeQuestion(id)),
     archiveQuestion: (id) => run(() => archiveQuestion(id)),
+    setFoodFocus: (focus: string) => run(() => setFoodFocus(focus)),
     reload: () => void refresh(),
     setLanguage,
   };

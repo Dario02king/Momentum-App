@@ -8,6 +8,7 @@ import { formatDayAndMonth, formatTime, formatWeekday } from '../../i18n/format'
 import { useI18n, useT } from '../../i18n/I18nProvider';
 import type { TrainingSession } from '../../storage/services/checkInService';
 import type { TranslationKey } from '../../i18n';
+import { FoodCard } from '../food/FoodCard';
 import { GymSessionScreen } from '../gym/GymSessionScreen';
 import { openSessionForDay } from '../../storage/services/gymService';
 import { BossSummary } from './BossSummary';
@@ -42,7 +43,18 @@ export function TodayScreen({
   const t = useT();
   const { language } = useI18n();
   const date = currentDay();
-  const { state, answer, logSession, updateSession, deleteSession, reload } = useDay(date);
+  const {
+    state,
+    answer,
+    logSession,
+    updateSession,
+    deleteSession,
+    rateFood,
+    clearFoodRating,
+    addFoodEntry,
+    removeFoodEntry,
+    reload,
+  } = useDay(date);
   const [editingSession, setEditingSession] = useState<TrainingSession | null>(null);
   /*
    * A gym session is not a diary line with a note on it — it holds exercises
@@ -259,6 +271,22 @@ export function TodayScreen({
             </Section>
           );
         })}
+
+        {/*
+          Food comes after training, which is its display order — and it is
+          one card rather than a row in the training list, because it is not
+          a weekly quota. Nothing here fabricates a session.
+        */}
+        {day.food ? (
+          <FoodCard
+            food={day.food}
+            editable={day.editable}
+            onRate={rateFood}
+            onClearRating={clearFoodRating}
+            onAddEntry={addFoodEntry}
+            onRemoveEntry={removeFoodEntry}
+          />
+        ) : null}
       </div>
 
       <SessionSheet

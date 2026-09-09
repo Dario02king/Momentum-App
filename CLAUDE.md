@@ -111,6 +111,16 @@ Never conflate them.
 - Wellbeing questions are asked **daily**. There is no rhythm engine, no
   per-question schedule, and there never will be.
 - Gym and Running are independent weekly quotas, never a combined one.
+- **Food is ranked on the 1–10 adherence the user entered, never on calories
+  or macros.** Entries are logged and totalled because a log is useful; none
+  of it reaches the score. What a person's targets should be is a product
+  decision that has not been made, and no number anywhere in the scoring path
+  may stand in for it.
+- Food is **not a training domain**. It has no attendance, no 40/60 target, no
+  performance curve, no Endurance Phase and no abstinence decay — it is scored
+  by the shared daily fold, exactly as Wellbeing is. Do not infer a Food decay
+  rule from Gym or Running: they decay after seven days without a *session*,
+  and Food has no sessions.
 - A training domain's rating is **40 % attendance and 60 % personal
   development** — Gym and Running both. Extra sessions beyond the weekly
   target buy no more attendance; a rate of change reaches the level through
@@ -176,7 +186,8 @@ in version order and applies the chain in one pass.
 
 ## What this app does not do
 
-No exercise database, no food API, no barcode scanner, no meal planning, no
+No exercise database, no calorie or macro targets, no food API, no barcode
+scanner, no meal planning, no
 shopping list, no Strava OAuth, no backend, no login, no social feed, no
 avatar editor, no muscle-group ranks, no automatic plan changes without the
 user's approval.
@@ -189,6 +200,7 @@ Do not introduce a backend because it would simplify something.
 |---|---|
 | domain rank | how am I progressing, against my own history |
 | Tombstone | have I hit this absolute benchmark |
+| a food entry | what did I eat — shown, totalled, and never scored |
 
 Conflating them would ruin both, so the boundary is an API boundary as much as
 a conceptual one: nothing in `core/gym/rating.ts` reads a benchmark table, and

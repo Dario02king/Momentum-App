@@ -5,6 +5,7 @@ import {
   type ConfigSnapshotRecord,
   type DomainRecord,
   type ExerciseRecord,
+  type FoodDayRecord,
   type FoodEntryRecord,
   type GymPlanRecord,
   type GymSessionRecord,
@@ -45,16 +46,21 @@ export const BACKUP_FORMAT = 'momentum-backup';
  * shape changes, the schema when a record's shape does. Keeping both means a
  * future reader can tell which of the two it does not understand.
  */
-export const BACKUP_FORMAT_VERSION = 2;
+export const BACKUP_FORMAT_VERSION = 3;
 
 /**
- * Version 2 adds collections; it removes and renames nothing.
+ * Versions 2 and 3 add collections; they remove and rename nothing.
  *
- * That is what makes a version 1 backup still import: the reader refuses only
- * a file *newer* than it understands (`formatVersion > BACKUP_FORMAT_VERSION`),
- * and every collection version 2 introduced is read as empty when absent. A
- * user restoring a file exported before the upgrade gets their whole profile
- * back, with the new areas simply not started yet.
+ * That is what makes an older backup still import: the reader refuses only a
+ * file *newer* than it understands (`formatVersion > BACKUP_FORMAT_VERSION`),
+ * and every collection a later version introduced is read as empty when
+ * absent. A user restoring a file exported before the upgrade gets their
+ * whole profile back, with the new areas simply not started yet.
+ *
+ * Version 3 adds one collection, `foodDays` — the daily adherence ratings.
+ * They are stored rather than derived precisely because they are what the
+ * user said, so leaving them out of a backup would lose the only Food data
+ * that cannot be reconstructed from anything else.
  */
 
 export interface BackupData {
@@ -78,6 +84,8 @@ export interface BackupData {
   restDays: RestDayRecord[];
   pausePeriods: PausePeriodRecord[];
   tombstones: TombstoneUnlockRecord[];
+  /* ── Added in format version 3. Absent in an older file. ────────────── */
+  foodDays: FoodDayRecord[];
 }
 
 export interface BackupFile {
@@ -181,6 +189,22 @@ function validateFoodEntry(item: Record<string, unknown>): string | null {
   return null;
 }
 
+function validateFoodDay(item: Record<string, unknown>): string | null {
+  if (!isValidDateKey(item.date)) return 'has no valid date';
+  // The stored value is the 1–10 the user chose. A file carrying anything
+  // else is not a rating this app ever wrote, and guessing at it would put a
+  // number in the history that nobody entered.
+  if (
+    typeof item.adherence !== 'number' ||
+    !Number.isInteger(item.adherence) ||
+    item.adherence < 1 ||
+    item.adherence > 10
+  ) {
+    return 'has no adherence rating from 1 to 10';
+  }
+  return null;
+}
+
 function validateWeightEntry(item: Record<string, unknown>): string | null {
   if (!isValidDateKey(item.date)) return 'has no valid date';
   if (typeof item.kg !== 'number' || !Number.isFinite(item.kg)) return 'has no weight';
@@ -253,6 +277,7 @@ function summarise(data: BackupData, exportedAt: string): BackupSummary {
     ...data.gymSessions.map((session) => session.date),
     ...data.runs.map((run) => run.date),
     ...data.foodEntries.map((entry) => entry.date),
+    ...data.foodDays.map((day) => day.date),
   ].sort();
   return {
     exportedAt,
@@ -341,6 +366,7 @@ export function validateBackup(input: unknown): ValidationResult {
     validateWeightEntry,
     problems,
   );
+  const foodDays = checkArray(data.foodDays ?? [], 'foodDays', validateFoodDay, problems);
   const restDays = checkArray(data.restDays ?? [], 'restDays', validateDated, problems);
   const pausePeriods = checkArray(data.pausePeriods ?? [], 'pausePeriods', validatePause, problems);
   const tombstones = checkArray(data.tombstones ?? [], 'tombstones', () => null, problems);
@@ -389,6 +415,7 @@ export function validateBackup(input: unknown): ValidationResult {
       gymSets: gymSets as GymSetRecord[],
       runs: runs as RunRecord[],
       foodEntries: foodEntries as FoodEntryRecord[],
+      foodDays: foodDays as FoodDayRecord[],
       weightEntries: weightEntries as WeightEntryRecord[],
       restDays: restDays as RestDayRecord[],
       pausePeriods: pausePeriods as PausePeriodRecord[],

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { DOMAIN_TYPES } from '../../core/domains';
 import type {
   DomainRecord,
@@ -27,10 +27,67 @@ import { BackupSection } from '../backup/BackupSection';
 import { useI18n, useT } from '../../i18n/I18nProvider';
 import { LANGUAGES, type TranslationKey } from '../../i18n';
 import {
+  foodFocusOf,
   weeklyTargetOfDomain,
+  FOOD_FOCUS_MAX_LENGTH,
   type AppConfiguration,
 } from '../../storage/services/configurationService';
+import '../food/food.css';
 import './areas.css';
+
+/**
+ * Food's setup, in full.
+ *
+ * One sentence, in the user's words, saying what they are trying to eat
+ * like. There is deliberately no calorie target, no macro split and no
+ * body-composition model here: what those should be is a product decision
+ * that has not been made, and inventing one to fill the screen would be
+ * indistinguishable afterwards from having decided it.
+ *
+ * The field is optional. Food scores exactly the same with it empty — the
+ * daily rating is the user's own judgement either way — so leaving it blank
+ * costs nothing but a reminder.
+ */
+function FoodFocusEditor({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave(focus: string): void;
+}) {
+  const t = useT();
+  const fieldId = useId();
+  const [draft, setDraft] = useState(value);
+
+  // The saved value wins whenever it changes underneath — a restore, or a
+  // save landing — without stranding what the user is currently typing.
+  useEffect(() => setDraft(value), [value]);
+
+  return (
+    <div className="food-focus">
+      <label className="food-focus__label" htmlFor={fieldId}>
+        {t('food.focus.label')}
+      </label>
+      <textarea
+        id={fieldId}
+        className="food-focus__input"
+        rows={2}
+        maxLength={FOOD_FOCUS_MAX_LENGTH}
+        placeholder={t('food.focus.placeholder')}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <p className="food-focus__hint">{t('food.focus.hint')}</p>
+      <Button
+        variant="secondary"
+        disabled={draft.trim() === value.trim()}
+        onClick={() => onSave(draft)}
+      >
+        {t('food.focus.save')}
+      </Button>
+    </div>
+  );
+}
 
 export interface AreasActions {
   /** Reloads everything after a restore replaced the profile. */
@@ -45,6 +102,8 @@ export interface AreasActions {
   pauseQuestion(id: string): void;
   resumeQuestion(id: string): void;
   archiveQuestion(id: string): void;
+  /** Food's whole setup: the user's own sentence, or '' to clear it. */
+  setFoodFocus(focus: string): void;
   setLanguage(language: Language): void;
 }
 
@@ -227,9 +286,12 @@ export function AreasScreen({
                   onChange={(next) => actions.setWeeklyTarget(type, next)}
                 />
               </div>
+            ) : type === 'food' ? (
+              <FoodFocusEditor
+                value={foodFocusOf(configuration) ?? ''}
+                onSave={actions.setFoodFocus}
+              />
             ) : (
-              // Food is switched on but has no setup here: the profile and
-              // the targets are asked for when the area is first opened.
               <p className="areas__note">{t('areas.food.on')}</p>
             )}
 

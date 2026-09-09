@@ -18,6 +18,7 @@ import type {
   ConfigSnapshotRecord,
   DomainRecord,
   ExerciseRecord,
+  FoodDayRecord,
   FoodEntryRecord,
   GymPlanRecord,
   GymSessionRecord,
@@ -58,6 +59,7 @@ const gymSessionStore = createRepository<GymSessionRecord>(STORES.gymSessions);
 const gymSetStore = createRepository<GymSetRecord>(STORES.gymSets);
 const runStore = createRepository<RunRecord>(STORES.runs);
 const foodStore = createRepository<FoodEntryRecord>(STORES.foodEntries);
+const foodDayStore = createRepository<FoodDayRecord>(STORES.foodDays);
 const weightStore = createRepository<WeightEntryRecord>(STORES.weightEntries);
 const restDayStore = createRepository<RestDayRecord>(STORES.restDays);
 const pauseStore = createRepository<PausePeriodRecord>(STORES.pausePeriods);
@@ -79,6 +81,7 @@ export async function collectBackupData(): Promise<BackupData> {
     gymSets,
     runs,
     foodEntries,
+    foodDays,
     weightEntries,
     restDays,
     pausePeriods,
@@ -98,6 +101,7 @@ export async function collectBackupData(): Promise<BackupData> {
     gymSetStore.getAll(),
     runStore.getAll(),
     foodStore.getAll(),
+    foodDayStore.getAll(),
     weightStore.getAll(),
     restDayStore.getAll(),
     pauseStore.getAll(),
@@ -124,6 +128,7 @@ export async function collectBackupData(): Promise<BackupData> {
     gymSets: byId(gymSets),
     runs: byId(runs),
     foodEntries: byId(foodEntries),
+    foodDays: byId(foodDays),
     weightEntries: byId(weightEntries),
     restDays: byId(restDays),
     pausePeriods: byId(pausePeriods),
@@ -198,6 +203,7 @@ export async function importBackup(
     [STORES.gymSets]: data.gymSets,
     [STORES.runs]: data.runs,
     [STORES.foodEntries]: data.foodEntries,
+    [STORES.foodDays]: data.foodDays,
     [STORES.weightEntries]: data.weightEntries,
     [STORES.restDays]: data.restDays,
     [STORES.pausePeriods]: data.pausePeriods,

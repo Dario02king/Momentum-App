@@ -1,8 +1,8 @@
-# Handover — end of Phase 5
+# Handover — end of Phase 6
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D105). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D109). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -11,15 +11,20 @@ either — it says where things stand.
 |---|---|
 | Branch | `claude/gym-scoring-integration-9oeblv` |
 | Working tree | clean at the commit this file was committed in |
-| `SCHEMA_VERSION` | **4** (`src/core/model/index.ts`) |
-| `BACKUP_FORMAT_VERSION` | **2** (`src/core/backup/format.ts`) — unchanged; the envelope did not change, only record shapes, and a v1 or v2 file still imports |
+| `SCHEMA_VERSION` | **5** (`src/core/model/index.ts`) — v5 adds the `foodDays` store |
+| `BACKUP_FORMAT_VERSION` | **3** (`src/core/backup/format.ts`) — v3 adds the `foodDays` collection; a v1 or v2 file still imports, every later collection reading as empty when absent |
 | `SCORING_MODEL` | `categoryMean` (`src/core/config/constants.ts`) |
 | `GYM_SCORING_MODEL` | `attendancePerformance` — Gym's 40/60 model |
 | `RUNNING_SCORING_MODEL` | `attendancePerformance` — Running's 40/60 model |
-| `DECAY_MODEL_APPROVED` | `false` — the **general** cooling-off gate is still open |
+| Food scoring | the shared daily fold over a 1–10 adherence rating (D106, D107) — **no** model constant, because there is no second model |
+| `DECAY_MODEL_APPROVED` | `false` — the **general** cooling-off gate is still open, and Phase 6 did not touch it |
+| Gate 2 (nutrition targets) | **still open.** Food ranks without one, on purpose (D106) |
 
-Phases 0–5 of iteration 2 are complete. Phase 4.1 closed the Gym scoring gate
-and Phase 5 closed Running's. Phase 6 (Food, Gate 2) is next.
+Phases 0–6 of iteration 2 are complete. Phase 4.1 closed the Gym scoring gate,
+Phase 5 closed Running's, and Phase 6 built Food **without** closing Gate 2:
+Food is ranked on the adherence the user enters, so the calorie and macro
+target decision is still entirely open and nothing in the scoring path
+pre-empts it.
 
 > **The branch changed.** This work was carried out on
 > `claude/gym-scoring-integration-9oeblv`, reset from
@@ -69,6 +74,8 @@ records (answers, sessions, sets, snapshots)
 | `src/core/scoring/endurance.ts` | **Shared.** The first-promotion gate |
 | `src/core/scoring/abstinence.ts` | **Shared.** Episodes, the four decay schedules, rank intervals |
 | `src/core/running/performance.ts` | Distance bands, pace ratios, the window aggregate |
+| `src/core/food/adherence.ts` | The 1–10 Food is ranked on, and why no target lives there |
+| `src/core/food/catalogue.ts` | Five demo foods — code, not data, never in a backup |
 | `src/core/gym/catalogue.ts` | 29 built-in exercises, stable ids, explicit muscles, roles and load types |
 | `src/core/decay/index.ts` | **General** decay contract + placeholder (gate still open) |
 | `src/core/migration/legacySport.ts` | RC2 Sport conversion planning (pure) |
@@ -82,6 +89,7 @@ records (answers, sessions, sets, snapshots)
 | `src/components/BodyRenderer/index.tsx` | Muscle diagram; presentation only |
 | `src/features/gym/*` | Session logging, picker, bodyweight, overview, exercise detail, progress |
 | `src/features/running/*` | The Running overview and its distance ranges |
+| `src/features/food/*` | The Today card: the day's rating, then the log |
 | `scripts/verify/` | Browser + accessibility suites (see its README) |
 | `.github/fixtures/` | RC2 export + a 120-day synthetic profile |
 
@@ -112,13 +120,11 @@ records (answers, sessions, sets, snapshots)
 - `RunRecord` carries `source`/`externalId` as the import seam. No importer.
 
 **Intentionally dormant**
-- **Food.** Enable-able, shows *Noch nicht gestartet*, contributes nothing to
-  the Boss, fabricates no XP. Phase 6. Do not "fix" this.
 - **Decay.** The placeholder reproduces RC2 exactly. Gate 1, still open.
 
 **Not implemented**
-- Nutrition targets (Gate 2), tombstone unlocking, rest-day/pause handling in
-  the replay, "Warum diese Zahl?", Strava import.
+- Nutrition targets (Gate 2) — deliberately, see below. Tombstone unlocking,
+  rest-day/pause handling in the replay, "Warum diese Zahl?", Strava import.
 
 ## Scoring rules, as implemented
 
@@ -250,6 +256,23 @@ rating           ← rating + (target − rating) × movementFactor(rating, targ
   replays as it was scored; the new fold continues from the number the old one
   left.
 
+### Food (`core/food/adherence.ts`, `core/scoring/dayScore.ts`)
+
+One item due per day: the 1–10 the user chooses. `adherence × 10` is the day
+score — the same mapping a Wellbeing scale answer uses. Unrated inside the
+edit window leaves the day **open**; unrated once closed is a **miss for
+history** and **no data for the rating**. Before Food was enabled there is no
+food entry at all.
+
+The rating is then the shared daily fold, not the 40/60 training model. There
+is no attendance, no performance curve, no Endurance Phase and no decay.
+Calories and macros are logged, totalled and shown, and never scored — see
+D106 for why that is a rule and not a phase-6 shortcut.
+
+Setup is one optional sentence (`FoodDomainSettings.focus`), carried in the
+config snapshot, saying what the user is aiming at. Food scores identically
+with it empty.
+
 ### Running performance (`core/running/performance.ts`)
 
 **Pace at a comparable measured distance** (D102). Relative to the runner's
@@ -311,13 +334,22 @@ own history; no population norms, ever.
    for Gym in Phase 4.1** (D90, D99) and **for Running in Phase 5**
    (D102–D105). Both are 40 % attendance and 60 % personal development,
    through the same shared code. D88 no longer describes the build.
-2. **The general cooling-off / decay formula.** Gate 1, still open (D72).
-   Phase 4.1's abstinence decay is a *Gym-specific* rule about rank progress
-   (D96) and does not close this: `core/decay` is untouched and
-   `DECAY_MODEL_APPROVED` is still `false`.
-3. **Nutrition targets.** Gate 2, Phase 6.
-4. **Tombstone benchmark values.** The boundary is documented (D95) and no
+2. **The general cooling-off / decay formula.** Gate 1, **still open** (D72).
+   The abstinence decay Gym and Running share is a *training-domain* rule
+   about rank progress (D96) and does not close this: `core/decay` is
+   untouched and `DECAY_MODEL_APPROVED` is still `false`. Phase 6 added no
+   Food decay rule and none may be inferred from the training domains (D107).
+3. **Nutrition targets.** Gate 2, **still open after Phase 6.** Food is built
+   and ranked, on the 1–10 adherence the user enters (D106) — deliberately a
+   question that needs no target to answer. Nothing in the scoring path reads
+   a calorie or macro figure, so this decision is as open as it was, and
+   making it later rewrites nothing already stored.
+4. **What a rated Food day is worth in lifetime XP.** Food earns XP in its own
+   ledger but does not move the single Boss-level total (D107). Weighing a
+   rated day against a gym session is a product decision that was not made.
+5. **Tombstone benchmark values.** The boundary is documented (D95) and no
    values were invented. What counts as a milestone is a product decision.
+   No Food Tombstone values were invented either.
 
 ## Risks and known debt
 
@@ -372,20 +404,23 @@ in, except where noted.
 
 | | |
 |---|---|
-| Unit tests | **884 passing, 51 files, exit 0** (`npm run test`) |
+| Unit tests | **932 passing, 55 files, exit 0** (`npm run test`) |
 | Typecheck | `tsc -b` clean |
 | Production build | clean; no stale `.js` beside any `.ts` |
-| Migration + continuity | no schema change was needed — `distanceMetres` has existed since schema 2. RC2 fixtures reproduce exactly, v1→v2→v3→v4 migrations (including the v2→v4 jump D98 fixed), a legacy run stays attendance-only, backup round trip, newer-file refusal |
-| Model-era continuity | a snapshot without `runningModel` replays as the attendance era; the new fold continues from the number the old one left; every earlier day is bit-identical |
-| Browser (Phase 5) | **46/46** at 320/360/393/430px (`phase5.mjs`) |
-| Accessibility (Phase 5) | **15/15** (`phase5-a11y.mjs`) |
+| Migration + continuity | v5 adds `foodDays` and declares no transform; a version-4 database carrying food *entries* upgrades with **no** ratings invented from them. RC2 fixtures still reproduce exactly, v1→v2→v3→v4→v5 (including the v2→v4 jump D98 fixed), backup round trip with Food data, newer-file refusal |
+| Food era continuity | a day before Food was enabled has no food entry at all; a rating reads back as the number entered after a year of other configuration changes; every Boss value before the switch-on day is bit-identical to a profile that never enabled it |
+| Gym/Running isolation | with Food rated every day, both training ratings, peaks, ranks and whole ladder series are bit-identical to the same profile without Food |
+| Browser (Phase 6) | **47/47** at 320/360/393/430px (`phase6.mjs`) |
+| Accessibility (Phase 6) | **20/20** (`phase6-a11y.mjs`) |
+| Browser (Phase 5, regression) | 46/46 at 320/360/393/430px |
+| Accessibility (Phase 5) | 15/15 |
 | Browser (Phase 4.1, regression) | 52/52 at 320/360/393/430px |
 | Accessibility (Phase 4.1) | 14/14 |
 | Browser (Phase 4, regression) | 52/52 at 320/360/393/430px |
 | Accessibility (Phase 4) | 15/15 |
 | Browser (Phases 2–3, regression) | 64/64, 44/44, 5/5 |
 | Accessibility (Phases 2–3) | 17/17, 9/9 |
-| Shared-scoring refactor | Gym's whole suite ran unchanged across the move into `core/scoring/`; no Gym behaviour was altered |
+| Earlier assertions | none weakened. Every earlier suite runs its original checks; the one change was adding `foodDays` to the backup's deliberately exhaustive collection list |
 
 **Real VoiceOver was not tested. No Apple hardware is available in this
 environment.** What is verified is the layer VoiceOver consumes — the computed
@@ -397,15 +432,22 @@ Re-run browser suites with `scripts/verify/*.mjs` (see that README; needs
 
 ## Next work
 
-**Phase 6 — Food (Gate 2).** Nutrition targets are a product-owner gate and
-are not to be invented. Food is currently enable-able, shows *Noch nicht
-gestartet*, contributes nothing to the Boss and fabricates no XP — that is
-correct behaviour, not a gap.
+**Gate 2 — nutrition targets — is still open, and Food works without it.**
+Food is ranked on the 1–10 adherence the user enters (D106). Calories and
+macros are logged, totalled and shown, and **nothing about them reaches the
+score**. If and when targets are decided, they arrive as a new thing the user
+can be measured against — the entered 1–10 stays exactly what it always was,
+and no stored value needs rewriting.
+
+Do not read Food's existence as the gate having been closed. There is no
+calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
+model anywhere in the build.
 
 Phase 7 is the **general** cooling-off gate (D72), still open: the
 training-domain abstinence rule Gym and Running share is a different, narrower
 mechanism and does not resolve it. `core/decay` is untouched and
-`DECAY_MODEL_APPROVED` is still `false`.
+`DECAY_MODEL_APPROVED` is still `false`. **Food has no decay rule at all**,
+and one must not be inferred from Gym or Running (D107).
 
 Phase 8 is integration, tombstones, rest days and pause.
 

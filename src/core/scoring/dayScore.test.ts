@@ -12,12 +12,13 @@ function day(
     sports?: Omit<WeeklyDayInput, 'domain'> | null;
   } = {},
 ): DayInput {
-  const { sports = null, ...rest } = overrides;
+  const { sports = null, food = null, ...rest } = overrides;
   return {
     date: '2025-03-31',
     editState: 'closed',
     mental: null,
     weekly: sports ? [{ domain: 'sports', ...sports }] : [],
+    food,
     ...rest,
   };
 }
