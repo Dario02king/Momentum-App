@@ -1883,3 +1883,94 @@ collection in the envelope. The ratings are the one piece of Food data that
 cannot be recomputed from anything else, so a backup without them would lose
 history outright. Older files still import — every collection a later version
 introduced reads as empty when absent.
+
+## D110 — Boss contribution is normalized domain performance, never event count
+
+*Product-owner decision, closing the Food/Boss question Phase 6 left open.*
+
+Every active scored domain may contribute to the Boss. Food must not become a
+permanent exception with a rank of its own but no route into global progress.
+It must also not contribute through fixed per-event XP: Food is a
+high-frequency daily domain and Gym and Running are lower-frequency activity
+domains, so "1 rating = X, 1 session = Y" would make the Boss depend on how
+often a domain is logged and would need an arbitrary cross-domain exchange
+rate nobody can justify.
+
+**The rule: Boss contribution is based on normalized domain performance, not
+raw event count.**
+
+### The architecture already expresses this, and that is the finding
+
+Nothing had to be built. The three properties D110 requires are already how
+the Boss works, and they are now pinned by tests rather than left as
+incidental:
+
+1. **The Boss averages ladder positions, not events.** `bossSeries` moves the
+   Boss by the weighted *movement* of each domain's position on the shared
+   0–8 ladder (`ratingToProgress`). A domain's position is its 0–1000 rating
+   mapped onto the ladder — a normalized figure — and the Boss never sees a
+   session, a run, a rating entry or a food row.
+
+2. **Event count is normalized away before it gets there.** A weekly quota
+   scores `min(100, sessions / target × 100)` and attendance scores
+   `min(1, sessions / quota) × RATING.MAX`, so training beyond the target buys
+   nothing. Food has exactly one due item per day, so logging fifteen meals
+   and logging one produce the same day score. Two domains performing equally
+   well against their own expectations contribute equally, whatever it took.
+
+3. **XP is not the Boss path and never was.** Lifetime XP answers "how much
+   have I done"; it is computed in `core/scoring/xp.ts`, and neither
+   `core/rating` nor `core/ranks` nor `core/boss` reads it. The Boss's rank
+   comes from `bossSeries` alone. So the Phase 6 question — what a rated Food
+   day is worth in XP — was never a question about Boss contribution, and the
+   answer is that no such constant is needed.
+
+**No Food-specific XP constant, calorie multiplier, macro multiplier, streak
+bonus or attendance-style rule was introduced.** Food reaches the Boss through
+the same normalized path as every other domain.
+
+### What is preserved for later
+
+The long-term intent — a prominent global Boss, contributions from active
+domains and subdomains, user-configurable relative weights, and no domain
+dominating through logging frequency — is compatible with what exists.
+Per-domain weights are already user-configurable (`BossWeights`,
+`setBossWeights`), already normalized over the enabled domains, already
+floored so nothing is weighted out of existence, and already forward-only via
+the config snapshot.
+
+**Subdomains do not exist yet and were not speculatively built.** The
+requirement they impose on this code is recorded here instead: whatever
+aggregates a subdomain must produce a ladder position, so that the Boss keeps
+averaging normalized performance and a subdomain cannot smuggle event
+frequency in through a side door.
+
+## D111 — One unanswered daily domain currently holds the whole day open
+
+*Recorded as a known property with a future direction, not as a defect and not
+as a change.*
+
+A day is `open` while anything due on it can still be answered, and `open`
+means open for every domain — so an unrated Food day inside the edit window
+postpones Gym's and Running's day too. Phase 6 found this and it is the
+existing mechanism working: it is what an unanswered Wellbeing question has
+always done.
+
+What was verified, and what keeps it safe:
+
+- closed historical days are unaffected — every day outside the edit window is
+  bit-identical with and without the extra domain;
+- an unanswered domain never creates a negative score;
+- it only postpones closure while the day is still editable;
+- once the day is rated, or once it closes, the difference resolves.
+
+**The behaviour is deliberately unchanged.** It is nonetheless worth
+reconsidering as the number of daily domains grows: with one daily domain the
+postponement is invisible, and with several the odds that *something* is
+unanswered rise until the day is routinely held open for domains that have
+nothing outstanding. A later design may want domain-independent closure —
+each domain's day closing on its own obligations — which would be a change to
+`DayStatus` and to `domainDayStates`, not a patch.
+
+This is a future architecture and UX consideration. It is not permission to
+change the mechanism now, and it must not be redesigned as cleanup.

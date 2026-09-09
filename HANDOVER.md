@@ -1,8 +1,8 @@
-# Handover — end of Phase 6
+# Handover — end of Phase 6, plus D110/D111
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D109). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D111). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -326,6 +326,9 @@ own history; no population norms, ever.
 - Exercise identity is the id. Never join history on a display name.
 - Peak rank and lifetime XP never fall.
 - One badge family, one rank ladder, one Boss.
+- **The Boss averages normalized ladder positions, never event counts** (D110).
+  Nothing that reaches `bossSeries` may be a tally of sessions, runs or
+  ratings, and lifetime XP must stay out of the rank.
 - `npm run test` must exit 0; typecheck is `tsc -b`.
 
 ## Open product decisions — do not invent these
@@ -344,9 +347,11 @@ own history; no population norms, ever.
    question that needs no target to answer. Nothing in the scoring path reads
    a calorie or macro figure, so this decision is as open as it was, and
    making it later rewrites nothing already stored.
-4. **What a rated Food day is worth in lifetime XP.** Food earns XP in its own
-   ledger but does not move the single Boss-level total (D107). Weighing a
-   rated day against a gym session is a product decision that was not made.
+4. ~~**How Food contributes to the Boss, and what a rated day is worth.**~~
+   **Resolved by D110.** Boss contribution is normalized domain performance —
+   the shared 0–8 ladder position — never raw event count, and lifetime XP was
+   never the Boss path. No per-event constant exists or is needed. Pinned by
+   tests in `foodBoss.test.ts`.
 5. **Tombstone benchmark values.** The boundary is documented (D95) and no
    values were invented. What counts as a milestone is a product decision.
    No Food Tombstone values were invented either.
@@ -404,7 +409,7 @@ in, except where noted.
 
 | | |
 |---|---|
-| Unit tests | **932 passing, 55 files, exit 0** (`npm run test`) |
+| Unit tests | **937 passing, 55 files, exit 0** (`npm run test`) — 932 at the Phase 6 baseline plus five pinning D110 |
 | Typecheck | `tsc -b` clean |
 | Production build | clean; no stale `.js` beside any `.ts` |
 | Migration + continuity | v5 adds `foodDays` and declares no transform; a version-4 database carrying food *entries* upgrades with **no** ratings invented from them. RC2 fixtures still reproduce exactly, v1→v2→v3→v4→v5 (including the v2→v4 jump D98 fixed), backup round trip with Food data, newer-file refusal |
@@ -421,6 +426,8 @@ in, except where noted.
 | Browser (Phases 2–3, regression) | 64/64, 44/44, 5/5 |
 | Accessibility (Phases 2–3) | 17/17, 9/9 |
 | Earlier assertions | none weakened. Every earlier suite runs its original checks; the one change was adding `foodDays` to the backup's deliberately exhaustive collection list |
+| Boss contribution (D110) | the Boss averages ladder positions and nothing else; training beyond target and logging six meals instead of one both leave every series bit-identical; a daily and a weekly domain take equal shares at equal performance; XP stays out of the rank |
+| Flake fixed | one Phase 6 assertion was clock-dependent — it searched the serialised food-day record for the string `70`, which an ISO timestamp contains about one run in three. The assertion was wrong, not the code; it now checks the record's fields. Twelve consecutive full runs are green |
 
 **Real VoiceOver was not tested. No Apple hardware is available in this
 environment.** What is verified is the layer VoiceOver consumes — the computed
@@ -443,11 +450,24 @@ Do not read Food's existence as the gate having been closed. There is no
 calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
 
-Phase 7 is the **general** cooling-off gate (D72), still open: the
-training-domain abstinence rule Gym and Running share is a different, narrower
-mechanism and does not resolve it. `core/decay` is untouched and
-`DECAY_MODEL_APPROVED` is still `false`. **Food has no decay rule at all**,
-and one must not be inferred from Gym or Running (D107).
+**Phase 7 has no agreed scope yet, and that is a live blocker.** This file has
+said since Phase 4.1 that Phase 7 is the **general** cooling-off gate (D72).
+That gate is a product-owner decision about a formula, and the standing
+instruction is that D72 is not to be modified and `DECAY_MODEL_APPROVED` is to
+stay `false` — so the work this file names as Phase 7 cannot be the work
+Phase 7 does. Nothing was invented to fill the gap. `core/decay` is untouched,
+the placeholder still reproduces RC2 exactly, and **Food has no decay rule at
+all** (D107).
+
+The unbuilt work the repository actually contains, none of it designated:
+
+| Candidate | Product decisions needed |
+|---|---|
+| **Legacy Sport migration UI** | none — D71 is settled and `legacySportService.ts` is built and tested. It is simply unreachable, and a migrated RC2 user is never asked. The largest known gap |
+| "Warum diese Zahl?" panel | none — it explains numbers that already exist |
+| Rest days / pause periods in the replay | D42/D43 are approved, but they feed the decay model, which is gated |
+| Tombstone unlocking | **blocked** — the benchmark values are an open gate |
+| Nutrition targets | **blocked** — Gate 2, open by design (D106) |
 
 Phase 8 is integration, tombstones, rest days and pause.
 

@@ -6,7 +6,8 @@ import { addDays } from '../../core/dates';
 import type { DomainType } from '../../core/model';
 import { closeDatabase, deleteDatabase } from '../db';
 import { loadBossProgression, type BossProgression } from './bossService';
-import { logSession, saveAdherence, type SessionInput } from './checkInService';
+import { rankForRating } from '../../core/ranks';
+import { addFoodEntry, logSession, saveAdherence, type SessionInput } from './checkInService';
 import { applyOnboarding, enableDomain, setBossWeights } from './configurationService';
 
 /**
@@ -354,5 +355,119 @@ describe('weighting Food', () => {
 
     const share = contributions(await load()).get('food') ?? 0;
     expect(share).toBeGreaterThan(0);
+  });
+});
+
+/* ── D110: contribution is normalized performance, never event count ────── */
+
+describe('what the Boss actually averages', () => {
+  it('averages ladder positions, never events', async () => {
+    await applyOnboarding({ questions: [], gymTargetPerWeek: 2, food: true });
+    await trainEveryWeek(['gym']);
+    await rateEveryDay();
+
+    const boss = await load();
+    const last = boss.points[boss.points.length - 1]!;
+    for (const entry of last.contributions) {
+      const ledger = domainOf(boss, entry.domain);
+      // The contribution *is* the domain's position on the shared 0–8 ladder.
+      // Nothing counts sessions, runs, ratings or food rows.
+      expect(entry.progress).toBeCloseTo(ledger.series[ledger.series.length - 1]!, 10);
+      expect(entry.progress).toBeGreaterThanOrEqual(0);
+      expect(entry.progress).toBeLessThanOrEqual(8);
+    }
+  });
+
+  it('is unmoved by training beyond the weekly target', async () => {
+    const run = async (perWeek: number) => {
+      await deleteDatabase();
+      freezeAt(START);
+      await applyOnboarding({ questions: [], gymTargetPerWeek: 2 });
+      for (let week = 0; week < WEEKS; week += 1) {
+        const monday = addDays(START, week * 7);
+        for (let index = 0; index < perWeek; index += 1) {
+          await train('gym', addDays(monday, index));
+        }
+      }
+      return load();
+    };
+
+    const met = await run(2);
+    const doubled = await run(4);
+
+    // Four sessions against a target of two is the same attendance as two.
+    // Extra events buy no Boss progress, which is what stops a domain
+    // dominating by being logged more often.
+    expect(domainOf(doubled, 'gym').series).toEqual(domainOf(met, 'gym').series);
+    expect(doubled.points.map((point) => point.progress)).toEqual(
+      met.points.map((point) => point.progress),
+    );
+  });
+
+  it('is unmoved by how many things were logged on a rated Food day', async () => {
+    const run = async (entriesPerDay: number) => {
+      await deleteDatabase();
+      freezeAt(START);
+      await applyOnboarding({ questions: [], food: true });
+      for (let index = 0; index < WEEKS * 7; index += 1) {
+        const date = addDays(START, index);
+        freezeAt(date);
+        for (let n = 0; n < entriesPerDay; n += 1) {
+          await addFoodEntry(
+            date,
+            {
+              foodId: null,
+              label: `Mahlzeit ${n}`,
+              grams: null,
+              kcal: 400,
+              proteinG: null,
+              carbsG: null,
+              fatG: null,
+            },
+            date,
+          );
+        }
+        await saveAdherence(date, 8, null, date);
+      }
+      return load();
+    };
+
+    const sparse = await run(1);
+    const busy = await run(6);
+
+    // Six meals is not six times the day. The rating is the whole of it.
+    expect(domainOf(busy, 'food').series).toEqual(domainOf(sparse, 'food').series);
+    expect(busy.points.map((point) => point.progress)).toEqual(
+      sparse.points.map((point) => point.progress),
+    );
+  });
+
+  it('gives a daily domain and a weekly one equal shares at equal performance', async () => {
+    // Food is answered 56 times over the fixture and Gym is trained 16 times.
+    // Both are performing perfectly against their own expectations, so the
+    // Boss must weigh them equally rather than by how often they were logged.
+    await applyOnboarding({ questions: [], gymTargetPerWeek: 2, food: true });
+    await trainEveryWeek(['gym']);
+    await rateEveryDay(10);
+
+    const shares = contributions(await load());
+    expect(shares.get('food')).toBeCloseTo(0.5, 10);
+    expect(shares.get('gym')).toBeCloseTo(0.5, 10);
+  });
+
+  it('keeps lifetime XP out of the Boss rank entirely', async () => {
+    await applyOnboarding({ questions: [], gymTargetPerWeek: 2, food: true });
+    await trainEveryWeek(['gym']);
+    await rateEveryDay();
+
+    const boss = await load();
+    // XP answers "how much have I done" and is reported beside the Boss, not
+    // inside it: the rank comes from the ladder series alone. If XP ever
+    // entered the rank, this rating would not be reproducible from the
+    // points.
+    const last = boss.points[boss.points.length - 1]!;
+    expect(boss.progress).toBeCloseTo(last.progress, 10);
+    expect(boss.rank.id).toBe(rankForRating(last.rating).id);
+    expect(boss.lifetimeXp).toBeGreaterThan(0);
   });
 });

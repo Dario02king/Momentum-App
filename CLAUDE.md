@@ -137,6 +137,17 @@ Never conflate them.
   distance, so adding, editing, deleting or expiring any other run cannot
   change what an existing run is compared against. Anything that groups by
   looking at neighbouring records reinterprets history the moment one arrives.
+- **The Boss averages normalized domain performance, never event count**
+  (D110). It moves by the weighted movement of each domain's position on the
+  one shared 0–8 ladder. Attendance is capped at its target and Food has one
+  due item a day, so logging something more often can never make it dominate.
+  Lifetime XP answers a different question and never enters the rank. Do not
+  introduce a per-event Boss constant or a cross-domain exchange rate.
+- **One unanswered daily domain currently holds the whole day open** (D111).
+  That is the existing mechanism, it only postpones closure inside the edit
+  window, and it is deliberately unchanged — but it deserves revisiting as
+  daily domains multiply, since a later design may want each domain's day to
+  close on its own obligations. Not a licence to redesign it as cleanup.
 - A rating **moves towards** its target rather than becoming it. Climbing gets
   slower as the rating rises; falling never does — a high rank is harder to
   reach, not protected.

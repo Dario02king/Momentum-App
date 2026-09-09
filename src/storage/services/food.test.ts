@@ -68,8 +68,27 @@ describe('what a rating stores', () => {
     await rate(START, 7);
     const record = await foodDaysRepository.get(START);
     expect(record?.adherence).toBe(7);
-    // Not a percentage, not a distance from a target, not a band.
-    expect(JSON.stringify(record)).not.toContain('70');
+
+    /*
+     * Not a percentage, not a distance from a target, not a band — asserted
+     * over the fields rather than over the serialised record.
+     *
+     * Searching the JSON for the string "70" is what this check did first,
+     * and it failed about one run in three: an ISO timestamp contains "70"
+     * whenever the clock lands on the wrong millisecond. The assertion was
+     * wrong, not the code.
+     */
+    expect(Object.keys(record ?? {}).sort()).toEqual([
+      'adherence',
+      'configSnapshotId',
+      'createdAt',
+      'date',
+      'id',
+      'note',
+      'sensitivity',
+      'updatedAt',
+    ]);
+    expect(Object.values(record ?? {}).some((value) => value === 70)).toBe(false);
   });
 
   it('rates a day once — a second rating is a correction, not a second row', async () => {
