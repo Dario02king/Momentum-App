@@ -192,6 +192,34 @@ export interface TrainingRatingDay {
   performanceChange: number | null;
   /** Consecutive days with no saved session, ending on this day. */
   abstinentDays: number;
+  /**
+   * Whether the day fell inside a declared pause.
+   *
+   * An **exception layer around** the abstinence rule, never a change to it.
+   * The approved arithmetic in `abstinence.ts` is untouched: what a pause
+   * does is stop the clock that feeds it. A paused day contributes no day to
+   * `abstinentDays` (the caller freezes the run) and triggers no decay, and
+   * it does not reset the count either — five silent days, a fortnight
+   * paused, and the next silent day is the sixth.
+   *
+   * It is not attendance either. A paused day is not a saved session and
+   * earns no attendance credit: the week's session count, the met flag and
+   * every screen that reads them are untouched.
+   *
+   * What it does instead is **decline to score the day at all** when the
+   * week has no sessions in it — the same "no data" the app already gives a
+   * day before the domain was enabled. Suppressing only the decay would have
+   * been strictly worse than no pause at all: the decay branch is
+   * rank-floored, the ordinary target is not, so a paused week of zero
+   * attendance would drag the rating towards zero while an unpaused one
+   * stopped at the floor. Measured before this rule existed: 899 → 98 paused
+   * against 899 → 560 unpaused. A pause that punishes is not a pause.
+   *
+   * A week the user *did* train in scores normally, pause or no pause. That
+   * is decision 5 — a pause protects against what was not done, never
+   * against what was.
+   */
+  paused?: boolean;
   /** Gym training age in whole months on this day. */
   ageMonths: number;
   /** True once the Endurance Phase has been completed, on this day. */
@@ -291,6 +319,7 @@ export function computeTrainingRating(
     const decaying =
       day.enduranceUnlocked &&
       !day.sessionToday &&
+      day.paused !== true &&
       day.abstinentDays >= TRAINING_RATING.ABSTINENCE_BLOCK_DAYS;
 
     if (!day.scored && !decaying) {

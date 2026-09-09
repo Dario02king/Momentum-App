@@ -610,6 +610,45 @@ export const de = {
   'legacySport.ask.confirm': 'Antwort übernehmen',
   'legacySport.today.pending': 'Sag unter Bereiche, was diese Trainings waren.',
 
+
+  /* ── Pause (Phase 8) ─────────────────────────────────────────────────── */
+  'pause.title': 'Pause',
+  'pause.subtitle': 'Für Ferien, Krankheit oder eine Verletzung.',
+  'pause.what': 'Während einer Pause verlierst du nichts, weil du nichts machst.',
+  'pause.whatNot':
+    'Sie erfindet keine Aktivität: Serien laufen nicht weiter, und Anwesenheit wird nicht gutgeschrieben.',
+  'pause.stillWorks': 'Eintragen kannst du weiterhin alles — und es zählt ganz normal.',
+  'pause.none': 'Keine Pause geplant.',
+  'pause.add': 'Pause planen',
+  'pause.from': 'Von',
+  'pause.to': 'Bis',
+  'pause.reason': 'Grund',
+  'pause.reasonPlaceholder': 'Optional, z. B. Ferien',
+  'pause.maxHint': 'Höchstens {count} Tage. Frühester Start ist heute.',
+  'pause.save': 'Pause sichern',
+  'pause.cancel': 'Abbrechen',
+  'pause.days': '{count} Tage',
+  'pause.dayOne': 'Ein Tag',
+  'pause.range': '{from} bis {to}',
+  'pause.active': 'Läuft',
+  'pause.upcoming': 'Geplant',
+  'pause.past': 'Vorbei',
+  'pause.endNow': 'Jetzt beenden',
+  'pause.edit': 'Ändern',
+  'pause.delete': 'Löschen',
+  'pause.openEnded': 'Ohne Enddatum',
+  'pause.error.startInPast': 'Eine Pause kann frühestens heute beginnen.',
+  'pause.error.endBeforeStart': 'Das Ende liegt vor dem Start.',
+  'pause.error.endMissing': 'Wähle ein Enddatum.',
+  'pause.error.tooLong': 'Eine Pause dauert höchstens {count} Tage.',
+  'pause.error.overlaps': 'Diese Pause überschneidet sich mit einer anderen.',
+  'pause.error.alreadyBegun': 'Eine laufende Pause lässt sich nicht mehr verschieben.',
+  'pause.error.endsInPast': 'Eine Pause lässt sich nicht rückwirkend beenden.',
+  'pause.error.extendsBeyondOriginal': 'So lässt sich eine Pause nur verkürzen.',
+  'pause.error.notFound': 'Diese Pause gibt es nicht mehr.',
+  'pause.today': 'Heute ist Pause. Anwesenheitsverluste sind ausgesetzt.',
+  'pause.today.detail': 'Eintragen und Fortschritt zählen ganz normal weiter.',
+
 } as const;
 
 export type TranslationKey = keyof typeof de;

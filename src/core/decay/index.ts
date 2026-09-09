@@ -47,15 +47,18 @@ import type { DomainType } from '../model';
  * in force then, and a day already lived is scored by the rules of its own
  * day.
  *
- * ## The two dormant inputs
+ * ## The two suspensions
  *
- * `restDay` and `paused` are part of the shape and are honoured here, and
- * **nothing populates them**. `DayState` carries neither, no screen writes a
- * `RestDayRecord` or a `PausePeriodRecord`, and their suspension semantics
- * are a separate unresolved product question — deliberately not answered by
- * D72 and deliberately not answered by a type refactor either. They are kept
- * rather than removed so that resolving that question is wiring an input
- * rather than reopening this contract.
+ * `paused` is **live** (D116): a declared pause suspends the charge entirely,
+ * and the *clock* it feeds is frozen by the fold rather than here, because
+ * the model is per-day and stateless while the episode is the fold's own
+ * state. That split is what makes a pause resume an episode rather than
+ * restart it.
+ *
+ * `restDay` remains dormant and always will: rest days are deprecated as a
+ * product concept (D115). Nothing populates the flag, `DayState` carries no
+ * rest day, and the short-circuit is kept only so the contract's shape stays
+ * honest about what it would do.
  */
 
 /**
@@ -83,9 +86,9 @@ export interface DecayDay {
   consecutiveInactiveDays: number;
   /** Points already lost in this episode, for the per-episode cap. */
   episodeSoFar: number;
-  /** The user declared this a rest day for this domain. Nothing sets it yet. */
+  /** Deprecated (D115). Nothing sets it, and nothing will. */
   restDay: boolean;
-  /** The day falls inside a holiday, illness or injury pause. Likewise. */
+  /** The day falls inside a declared pause (D116). Set by the fold. */
   paused: boolean;
 }
 
@@ -117,9 +120,9 @@ export function decayForDay(consecutiveInactiveDays: number): number {
 /**
  * RC2's decay, ratified as the general cooling-off model (D72).
  *
- * Rest days and pauses suspend it, which costs nothing today because nothing
- * populates either flag — and changes nothing for RC2 data, which recorded
- * neither.
+ * A declared pause suspends it (D116). Rest days would too, and never do —
+ * they are deprecated (D115). Neither changes anything for RC2 data, which
+ * recorded no pause at all.
  */
 export const APPROVED_DECAY: DecayModel = {
   id: 'rc2-general',

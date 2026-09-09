@@ -1,0 +1,193 @@
+/* ── Pause: planning one, and ending one ────────────────────────────────── */
+
+/*
+ * A section in Areas, never a mode. A pause is a setting about a period, so
+ * it reads as one — and the three lines of intro carry the whole product
+ * meaning, because a feature whose value is "you lose less" is exactly the
+ * kind a user can misread as "nothing counts".
+ */
+
+.pause__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.pause__lead {
+  font-size: var(--type-subhead);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.pause__note {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.pause__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--separator);
+}
+
+.pause__rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1 1 55%;
+}
+
+.pause__rowDates {
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.pause__rowMeta {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.pause__badge--active {
+  background: var(--domain-mental-tint);
+  color: var(--domain-mental-ink);
+}
+
+.pause__rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.pause__action {
+  /* 44px of finger without a 44px box, the pattern used across the app. */
+  position: relative;
+  padding: var(--space-1) 0;
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  color: var(--accent);
+}
+
+.pause__action--quiet {
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+
+.pause__action::before {
+  content: '';
+  position: absolute;
+  inset: -14px -10px;
+}
+
+.pause__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 52px;
+  border-top: 1px solid var(--separator);
+  color: var(--accent);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+}
+
+.pause__add:active {
+  background: var(--surface-secondary);
+}
+
+/* ── The form ───────────────────────────────────────────────────────────── */
+
+.pause-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-top: 1px solid var(--separator);
+}
+
+.pause-form__pair {
+  display: grid;
+  /* Two date fields side by side where they fit, stacked at 320px where a
+     native date control cannot shrink any further without clipping. */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.pause-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pause-form__label {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+.pause-form__input {
+  min-height: 44px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font-size: var(--type-body);
+  font-family: inherit;
+}
+
+.pause-form__hint,
+.pause-form__error {
+  font-size: var(--type-footnote);
+  overflow-wrap: anywhere;
+}
+
+.pause-form__hint {
+  color: var(--text-secondary);
+}
+
+.pause-form__error {
+  /* The same token the backup screen uses to say a thing did not work. */
+  color: var(--rose-ink);
+}
+
+.pause-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* ── Today's restrained status line ─────────────────────────────────────── */
+
+.today__paused {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-inner);
+  background: var(--surface-secondary);
+}
+
+.today__pausedTitle {
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.today__pausedBody {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}

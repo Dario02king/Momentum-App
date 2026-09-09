@@ -149,8 +149,25 @@ Never conflate them.
   Wellbeing, Food, and the pre-performance-model Gym and Running eras — and
   it is reached only through `activeDecayModel()`. Gym and Running under the
   performance model use their own abstinence rule and never both (D96).
-  Rest-day and pause suspension are **separate, still unresolved**: nothing
-  populates those flags, and neither may be decided by a type refactor.
+  A declared **pause** suspends it (D116); rest days never will (D115).
+- **A pause suspends inactivity penalties and nothing else** (D116). It stops
+  the general cooling-off charge and the training abstinence progression
+  across every domain, and it **freezes the inactivity clock without
+  resetting it** — five silent days, a fortnight paused, and the next silent
+  day is the sixth. It creates no activity: streaks break as normal,
+  attendance is never credited, no session is fabricated, XP stays monotone
+  and the Boss has no pause rule of its own. Logging is never blocked, and a
+  day logged inside a pause counts exactly as it would outside. Bounded to 28
+  days, both dates required, no overlaps, and **prospective only** — the
+  earliest start is today, a begun pause may only be ended early from today
+  onwards, and no pause may ever reclassify a day already lived.
+  A paused training week nobody trained in is scored as **no data**, not as
+  zero attendance: suppressing only the decay made a pause strictly worse
+  than no pause, because the decay branch is rank-floored and the ordinary
+  target is not.
+- **Rest days are deprecated** (D115). Never shipped, never approved, and made
+  redundant by the seven-day abstinence rule and D37. The store stays for
+  backup compatibility; nothing creates one, and no UI ever should.
 - **One unanswered daily domain currently holds the whole day open** (D111).
   That is the existing mechanism, it only postpones closure inside the edit
   window, and it is deliberately unchanged — but it deserves revisiting as

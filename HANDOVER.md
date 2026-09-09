@@ -1,8 +1,8 @@
-# Handover — end of Phase 7, plus D113 (Gate 1 closed)
+# Handover — end of Phase 8 (pause periods)
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D114). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D117). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -87,6 +87,9 @@ records (answers, sessions, sets, snapshots)
 | `src/storage/services/runningRatingService.ts` | Running's rating state, the era join, window memoisation |
 | `src/storage/services/checkInService.ts` | Today; owns the edit-window rules |
 | `src/storage/services/legacySportService.ts` | The one-time RC2 Sport question, and applying the answer |
+| `src/core/pause/index.ts` | **The** pause semantics — coverage, validation, standing. One canonical `isPausedOn` |
+| `src/storage/services/pauseService.ts` | Declaring, editing, ending a pause; every rule enforced on the write |
+| `src/features/pause/*` | The Areas section that plans and ends one |
 | `src/components/BodyRenderer/index.tsx` | Muscle diagram; presentation only |
 | `src/features/gym/*` | Session logging, picker, bodyweight, overview, exercise detail, progress |
 | `src/features/running/*` | The Running overview and its distance ranges |
@@ -109,6 +112,10 @@ records (answers, sessions, sets, snapshots)
   Running overview that explains them**
 - Boss Rank + four domain ranks, user-configurable weights, mystery ladder
 - Backup export/import, PWA, offline, migrations v1→v2→v3→v4→v5
+- **Pause periods, end to end** (D116). Bounded to 28 days, prospective only,
+  suspending inactivity penalties across every domain without fabricating
+  activity — planned and ended in Areas, stated on Today, and read once per
+  replay by `loadHistory`.
 - **Legacy Sport migration, end to end.** A migrated RC2 user is now offered
   the one-time question in Areas and pointed at it from Today (D112). The
   conversion engine is unchanged — it was always correct, it simply had no
@@ -121,11 +128,12 @@ records (answers, sessions, sets, snapshots)
 - `RunRecord` carries `source`/`externalId` as the import seam. No importer.
 
 **Intentionally dormant**
-- **Rest days and pause periods.** Stores, repositories and backup coverage
-  exist; nothing writes them and nothing reads them. `DecayDay` carries
-  `restDay`/`paused` and honours them, and `computeRating` passes `false` for
-  both. What they should suspend is unresolved (D113) — do not wire them
-  through a type refactor.
+- **Rest days.** Deprecated as a product concept (D115): never shipped, never
+  approved, made redundant by the seven-day abstinence rule and D37. Store,
+  repository, type and backup collection stay for compatibility; nothing
+  creates one and no UI ever should. A test asserts no flow does.
+- **Tombstone unlocks.** Store and repository exist; the benchmark values are
+  an open product decision, so nothing writes them.
 
 **Not implemented**
 - Nutrition targets (Gate 2) — deliberately, see below. Tombstone unlocking,
@@ -348,13 +356,11 @@ own history; no population norms, ever.
    rather than a contract nobody called. Not one baseline rating moved.
    Wellbeing and Food are general; Gym and Running under the performance
    model keep their own abstinence rule (D96) and are never charged by both.
-2a. **Rest-day suspension semantics.** Still open, separately (D113). Nothing
-   writes a `RestDayRecord`; `DayState` carries no rest day. The schema's
-   `gym | running` narrowing does not authorise changing the approved
-   abstinence definition.
-2b. **Pause-period suspension, and whether XP accrues during a pause.** Still
-   open, separately (D113). The "XP does not accrue" comment on
-   `PausePeriodRecord` is an unimplemented note, not a rule.
+2a. ~~**Rest-day suspension semantics.**~~ **Resolved by D115** — deprecated,
+   not implemented. The schema stays for backup compatibility only.
+2b. ~~**Pause-period suspension, and whether XP accrues.**~~ **Resolved by
+   D116.** A pause suspends inactivity penalties only; XP is untouched and
+   stays monotone.
 3. **Nutrition targets.** Gate 2, **still open after Phase 6.** Food is built
    and ranked, on the 1–10 adherence the user enters (D106) — deliberately a
    question that needs no target to answer. Nothing in the scoring path reads
@@ -422,7 +428,8 @@ in, except where noted.
 
 | | |
 |---|---|
-| Unit tests | **976 passing, 60 files, exit 0** (`npm run test`) — 946 at the Phase 7 baseline plus 30 for D113 |
+| Unit tests | **1021 passing, 62 files, exit 0** (`npm run test`) — 976 at the D113 baseline plus 45 for pause |
+| Pause regression | the same 2709-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, a live four-domain profile through five weeks of silence — is **byte-identical before and after**, same MD5. Only histories that contain a pause differ |
 | D113 numeric equivalence | a 64 KB, 2691-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, and a live four-domain profile through five weeks of silence — is **byte-identical before and after the refactor**, same MD5, zero mismatches |
 | D113 live path | `core/decay` proved on the production path by spying the model through `computeRating`, and model *selection* proved connected by substituting a model in an isolated file and watching the fold follow it |
 | Typecheck | `tsc -b` clean |
@@ -430,8 +437,10 @@ in, except where noted.
 | Migration + continuity | v5 adds `foodDays` and declares no transform; a version-4 database carrying food *entries* upgrades with **no** ratings invented from them. RC2 fixtures still reproduce exactly, v1→v2→v3→v4→v5 (including the v2→v4 jump D98 fixed), backup round trip with Food data, newer-file refusal |
 | Food era continuity | a day before Food was enabled has no food entry at all; a rating reads back as the number entered after a year of other configuration changes; every Boss value before the switch-on day is bit-identical to a profile that never enabled it |
 | Gym/Running isolation | with Food rated every day, both training ratings, peaks, ranks and whole ladder series are bit-identical to the same profile without Food |
-| Browser (Phase 7) | **57/57** at 320/360/393/430px (`phase7.mjs`) |
-| Accessibility (Phase 7) | **18/18** (`phase7-a11y.mjs`) |
+| Browser (Phase 8) | **56/56** at 320/360/393/430px (`phase8.mjs`) |
+| Accessibility (Phase 8) | **23/23** (`phase8-a11y.mjs`) |
+| Browser (Phase 7, regression) | 57/57 at 320/360/393/430px |
+| Accessibility (Phase 7) | 18/18 |
 | Browser (Phase 6, regression) | 47/47 at 320/360/393/430px |
 | Accessibility (Phase 6) | 20/20 |
 | Browser (Phase 5, regression) | 46/46 at 320/360/393/430px |
@@ -467,24 +476,19 @@ Do not read Food's existence as the gate having been closed. There is no
 calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
 
-**Phase 7 closed the legacy-Sport gap** (D112), which this file had called the
-largest known one. **D113 then closed Gate 1**: RC2's cooling-off formula is
-ratified unchanged, `core/decay` is the live implementation rather than a
-contract nobody called, and `DECAY_MODEL_APPROVED` is `true` without a single
-baseline rating having moved. Food participates in the *general* model, which
-is not the training-decay model D107 forbids it (D113).
+**Phase 8 built pause periods** (D116) and retired rest days (D115). That was
+the last "engine with no door" — the shape Phase 7 fixed for legacy Sport and
+D113 fixed for the decay contract.
 
 The unbuilt work the repository still contains, none of it designated:
 
 | Candidate | Product decisions needed |
 |---|---|
-| "Warum diese Zahl?" panel | none — it explains numbers that already exist |
+| "Warum diese Zahl?" panel | none — it explains numbers that already exist. The largest remaining user-facing gap |
 | Gym plans, profile | stores and repositories exist; what they are *for* is partly a product question |
-| Rest days / pause periods, end to end | needs the two suspension decisions (D113) — the same "engine with no door" shape Phase 7 fixed for legacy Sport |
 | Tombstone unlocking | **blocked** — the benchmark values are an open gate |
 | Nutrition targets | **blocked** — Gate 2, open by design (D106) |
-
-Phase 8 is integration, tombstones, rest days and pause.
+| Removing the dormant `restDays` collection | a deliberate `BACKUP_FORMAT_VERSION` cleanup, safe but not urgent (D115) |
 
 **If a third training domain ever arrives**, add only its evidence — what one
 comparable observation is, and what makes two of them comparable. Everything

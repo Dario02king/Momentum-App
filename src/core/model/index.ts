@@ -698,7 +698,17 @@ export interface ProfileRecord {
   updatedAt: string;
 }
 
-/** A day the user declared a rest day (D42) — intentional, not a gap. */
+/**
+ * A day the user declared a rest day.
+ *
+ * **Deprecated as a product concept (D115).** It was never shipped, never
+ * reachable and never approved, and the Gym/Running abstinence model made its
+ * job redundant: recovery inside a week is already free, and the only effect
+ * it could still have is a self-declared exemption from absence the model has
+ * judged real. Nothing creates one; a pause (D116) covers the case, and
+ * generically. The store and this type stay only so backups keep round
+ * tripping — a later schema cleanup may remove them deliberately.
+ */
 export interface RestDayRecord {
   id: string;
   date: DateKey;
@@ -706,7 +716,21 @@ export interface RestDayRecord {
   createdAt: string;
 }
 
-/** Holiday, illness, injury (D43). Decay is suspended, XP does not accrue. */
+/**
+ * Holiday, illness, injury — a bounded, prospective suspension of inactivity
+ * penalties (D116).
+ *
+ * Inactivity decay stops and the inactivity clock freezes without resetting.
+ * Nothing else changes: logging works, a day logged inside a pause scores and
+ * earns XP exactly as it would outside one, and streaks break as they
+ * normally would. **XP is untouched** — an earlier comment here claimed "XP
+ * does not accrue", which was never implemented and never decided, and D116
+ * supersedes it.
+ *
+ * `to` is nullable so a file written before the rule existed still reads
+ * back. No product flow creates an open-ended pause: that would be an
+ * indefinite rating freeze.
+ */
 export interface PausePeriodRecord {
   id: string;
   from: DateKey;

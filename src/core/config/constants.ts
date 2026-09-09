@@ -298,6 +298,18 @@ export const MUSCLE_ROLE_WEIGHTS = {
  * training age is 2 completed months is in their third month and decays at
  * 25 % a block.
  */
+/**
+ * Pause periods: the one approved limit.
+ *
+ * A pause is for a holiday, an illness or an injury, so it is bounded by
+ * design — 28 days is long enough for any of those and short enough that it
+ * cannot become a way of living. There is deliberately no quota, no annual
+ * allowance and no cooldown: one limit, stated plainly.
+ */
+export const PAUSE = {
+  MAX_DAYS: 28,
+} as const;
+
 export const TRAINING_DECAY_PHASES = [
   { id: 'early', fromMonth: 0, perBlock: 0.5 },
   { id: 'settling', fromMonth: 2, perBlock: 0.25 },

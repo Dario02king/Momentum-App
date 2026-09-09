@@ -9,6 +9,7 @@ import { useI18n, useT } from '../../i18n/I18nProvider';
 import type { TrainingSession } from '../../storage/services/checkInService';
 import type { TranslationKey } from '../../i18n';
 import { FoodCard } from '../food/FoodCard';
+import '../pause/pause.css';
 import { GymSessionScreen } from '../gym/GymSessionScreen';
 import { openSessionForDay } from '../../storage/services/gymService';
 import { BossSummary } from './BossSummary';
@@ -138,6 +139,18 @@ export function TodayScreen({
           the history live. Anything more turns a check-in into a dashboard.
         */}
         {onGoToRank ? <BossSummary onOpen={onGoToRank} /> : null}
+
+        {/*
+          A pause is stated, never enforced. One line, no banner, nothing
+          disabled: the user can still answer every question and log every
+          session, and doing so counts exactly as it would otherwise.
+        */}
+        {day.paused ? (
+          <div className="today__paused" role="status">
+            <span className="today__pausedTitle">{t('pause.today')}</span>
+            <span className="today__pausedBody">{t('pause.today.detail')}</span>
+          </div>
+        ) : null}
 
         {day.empty ? (
           <Card>

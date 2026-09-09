@@ -941,6 +941,15 @@ Rest days and pause periods are already-approved product decisions rather than
 part of the formula question, so the input carries them and the placeholder
 honours them. On RC2 data this changes nothing, because RC2 recorded neither.
 
+> **Correction (D115, D116, D117).** The claim that rest days and pause
+> periods were "already-approved product decisions" was **not supported by
+> anything in this repository** — no such decision existed here, and the
+> D42/D43 citations behind it point at a document that has never been in it.
+> Rest days are now deprecated as a product concept (D115); pause periods are
+> now genuinely approved, with semantics decided rather than assumed (D116).
+> The sentence above stands as written because it is what D72 said at the
+> time; it should not be read as evidence of a prior approval.
+
 ## D73 — The week lookup was quadratic, and the measurement found it
 
 Reconstructing the weeks looked up each week's first day by scanning the whole
@@ -2132,7 +2141,7 @@ kept rather than removed so that resolving those questions is wiring an input,
 not reopening this contract, and so that neither is answered by a type
 refactor.
 
-## D114 — The D42/D43 citations in the decay code are iteration-plan numbers
+## D114 — The D42/D43 citations in the decay code are iteration-plan numbers *(refined by D117)*
 
 Verified during the D72 inspection and recorded so the next reader does not
 follow them.
@@ -2149,3 +2158,138 @@ replacement semantics are invented here — what rest days and pauses should do
 is still undecided (D113). This entry records only that the references are
 stale, so that a future decision names them properly instead of inheriting a
 wrong pointer.
+
+## D115 — Rest Days are deprecated as a product concept
+
+`RestDayRecord` was never shipped, never reachable and never approved. The
+store arrived with schema v2 in iteration-2 phase 1; RC2 — the only build ever
+deployed — is schema v1 and both fixtures confirm it. No writer, no reader, no
+screen and no string has ever existed for it, and no decision in this log
+defines one.
+
+**The later architecture removed its job.** Rest days were designed when the
+only decay was the general per-day one, which charges from day 3, so a
+declared recovery day had an obvious purpose. Since phase 4.1, Gym and Running
+decay only after **seven consecutive days with no saved session**, and D37
+already treats a rest day inside a trained week as attendance rather than
+absence. Ordinary recovery is therefore free without declaring anything, and
+the only remaining effect a rest day could have is on absence the model has
+already judged real — a self-declared, unfalsifiable exemption. Seven days
+each marked as rest would make training decay unreachable for ever.
+
+`RestDayRecord.domainType` is `'gym' | 'running'`, so it could never have
+covered Wellbeing or Food either. Whatever a rest day was for, a pause covers
+it better and generically.
+
+**Deprecation, not deletion.** The store, the repository, the type and the
+backup collection stay exactly as they are: removing them is provably safe —
+no writer has ever existed — but it is a `BACKUP_FORMAT_VERSION` change for no
+gain, and a later schema cleanup can do it deliberately. What ends is the
+product concept: no UI, no writer, no place in the roadmap, and nothing in any
+flow creates one. A test asserts that no new flow does.
+
+The dormant `restDay` flag stays in `DecayDay` and is still honoured there.
+Nothing populates it, and this decision is why nothing will.
+
+## D116 — A Pause Period suspends inactivity penalties, and only those
+
+*Product-owner decision. Pause periods are now an active feature.*
+
+A pause is a temporary, user-declared suspension of **inactivity penalties**
+for a holiday, an illness, an injury, or any stretch where keeping the app's
+ordinary rhythm is unreasonable. It is not a scoring freeze and not a way of
+deleting history.
+
+### What it suspends
+
+Every inactivity mechanism, across every active domain:
+
+| Segment | What stops |
+|---|---|
+| Wellbeing, Food, legacy and pre-model eras | the D113 general cooling-off charge |
+| Gym, Running (performance era) | the abstinence inactivity progression |
+
+This is an **exception layer around** inactivity progression. It does not
+change the approved decay formulas: D113's schedule and the Gym/Running
+abstinence arithmetic in `abstinence.ts` are untouched, and outside a pause
+the training definition — consecutive calendar days with zero saved sessions —
+is exactly what it was.
+
+### It freezes the clock; it does not reset it
+
+A paused day adds no day to the inactivity count, adds no decay, and **does
+not clear the episode**. Five silent days, a fortnight paused, one more silent
+day: that day is the sixth of the episode. `consecutiveInactiveDays` and
+`episodeSoFar` both survive the pause untouched. Otherwise a single paused day
+would be a reset button held just short of every threshold.
+
+### What still works
+
+Everything. Logging is never blocked, and a day logged inside a pause is
+stored, scored, rated, and earns XP exactly as it would outside one. A pause
+protects against what the user *did not* do — never against what they did.
+
+### Streaks, XP and the Boss
+
+- **Streaks break.** A pause invents no activity, so it bridges no streak: a
+  thirty-day run, a fortnight paused with nothing done, and the first
+  qualifying day afterwards is day one.
+- **XP is untouched.** There is no withholding mechanism and none was built.
+  The `PausePeriodRecord` comment saying "XP does not accrue" was unsupported
+  and is superseded by this decision. XP stays monotone.
+- **The Boss has no pause rule.** It inherits, as D110 requires: if a domain
+  loses nothing, the Boss inherits no loss.
+
+### Bounded, and prospective only
+
+Start and end are both required, `end >= start`, at most **28 days**, and no
+two pauses may overlap. There is deliberately no quota, no annual allowance
+and no cooldown — one limit, stated plainly. The schema still permits
+`to: null` so an older file reads back, but **no product flow creates an
+open-ended pause**: that would be an indefinite rating freeze, and a pause is
+for a holiday.
+
+A pause may never rewrite a lived day. The earliest permitted start is today;
+a pause that has not begun may be edited or deleted; one that has begun is
+immutable except that it may be **ended early, from today or later**. It can
+never be moved backwards, created retroactively, or shortened in a way that
+reclassifies a day already lived. A user cannot watch decay happen and then
+backdate a pause to undo it.
+
+### The defect this decision had to survive
+
+Suppressing only the decay made a pause **strictly worse than no pause**. The
+abstinence branch is rank-floored; the ordinary attendance target is not. So a
+paused training week of zero attendance dragged the rating towards the bottom
+while an unpaused one stopped at the rank floor — measured at 899 → 98 paused
+against 899 → 560 unpaused.
+
+The fix is not to credit attendance, which would fabricate activity. It is to
+**decline to score a paused week nobody trained in at all** — the same "no
+data" the app already gives a day before a domain was enabled, and the same
+treatment Wellbeing and Food get for a paused silent day. Session counts, the
+met flag and every screen reading them are untouched: nothing is fabricated,
+the day is simply not charged. A week the user did train in scores normally.
+
+## D117 — The D42/D43 references are dangling, not iteration-plan numbers
+
+*Refines D114, which was close but not precise.*
+
+D114 recorded that the "rest days (D42)" and "pause periods (D43)" citations
+in the decay code and the model were `iteration-2-plan.md` numbers. Checked
+again during the rest-day inspection: **the plan cites them too and defines
+neither.** No file in this repository, and no file in its entire git history,
+defines a D42 or D43 meaning rest days or pause periods. The original brief
+(`.github/Claude I6 backup request`, 357 lines) does not mention either
+concept at all.
+
+They are **dangling references to a document that has never been here**. In
+this log D42 is the service-worker rule and D43 is storage-failure reasons, so
+following the citation lands on a real decision about something else — which
+is worse than a broken link.
+
+The citations on `RestDayRecord` and `PausePeriodRecord` are corrected in
+place to name the decisions that actually govern them (D115, D116). No
+replacement semantics were invented from them: what rest days and pauses do is
+decided in D115 and D116 on their own merits, not reconstructed from a
+reference nobody can read.

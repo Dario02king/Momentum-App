@@ -43,6 +43,7 @@ import {
   FOOD_FOCUS_MAX_LENGTH,
   type AppConfiguration,
 } from '../../storage/services/configurationService';
+import { PauseSection } from '../pause/PauseSection';
 import '../food/food.css';
 import './areas.css';
 
@@ -434,6 +435,13 @@ export function AreasScreen({
 
       <div className="areas__scroll">
         {DOMAIN_TYPES.map((type) => domainCard(type, domains[type]))}
+
+        {/*
+          Pause sits below the areas rather than inside one: it is about a
+          stretch of time across everything the user tracks, not a setting
+          belonging to any single domain.
+        */}
+        <PauseSection />
 
         {/*
           The retired domain. It is shown only where it exists, only so a user

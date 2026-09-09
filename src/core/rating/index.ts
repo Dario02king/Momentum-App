@@ -59,6 +59,19 @@ export interface DayState {
   recorded: boolean;
   /** Whether every due item was answered — what a streak counts. */
   complete: boolean;
+  /**
+   * Whether the day fell inside a declared pause.
+   *
+   * A paused day is protected from *inactivity penalties only*: it costs no
+   * decay, and it adds nothing to the inactivity clock. It is emphatically
+   * not a scoring freeze — a day the user actually recorded inside a pause
+   * moves the rating exactly as it would outside one — and it does not reset
+   * the episode either, or a single paused day would be a reset button held
+   * just short of every threshold.
+   *
+   * Optional so that a caller with no pause data behaves exactly as before.
+   */
+  paused?: boolean;
 }
 
 export interface RatingPoint {
@@ -185,24 +198,35 @@ export function computeRating(days: DayState[], options: RatingOptions = {}): Ra
        * history screens say so — but feeding that zero into the average
        * would cost a fortnight's progress for a week away. Inactivity decays
        * instead, gently and with a cap per episode.
+       *
+       * Unless the day was paused, in which case the clock stands still. The
+       * model is still asked what the day costs, so `core/decay` stays the
+       * one authority on the amount; what does not happen here is the
+       * *advance* — `inactiveRun` and `episodeDecay` are the fold's own
+       * state, and freezing them is what makes a pause resume an episode
+       * rather than restart it.
        */
-      inactiveRun += 1;
+      const paused = day.paused === true;
+      if (!paused) inactiveRun += 1;
       decay = decayModel.perDay({
         ...(options.domain === undefined ? {} : { domain: options.domain }),
         consecutiveInactiveDays: inactiveRun,
         episodeSoFar: episodeDecay,
         /*
-         * Dormant, and deliberately so. Nothing writes a rest day or a pause
-         * period, `DayState` carries neither, and what they should suspend is
-         * a separate unresolved product question that D72 did not answer.
-         * Passing `false` reproduces today's behaviour exactly; wiring them
-         * is a later decision, not a side effect of centralising this.
+         * Rest days remain dormant: nothing writes a `RestDayRecord`, they
+         * are deprecated as a product concept, and `DayState` carries none.
          */
         restDay: false,
-        paused: false,
+        paused,
       });
       episodeDecay += decay;
       rating = clamp(rating - decay);
+      /*
+       * A paused day still breaks a streak. A pause protects against the
+       * cost of absence, never by inventing the activity that was absent —
+       * a streak is a claim about consecutive days actually done, and
+       * bridging it would be fabricating one.
+       */
       streak = 0;
     } else {
       inactiveRun = 0;

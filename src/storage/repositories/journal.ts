@@ -12,14 +12,26 @@ const pauses = createRepository<PausePeriodRecord>(STORES.pausePeriods);
 const tombstones = createRepository<TombstoneUnlockRecord>(STORES.tombstones);
 
 /**
- * Rest days (D42), pause periods (D43) and tombstone unlocks (D38).
+ * Rest days, pause periods and tombstone unlocks.
  *
- * All three are the same kind of fact: something the user declared about a
- * date, which the replay reads and which nothing derives. A rest day is why a
- * gap is not absence; a pause is why a fortnight away is not a collapse; an
- * unlock is the day an achievement was first reached, and it is stored rather
- * than replayed precisely because "when did this first happen" must not move
- * when the rule that awarded it is tuned.
+ * All three are the same *kind* of fact — something the user declared about a
+ * date, stored rather than derived — but only one of them is currently read
+ * by anything, and the difference matters more than the similarity:
+ *
+ * - **Pause periods are live** (D116). `loadHistory` reads them once per
+ *   replay and every consumer takes the answer from there; a pause is why a
+ *   fortnight away is not a collapse.
+ * - **Rest days are deprecated** (D115). Nothing writes one and nothing reads
+ *   one. The store stays so that backups keep round tripping, and for no
+ *   other reason.
+ * - **Tombstone unlocks are not implemented yet.** The benchmark values are
+ *   an open product decision, so nothing writes these either. When they
+ *   arrive, "when did this first happen" is stored rather than replayed
+ *   precisely because it must not move when the rule that awarded it is
+ *   tuned.
+ *
+ * An earlier version of this comment said all three were read by the replay.
+ * None of them was.
  */
 export const restDaysRepository = {
   getAll: () => restDays.getAll(),

@@ -10,6 +10,7 @@ import {
 } from '../../core/dates';
 import { WEEKLY_DOMAIN_TYPES, weeklyTargetOf } from '../../core/domains';
 import { needsLegacySportChoice } from '../../core/migration/legacySport';
+import { isPausedOn } from '../../core/pause';
 import { isValidAdherence } from '../../core/food';
 import { createId } from '../../core/ids';
 import { isValidScaleValue } from '../../core/scoring/scale';
@@ -28,6 +29,7 @@ import {
   foodDaysRepository,
   foodEntriesRepository,
   gymSessionsRepository,
+  pausePeriodsRepository,
   questionsRepository,
   runsRepository,
   settingsRepository,
@@ -164,6 +166,15 @@ export interface DayView {
    * accident. It is a pointer, not a prompt: nothing here can apply a choice.
    */
   legacySportChoicePending: boolean;
+  /**
+   * Whether this day falls inside a declared pause.
+   *
+   * Today says so in one restrained line and changes nothing else: every
+   * card stays live, every control stays enabled, and anything logged counts
+   * exactly as it would outside a pause. A pause suspends the cost of being
+   * away — it is not a state the app enters.
+   */
+  paused: boolean;
   /** True when nothing is set up — the day has nothing to ask. */
   empty: boolean;
 }
@@ -222,10 +233,11 @@ async function loadWeek(domain: StoredDomainType, weekKey: WeekKey): Promise<Tra
  * distinguish "nothing due" from "nothing tracked".
  */
 export async function loadDay(date: DateKey = today(), reference: DateKey = today()): Promise<DayView> {
-  const [domains, answers, settings] = await Promise.all([
+  const [domains, answers, settings, pauses] = await Promise.all([
     domainsRepository.list(),
     answersRepository.listByDate(date),
     settingsRepository.getOrCreate(),
+    pausePeriodsRepository.getAll(),
   ]);
 
   const mentalDomain = domains.find((domain) => domain.type === 'mental') ?? null;
@@ -290,6 +302,7 @@ export async function loadDay(date: DateKey = today(), reference: DateKey = toda
     training,
     food,
     legacySportChoicePending: needsLegacySportChoice(settings.legacySportMigration),
+    paused: isPausedOn(pauses, date),
     empty: mental === null && training.length === 0 && food === null,
   };
 }

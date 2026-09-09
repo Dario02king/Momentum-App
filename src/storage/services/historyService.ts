@@ -19,6 +19,7 @@ import type {
 } from '../../core/model';
 import type { WeekKey } from '../../core/dates';
 import { WEEKLY_DOMAIN_TYPES, weeklyTargetsIn } from '../../core/domains';
+import { pausedFlags } from '../../core/pause';
 import {
   scoreDay,
   type DayScore,
@@ -31,6 +32,7 @@ import {
   configSnapshotsRepository,
   foodDaysRepository,
   gymSessionsRepository,
+  pausePeriodsRepository,
   questionsRepository,
   runsRepository,
   sportsSessionsRepository,
@@ -93,6 +95,15 @@ export interface History {
   gym: (number | null)[];
   running: (number | null)[];
   food: (number | null)[];
+  /**
+   * Whether each day fell inside a declared pause, aligned with `days`.
+   *
+   * **The one canonical answer.** Every consumer — the legacy fold, the four
+   * domain ledgers, both training services — reads this rather than resolving
+   * date overlap again, because a second implementation of "is this date
+   * covered" is exactly the kind of arithmetic that goes quietly different.
+   */
+  paused: boolean[];
   /** Every question that was due at some point in the range. */
   questions: HistoryQuestionRow[];
   /** Whether anything at all was recorded on each day, aligned with `days`.
@@ -179,6 +190,7 @@ export async function loadHistory(
       gym: [],
       running: [],
       food: [],
+      paused: [],
       questions: [],
       activity: [],
       weeks: [],
@@ -188,7 +200,7 @@ export async function loadHistory(
 
   // Sessions are counted by week, and the range's edge days belong to weeks
   // that reach beyond it — so the query has to cover those whole weeks.
-  const [snapshots, answers, sessions, gymSessions, runs, foodDays, liveQuestions] =
+  const [snapshots, answers, sessions, gymSessions, runs, foodDays, pauses, liveQuestions] =
     await Promise.all([
       configSnapshotsRepository.list(),
       answersRepository.listByDateRange(from, to),
@@ -198,10 +210,14 @@ export async function loadHistory(
       // Adherence is a daily rating, so unlike a session it needs no week
       // either side of the range.
       foodDaysRepository.listByDateRange(from, to),
+      // Pauses are few and the overlap test is cheap; loading all of them
+      // keeps one open-ended legacy row from being missed by a range query.
+      pausePeriodsRepository.getAll(),
       questionsRepository.list(),
     ]);
 
   const adherenceByDate = new Map(foodDays.map((day) => [day.date, day.adherence]));
+  const paused = pausedFlags(pauses, dates);
 
   // Snapshots store questions sorted by id, which is meaningless to a reader.
   // The drill-down follows the order the questions appear in Areas.
@@ -384,6 +400,7 @@ export async function loadHistory(
     gym: domainSeries('gym'),
     running: domainSeries('running'),
     food: domainSeries('food'),
+    paused,
     questions,
     activity,
     weeks,

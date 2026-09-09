@@ -95,6 +95,10 @@ export async function loadProgression(reference: DateKey = today()): Promise<Pro
       dueItems: day.dueItems,
       answeredItems: day.answeredItems,
       recorded,
+      // A declared pause suspends the penalty for absence — no decay, and no
+      // day added to the inactivity clock. It changes nothing else: a day
+      // actually recorded inside a pause scores exactly as it would outside.
+      paused: history.paused[index] === true,
       // A complete check-in means every due item answered. With no mental
       // questions at all there is nothing to complete, so a sports-only day
       // does not silently earn a check-in streak.

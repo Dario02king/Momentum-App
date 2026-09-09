@@ -226,6 +226,13 @@ export function buildRunningRating(input: RunningRatingInput): RunningRatingStat
 
   /* ── The abstinence run, walked once ─────────────────────────────────── */
 
+  /*
+   * One canonical answer to "was this date paused", taken from the history
+   * the replay already resolved. Neither service re-derives date overlap.
+   */
+  const pausedByIndex = new Map(dates.map((date, index) => [date, history.paused[index] === true]));
+  const pausedOn = (date: DateKey): boolean => pausedByIndex.get(date) === true;
+
   const abstinentDays: number[] = [];
   let run = 0;
   for (const date of dates) {
@@ -233,7 +240,14 @@ export function buildRunningRating(input: RunningRatingInput): RunningRatingStat
       abstinentDays.push(0);
       continue;
     }
-    run = runDates.has(date) ? 0 : run + 1;
+    /*
+     * A paused day neither advances the clock nor resets it. Freezing the
+     * run here — rather than teaching `abstinence.ts` about pauses — is what
+     * keeps the approved decay arithmetic exactly as it was: it still sees a
+     * count of consecutive zero-run days, there are simply fewer of them.
+     */
+    if (runDates.has(date)) run = 0;
+    else if (!pausedOn(date)) run += 1;
     abstinentDays.push(run);
   }
 
@@ -254,10 +268,22 @@ export function buildRunningRating(input: RunningRatingInput): RunningRatingStat
     const performance = performanceFor(date);
     modernDays.push({
       date,
-      scored: state?.status === 'scored' && week !== undefined,
+      /*
+       * A paused week with nothing logged in it is not scored — it is "no
+       * data", exactly like a day before the domain existed. Charging zero
+       * attendance for a declared absence is the penalty a pause exists to
+       * suspend, and it is not suspended by the decay rule alone: the decay
+       * branch is rank-floored and the ordinary target is not, so leaving
+       * this out made a pause strictly worse than no pause.
+       */
+      scored:
+        state?.status === 'scored' &&
+        week !== undefined &&
+        !(pausedOn(date) && (week?.sessions ?? 0) === 0),
       sessionsInWeek: week?.sessions ?? 0,
       weeklyTarget: week?.target ?? 1,
       sessionToday: runDates.has(date),
+      paused: pausedOn(date),
       performance: performance.score,
       performanceChange: aggregateChange(performance),
       abstinentDays: abstinentDays[index] ?? 0,
