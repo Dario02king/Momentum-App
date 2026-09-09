@@ -1,6 +1,19 @@
 import { RATING } from '../config/constants';
+import { activeDecayModel } from '../decay';
 import type { DateKey } from '../dates';
+import type { DomainType } from '../model';
 import type { DayStatus } from '../scoring/dayScore';
+
+/**
+ * The general inactivity schedule, re-exported from its one implementation.
+ *
+ * It lived here until D72 was approved, and `core/decay` held a second copy
+ * of the same arithmetic that nothing called. There is now one function, in
+ * the module that owns the contract; this name is kept so the import path it
+ * has always had keeps working rather than a rename rippling through code
+ * and tests that are about something else.
+ */
+export { decayForDay } from '../decay';
 
 /**
  * The rating engine (§13).
@@ -94,14 +107,6 @@ export function streakBonus(streak: number): number {
   return cap * (1 - Math.exp((-streak * RATING.STREAK_BONUS_PER_DAY) / cap));
 }
 
-/** Decay for the nth consecutive day of an inactivity episode. */
-export function decayForDay(consecutiveInactiveDays: number): number {
-  const { GRACE_DAYS, SMALL_UNTIL_DAY, SMALL_PER_DAY, LARGE_PER_DAY } = RATING.DECAY;
-  if (consecutiveInactiveDays <= GRACE_DAYS) return 0;
-  if (consecutiveInactiveDays <= SMALL_UNTIL_DAY) return SMALL_PER_DAY;
-  return LARGE_PER_DAY;
-}
-
 /**
  * How much a day counts, from 0 to 1.
  *
@@ -116,9 +121,29 @@ export function dayWeight(day: DayState): number {
   return Math.min(1, Math.max(0, day.answeredItems / day.dueItems));
 }
 
-export function computeRating(days: DayState[]): RatingResult {
+export interface RatingOptions {
+  /**
+   * Which domain this fold is for, passed through to the decay model.
+   *
+   * Optional: the legacy progression folds every domain at once and has no
+   * single answer, and the approved general formula does not read it. It is
+   * carried so that a future per-domain formula needs no new plumbing.
+   */
+  domain?: DomainType;
+}
+
+export function computeRating(days: DayState[], options: RatingOptions = {}): RatingResult {
   const alpha = smoothingFactor();
   const points: RatingPoint[] = [];
+  /*
+   * The general cooling-off model (D72), resolved once for the whole fold.
+   *
+   * This is the live execution path: there is no inline schedule here any
+   * more, so what the rating loses to inactivity is exactly what
+   * `core/decay` says it loses, and the approval flag is a statement about
+   * code that actually runs.
+   */
+  const decayModel = activeDecayModel();
 
   let rating: number = RATING.START;
   let streak = 0;
@@ -162,9 +187,20 @@ export function computeRating(days: DayState[]): RatingResult {
        * instead, gently and with a cap per episode.
        */
       inactiveRun += 1;
-      const step = decayForDay(inactiveRun);
-      const remaining = Math.max(0, RATING.DECAY.MAX_PER_EPISODE - episodeDecay);
-      decay = Math.min(step, remaining);
+      decay = decayModel.perDay({
+        ...(options.domain === undefined ? {} : { domain: options.domain }),
+        consecutiveInactiveDays: inactiveRun,
+        episodeSoFar: episodeDecay,
+        /*
+         * Dormant, and deliberately so. Nothing writes a rest day or a pause
+         * period, `DayState` carries neither, and what they should suspend is
+         * a separate unresolved product question that D72 did not answer.
+         * Passing `false` reproduces today's behaviour exactly; wiring them
+         * is a later decision, not a side effect of centralising this.
+         */
+        restDay: false,
+        paused: false,
+      });
       episodeDecay += decay;
       rating = clamp(rating - decay);
       streak = 0;

@@ -6,12 +6,13 @@ import { nextRank, rankById, type Rank } from '../ranks';
 /**
  * Inactivity decay for Gym — **within the rank, and nowhere else.**
  *
- * This is not the cooling-off gate. `core/decay` still holds RC2's provisional
- * rating decay behind `DECAY_MODEL_APPROVED`, and that gate is still open.
- * What is defined here is the approved Gym-specific rule, and the two do not
- * meet: a Gym day under the performance model does not feed the per-day
- * rating decay at all, because decaying twice for one absence is exactly the
- * double penalty this rule was written to avoid.
+ * This is not the general cooling-off model. That one lives in `core/decay`
+ * and was ratified as RC2's formula unchanged (D113); what is defined here is
+ * the approved *training* rule, and the two do not meet. A Gym day under the
+ * performance model never reaches the general model at all — it is folded by
+ * `computeTrainingRating`, which does not call it — because decaying twice
+ * for one absence is exactly the double penalty this rule was written to
+ * avoid (D96).
  *
  * ## What triggers it, and what does not
  *

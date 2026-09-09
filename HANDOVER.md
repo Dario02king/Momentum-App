@@ -1,8 +1,8 @@
-# Handover — end of Phase 7
+# Handover — end of Phase 7, plus D113 (Gate 1 closed)
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D112). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D114). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -17,7 +17,7 @@ either — it says where things stand.
 | `GYM_SCORING_MODEL` | `attendancePerformance` — Gym's 40/60 model |
 | `RUNNING_SCORING_MODEL` | `attendancePerformance` — Running's 40/60 model |
 | Food scoring | the shared daily fold over a 1–10 adherence rating (D106, D107) — **no** model constant, because there is no second model |
-| `DECAY_MODEL_APPROVED` | `false` — the **general** cooling-off gate is still open, and Phase 6 did not touch it |
+| `DECAY_MODEL_APPROVED` | **`true`** — Gate 1 closed by D113. RC2's formula ratified unchanged, and `core/decay` is now on the live path |
 | Gate 2 (nutrition targets) | **still open.** Food ranks without one, on purpose (D106) |
 
 Phases 0–6 of iteration 2 are complete. Phase 4.1 closed the Gym scoring gate,
@@ -77,7 +77,7 @@ records (answers, sessions, sets, snapshots)
 | `src/core/food/adherence.ts` | The 1–10 Food is ranked on, and why no target lives there |
 | `src/core/food/catalogue.ts` | Five demo foods — code, not data, never in a backup |
 | `src/core/gym/catalogue.ts` | 29 built-in exercises, stable ids, explicit muscles, roles and load types |
-| `src/core/decay/index.ts` | **General** decay contract + placeholder (gate still open) |
+| `src/core/decay/index.ts` | **The** general cooling-off formula (D113) — one source of truth for the schedule, the cap and model selection; on the live path |
 | `src/core/migration/legacySport.ts` | RC2 Sport conversion planning (pure) |
 | `src/storage/db.ts` | Stores and the numbered migrations |
 | `src/storage/services/historyService.ts` | Replays the past, per day, per domain |
@@ -121,7 +121,11 @@ records (answers, sessions, sets, snapshots)
 - `RunRecord` carries `source`/`externalId` as the import seam. No importer.
 
 **Intentionally dormant**
-- **Decay.** The placeholder reproduces RC2 exactly. Gate 1, still open.
+- **Rest days and pause periods.** Stores, repositories and backup coverage
+  exist; nothing writes them and nothing reads them. `DecayDay` carries
+  `restDay`/`paused` and honours them, and `computeRating` passes `false` for
+  both. What they should suspend is unresolved (D113) — do not wire them
+  through a type refactor.
 
 **Not implemented**
 - Nutrition targets (Gate 2) — deliberately, see below. Tombstone unlocking,
@@ -338,11 +342,19 @@ own history; no population norms, ever.
    for Gym in Phase 4.1** (D90, D99) and **for Running in Phase 5**
    (D102–D105). Both are 40 % attendance and 60 % personal development,
    through the same shared code. D88 no longer describes the build.
-2. **The general cooling-off / decay formula.** Gate 1, **still open** (D72).
-   The abstinence decay Gym and Running share is a *training-domain* rule
-   about rank progress (D96) and does not close this: `core/decay` is
-   untouched and `DECAY_MODEL_APPROVED` is still `false`. Phase 6 added no
-   Food decay rule and none may be inferred from the training domains (D107).
+2. ~~**The general cooling-off / decay formula.**~~ **Gate 1 closed by D113.**
+   RC2's schedule ratified unchanged — 2 grace days, 1.5/day to day 7, 3/day
+   after, 60 per episode — and `core/decay` is now the live implementation
+   rather than a contract nobody called. Not one baseline rating moved.
+   Wellbeing and Food are general; Gym and Running under the performance
+   model keep their own abstinence rule (D96) and are never charged by both.
+2a. **Rest-day suspension semantics.** Still open, separately (D113). Nothing
+   writes a `RestDayRecord`; `DayState` carries no rest day. The schema's
+   `gym | running` narrowing does not authorise changing the approved
+   abstinence definition.
+2b. **Pause-period suspension, and whether XP accrues during a pause.** Still
+   open, separately (D113). The "XP does not accrue" comment on
+   `PausePeriodRecord` is an unimplemented note, not a rule.
 3. **Nutrition targets.** Gate 2, **still open after Phase 6.** Food is built
    and ranked, on the 1–10 adherence the user enters (D106) — deliberately a
    question that needs no target to answer. Nothing in the scoring path reads
@@ -410,7 +422,9 @@ in, except where noted.
 
 | | |
 |---|---|
-| Unit tests | **946 passing, 56 files, exit 0** (`npm run test`) — 932 at the Phase 6 baseline, plus five pinning D110 and nine pinning that the legacy question is reachable |
+| Unit tests | **976 passing, 60 files, exit 0** (`npm run test`) — 946 at the Phase 7 baseline plus 30 for D113 |
+| D113 numeric equivalence | a 64 KB, 2691-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, and a live four-domain profile through five weeks of silence — is **byte-identical before and after the refactor**, same MD5, zero mismatches |
+| D113 live path | `core/decay` proved on the production path by spying the model through `computeRating`, and model *selection* proved connected by substituting a model in an isolated file and watching the fold follow it |
 | Typecheck | `tsc -b` clean |
 | Production build | clean; no stale `.js` beside any `.ts` |
 | Migration + continuity | v5 adds `foodDays` and declares no transform; a version-4 database carrying food *entries* upgrades with **no** ratings invented from them. RC2 fixtures still reproduce exactly, v1→v2→v3→v4→v5 (including the v2→v4 jump D98 fixed), backup round trip with Food data, newer-file refusal |
@@ -454,9 +468,11 @@ calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
 
 **Phase 7 closed the legacy-Sport gap** (D112), which this file had called the
-largest known one. It did **not** touch the cooling-off gate: `core/decay` is
-untouched, the placeholder still reproduces RC2 exactly, `DECAY_MODEL_APPROVED`
-is still `false`, and **Food has no decay rule at all** (D107).
+largest known one. **D113 then closed Gate 1**: RC2's cooling-off formula is
+ratified unchanged, `core/decay` is the live implementation rather than a
+contract nobody called, and `DECAY_MODEL_APPROVED` is `true` without a single
+baseline rating having moved. Food participates in the *general* model, which
+is not the training-decay model D107 forbids it (D113).
 
 The unbuilt work the repository still contains, none of it designated:
 
@@ -464,8 +480,7 @@ The unbuilt work the repository still contains, none of it designated:
 |---|---|
 | "Warum diese Zahl?" panel | none — it explains numbers that already exist |
 | Gym plans, profile | stores and repositories exist; what they are *for* is partly a product question |
-| Rest days / pause periods in the replay | D42/D43 are approved, but they feed the decay model, which is gated |
-| The general cooling-off formula | **blocked** — Gate 1, open (D72) |
+| Rest days / pause periods, end to end | needs the two suspension decisions (D113) — the same "engine with no door" shape Phase 7 fixed for legacy Sport |
 | Tombstone unlocking | **blocked** — the benchmark values are an open gate |
 | Nutrition targets | **blocked** — Gate 2, open by design (D106) |
 

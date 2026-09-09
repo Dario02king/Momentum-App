@@ -239,7 +239,7 @@ export function buildRunningRating(input: RunningRatingInput): RunningRatingStat
 
   /* ── The two folds ───────────────────────────────────────────────────── */
 
-  const legacy = computeRating(dayStates as DayState[]);
+  const legacy = computeRating(dayStates as DayState[], { domain: 'running' });
   const legacyEnd = transition === -1 ? dates.length : transition;
   const unlockedFrom =
     endurance.unlockedAt === null

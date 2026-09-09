@@ -928,7 +928,7 @@ the user themselves set.
 And there is no default: until the user answers, `legacySportMigration` stays
 `pending`, the sports domain is untouched and the app works exactly as it did.
 
-## D72 — The decay placeholder is RC2's decay, unchanged
+## D72 — The decay placeholder is RC2's decay, unchanged *(superseded by D113)*
 
 The cooling-off formula is a product-owner gate. A placeholder that guessed at
 it would quietly become it: every screen built in phases 2 to 6 would rest on
@@ -1394,9 +1394,14 @@ building something else.
 
 ## D96 — Abstinence decay reduces rank progress, and only that
 
-Distinct from the cooling-off gate, which is still open (D72). `core/decay`
-still holds RC2's provisional rating decay behind `DECAY_MODEL_APPROVED`, and
-this does not close it. What is approved is a Gym-specific rule.
+> **Status note (D113).** The cooling-off gate this entry describes as open
+> has since been closed, on RC2's formula unchanged. Nothing about the rule
+> below moved: the two models remain separate, and no day is charged by both.
+
+Distinct from the cooling-off gate, which was still open when this was
+written (D72, closed by D113). `core/decay` held RC2's provisional rating
+decay behind `DECAY_MODEL_APPROVED`, and this does not close it. What is
+approved here is a Gym-specific rule.
 
 **Abstinence is seven consecutive days with no saved Gym session.** Missing
 the weekly target is *not* abstinence: a user who trained twice against a
@@ -1841,6 +1846,12 @@ inferred from Gym or Running would close a gate nobody opened, and the shape
 of the two mechanisms is not even the same — a training domain decays after
 seven days with no session, and Food has no sessions to be without.
 
+> **Status note (D113).** The gate has since been closed, and Food does
+> participate in the **general** cooling-off model — which is what the
+> paragraph above says it is not being given: the *training* model. The
+> sentence still stands as written. What changed is D72's status, not Food's
+> exemption from Gym's and Running's rule.
+
 **Food does not add to the day-level `dueItems`/`answeredItems`.** Those
 weight the legacy fold by how much of the *check-in* was reported and drive
 the Wellbeing check-in streak; Gym and Running do not contribute to them
@@ -2030,3 +2041,111 @@ what the tests already guaranteed.
 **No product decision was made here.** The three branches, what each carries,
 the inherited weekly target, the `legacyCarryOver` marker and the refusal to
 invent distance or pace are all D71, unchanged.
+
+## D113 — The general cooling-off formula is RC2's, ratified unchanged (closes D72)
+
+*Product-owner decision. `DECAY_MODEL_APPROVED` is now `true`.*
+
+The general inactivity formula is RC2's, approved exactly as it stands:
+
+| Consecutive inactive days | Cost |
+|---|---|
+| 1–2 | nothing (`GRACE_DAYS = 2`) |
+| 3–7 | 1.5 rating points each |
+| 8 onwards | 3 rating points each |
+
+and **one episode can never cost more than 60 points in total**. No constant
+changed. No proportional or half-life model. Approving D72 was a decision, not
+a change: not one rating that was correct at the accepted baseline moved, and
+that is asserted rather than hoped — see "the numbers" below.
+
+### Scope: one model per domain-and-era segment
+
+The general formula governs any segment that has **no approved
+domain-specific decay model of its own**:
+
+| Segment | Model |
+|---|---|
+| Wellbeing | general cooling-off |
+| Food | general cooling-off |
+| Gym, `attendancePerformance` era | Gym abstinence only (D96) |
+| Running, `attendancePerformance` era | Running abstinence only (D96) |
+| Gym / Running, pre-model eras | whatever was in force on those days — the general formula |
+| the legacy undivided fold | its own historical semantics, unchanged |
+
+**No day may ever be charged by both.** That is D96 and it stays
+authoritative. It holds by construction rather than by a guard: a day scored
+under the performance model is folded by `computeTrainingRating`, which never
+reaches the general model at all.
+
+Food therefore *does* participate in general cooling-off. This is not the
+Gym/Running training-decay model that D107 forbids it — that rule decays a
+fraction of rank progress in weekly blocks after seven days with no saved
+*session*, and Food has no sessions. The general model removes fixed points a
+day from any daily domain that goes quiet, which is what Wellbeing has always
+done and what "absence is not failure" has always meant: silence is decayed
+gently, never scored as a zero.
+
+### The architectural half: the contract is now the implementation
+
+D72 could not honestly be closed by flipping a flag, because **the flag
+governed dead code**. From phase 1 to phase 7 `core/decay` was a contract
+nobody called, and the decay that actually ran was a second, inline copy of
+the same schedule inside `computeRating`. Two implementations of one rule is
+the same defect as a cached score: they can disagree, and then neither can be
+trusted.
+
+So the schedule moved into `core/decay`, which now owns the grace period, both
+rates, the episode cap and the model selection; `core/rating` re-exports
+`decayForDay` from there rather than holding a copy, and `computeRating`
+reaches its decay figure only through `activeDecayModel()`. There is one
+function object, and a test asserts identity rather than agreement — equal
+outputs would not catch a re-introduced duplicate.
+
+`computeRating` gained an optional `domain`, passed by the callers that know
+one. The approved formula does not read it; it exists so that a per-domain
+formula would be a change to `perDay` rather than to every caller.
+
+### The numbers
+
+Before and after the refactor, a 64 KB fingerprint of 2691 values — five pure
+folds covering grace, cap, broken episodes, mixed statuses and partial days;
+both RC2 fixtures replayed to their full Boss, legacy and per-domain ledgers;
+and a live four-domain profile taken through five weeks of silence — is
+**byte-identical**, same MD5, zero mismatches.
+
+### What this decision does **not** touch
+
+- **Rest-day suspension semantics remain unresolved**, separately. Nothing
+  writes a `RestDayRecord`, `DayState` does not carry one, and
+  `RestDayRecord.domainType` being `gym | running` does **not** authorise
+  changing the approved abstinence definition. Abstinence remains consecutive
+  calendar days with zero saved sessions; a declared rest day must not start
+  interrupting that sequence until a decision says so.
+- **Pause-period suspension and its XP claim remain unresolved**, separately.
+  The comment on `PausePeriodRecord` saying "XP does not accrue" is an
+  unimplemented note, not a rule.
+
+Both flags stay in `DecayDay` and are honoured there, and `computeRating`
+passes `false` for both — which reproduces today's behaviour exactly. They are
+kept rather than removed so that resolving those questions is wiring an input,
+not reopening this contract, and so that neither is answered by a type
+refactor.
+
+## D114 — The D42/D43 citations in the decay code are iteration-plan numbers
+
+Verified during the D72 inspection and recorded so the next reader does not
+follow them.
+
+`core/decay/index.ts` and D72 cited "rest days (D42)" and "pause periods
+(D43)"; `RestDayRecord` and `PausePeriodRecord` in `core/model/index.ts` carry
+the same citations. Those are **`docs/iteration-2-plan.md` numbers**. In this
+log, D42 is "The service worker never applies an update on its own" and D43 is
+"Storage failures say which failure they are".
+
+The two numbering schemes were never reconciled, and the collision is silent:
+following the citation lands on a real decision about something else. No
+replacement semantics are invented here — what rest days and pauses should do
+is still undecided (D113). This entry records only that the references are
+stale, so that a future decision names them properly instead of inheriting a
+wrong pointer.

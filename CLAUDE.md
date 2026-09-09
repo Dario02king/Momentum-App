@@ -143,6 +143,14 @@ Never conflate them.
   due item a day, so logging something more often can never make it dominate.
   Lifetime XP answers a different question and never enters the rank. Do not
   introduce a per-event Boss constant or a cross-domain exchange rate.
+- **The general cooling-off formula is RC2's, approved** (D113): two grace
+  days, then 1.5 a day to day 7, then 3, capped at 60 per episode. It governs
+  every domain-and-era segment that has no approved model of its own —
+  Wellbeing, Food, and the pre-performance-model Gym and Running eras — and
+  it is reached only through `activeDecayModel()`. Gym and Running under the
+  performance model use their own abstinence rule and never both (D96).
+  Rest-day and pause suspension are **separate, still unresolved**: nothing
+  populates those flags, and neither may be decided by a type refactor.
 - **One unanswered daily domain currently holds the whole day open** (D111).
   That is the existing mechanism, it only postpones closure inside the edit
   window, and it is deliberately unchanged — but it deserves revisiting as
@@ -224,9 +232,16 @@ no personal-development percentage belongs inside a Tombstone.
 ## When a product decision is not settled
 
 Some decisions are explicitly reserved. Build the shape, leave the value, and
-say so — the decay model does exactly this (`src/core/decay/index.ts`): one
-switch, one flag, a placeholder that reproduces the previous behaviour
-exactly, and a test asserting the flag and the model cannot disagree.
+say so — the decay model did exactly this until D113 closed it
+(`src/core/decay/index.ts`): one switch, one flag, a placeholder that
+reproduced the previous behaviour exactly, and a test asserting the flag and
+the model cannot disagree.
+
+**And wire the shape to the thing it governs.** That gate stayed open for six
+phases with `core/decay` calling nobody while a second copy of the same
+schedule ran inline in `computeRating`, so the flag was a claim about dead
+code and every test of it was self-consistent and meaningless. A reserved
+decision is only reserved if flipping it would actually change what runs.
 
 Do not substitute a conventional fitness-app or habit-app model because it is
 familiar. Where this app's rules differ from convention, the difference is the

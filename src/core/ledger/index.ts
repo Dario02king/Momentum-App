@@ -77,7 +77,7 @@ export interface DomainLedger {
 }
 
 export function buildLedger(input: LedgerInput): DomainLedger {
-  const rating = input.rating ?? computeRating(input.days);
+  const rating = input.rating ?? computeRating(input.days, { domain: input.domain });
   const ranks = rankHistory(
     rating.points.map((point) => ({ date: point.date, rating: point.rating })),
     input.promotionUnlocked === undefined

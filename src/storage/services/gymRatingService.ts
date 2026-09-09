@@ -247,7 +247,7 @@ export function buildGymRating(input: GymRatingInput): GymRatingState {
 
   /* ── The two folds ───────────────────────────────────────────────────── */
 
-  const legacy = computeRating(dayStates as DayState[]);
+  const legacy = computeRating(dayStates as DayState[], { domain: 'gym' });
   const legacyEnd = transition === -1 ? dates.length : transition;
 
   const unlockedFrom =
