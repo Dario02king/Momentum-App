@@ -8,12 +8,22 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    # The branch V1 is developed and released on. The original entry here
-    # named a branch that stopped receiving work after RC2, so every phase
-    # from 1 to 8 built and tested green and deployed nothing: the published
-    # site was still the RC2 bundle. A deploy workflow pointing at a dead
-    # branch is worse than none, because the pipeline reports success.
-    branches: [claude/gym-scoring-integration-9oeblv]
+    # Both the release branch and the default branch.
+    #
+    # The original entry named only a branch that stopped receiving work after
+    # RC2, so every phase from 1 to 8 built and tested green and deployed
+    # nothing: the published site was still the RC2 bundle. A deploy workflow
+    # pointing at a dead branch is worse than none, because the pipeline
+    # reports success.
+    #
+    # The `github-pages` environment only accepts deployments from the
+    # **default branch**, so a run from anywhere else builds and then fails at
+    # the deploy step with no explanation. That is why the default branch is
+    # listed here and why the release lands there: the build gates are the
+    # same either way, and only a run on the default branch can publish.
+    branches:
+      - claude/momentum-pwa-spec-j82dhm
+      - claude/gym-scoring-integration-9oeblv
   workflow_dispatch:
 
 permissions:
