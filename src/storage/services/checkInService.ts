@@ -9,6 +9,7 @@ import {
   type WeekKey,
 } from '../../core/dates';
 import { WEEKLY_DOMAIN_TYPES, weeklyTargetOf } from '../../core/domains';
+import { needsLegacySportChoice } from '../../core/migration/legacySport';
 import { isValidAdherence } from '../../core/food';
 import { createId } from '../../core/ids';
 import { isValidScaleValue } from '../../core/scoring/scale';
@@ -29,6 +30,7 @@ import {
   gymSessionsRepository,
   questionsRepository,
   runsRepository,
+  settingsRepository,
   sportsSessionsRepository,
 } from '../repositories';
 
@@ -152,6 +154,16 @@ export interface DayView {
   training: TrainingDayView[];
   /** `null` when Food is disabled or was never enabled. */
   food: FoodDayView | null;
+  /**
+   * Whether the migrated user still owes an answer about their RC2 Sport
+   * sessions.
+   *
+   * Today is where the retired domain shows a week with no way to log into
+   * it, which is exactly where "what were these?" occurs to somebody — so the
+   * card points at the answer rather than leaving the question to be found by
+   * accident. It is a pointer, not a prompt: nothing here can apply a choice.
+   */
+  legacySportChoicePending: boolean;
   /** True when nothing is set up — the day has nothing to ask. */
   empty: boolean;
 }
@@ -210,9 +222,10 @@ async function loadWeek(domain: StoredDomainType, weekKey: WeekKey): Promise<Tra
  * distinguish "nothing due" from "nothing tracked".
  */
 export async function loadDay(date: DateKey = today(), reference: DateKey = today()): Promise<DayView> {
-  const [domains, answers] = await Promise.all([
+  const [domains, answers, settings] = await Promise.all([
     domainsRepository.list(),
     answersRepository.listByDate(date),
+    settingsRepository.getOrCreate(),
   ]);
 
   const mentalDomain = domains.find((domain) => domain.type === 'mental') ?? null;
@@ -276,6 +289,7 @@ export async function loadDay(date: DateKey = today(), reference: DateKey = toda
     mental,
     training,
     food,
+    legacySportChoicePending: needsLegacySportChoice(settings.legacySportMigration),
     empty: mental === null && training.length === 0 && food === null,
   };
 }

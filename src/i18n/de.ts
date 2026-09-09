@@ -588,6 +588,28 @@ export const de = {
   'food.rank.notStarted': 'Noch nicht gestartet',
   'food.rank.hint': 'Bewerte deinen ersten Tag, dann zählt Ernährung mit.',
 
+
+  /* ── Sport (bisher): die einmalige Frage (Phase 7) ───────────────────── */
+  'legacySport.ask.title': 'Was waren diese Trainings?',
+  'legacySport.ask.lead':
+    'Du hast {count} Trainings aus der früheren Version. Sag uns, was sie waren — dann landen sie im richtigen Log.',
+  'legacySport.ask.leadOne':
+    'Du hast ein Training aus der früheren Version. Sag uns, was es war — dann landet es im richtigen Log.',
+  'legacySport.choice.gym': 'Es waren Gym-Sessions',
+  'legacySport.choice.gym.body':
+    'Sie erscheinen künftig im Gym-Log, ohne Übungen und Sätze — die hat die frühere Version nie erfasst. Dein Wochenziel zieht mit um.',
+  'legacySport.choice.running': 'Es waren Läufe',
+  'legacySport.choice.running.body':
+    'Sie erscheinen künftig im Lauf-Log, ohne Distanz und Tempo — die hat die frühere Version nie erfasst. Dein Wochenziel zieht mit um.',
+  'legacySport.choice.kept': 'So lassen, wie sie sind',
+  'legacySport.choice.kept.body':
+    'Sie bleiben als frühere Trainings stehen. Gym und Laufen starten leer.',
+  'legacySport.ask.safe':
+    'Dein Rang, dein Verlauf und deine bisherigen Wochen bleiben in jedem Fall unverändert. Gelöscht wird nichts.',
+  'legacySport.ask.once': 'Diese Frage wird nur einmal gestellt.',
+  'legacySport.ask.confirm': 'Antwort übernehmen',
+  'legacySport.today.pending': 'Sag unter Bereiche, was diese Trainings waren.',
+
 } as const;
 
 export type TranslationKey = keyof typeof de;

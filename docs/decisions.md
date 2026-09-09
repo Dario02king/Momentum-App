@@ -1974,3 +1974,59 @@ each domain's day closing on its own obligations — which would be a change to
 
 This is a future architecture and UX consideration. It is not permission to
 change the mechanism now, and it must not be redesigned as cleanup.
+
+## D112 — The legacy-Sport question is offered in Areas, never imposed
+
+*Phase 7. The conversion itself was decided in D71 and built in phase 2; this
+records only where and how it is asked, which was the missing half.*
+
+`core/migration/legacySport.ts` and `legacySportService.ts` were complete,
+documented and covered by 18 tests since phase 2 — and **nothing called
+them**. Every migrated RC2 user's `legacySportMigration` stayed `pending` for
+ever, so the three branches were unreachable and the sessions stayed in a
+domain the product no longer offers. The engine was right; it had no door.
+
+### Where the question lives
+
+**In Areas, inside the card that already explains the retired domain.** That
+card is where somebody goes to ask "where did my old training go?", so the
+question and its answer belong in the same place. The choice is a radio group
+of three, each option stating what it *does* rather than only what it is
+called, with a confirm underneath.
+
+**On Today, a pointer and nothing more.** The retired log already appears
+there showing a week with no way to log into it, which is exactly where the
+question occurs to someone — so the card carries one line that navigates to
+Areas. It cannot apply anything.
+
+### Why it is not a blocking step
+
+The engine's own rule is that no branch runs by itself: no default, no
+timeout, no "most likely" guess. A gate on startup would contradict that in
+spirit even while obeying it in code — it would coerce an answer from a user
+who has not decided, to a question that cannot be un-answered. So the
+question is *offered*: scrolling past it costs nothing, the app stays fully
+usable, and it is asked again next time. That property is now verified rather
+than asserted — reloading, revisiting and wandering the app leave
+`legacySportMigration` at `pending` and both training logs empty.
+
+### Why this one is confirmed rather than saved on tap
+
+Every other selection in this app is one calendar day and reversible inside
+the edit window. This one writes a year of sessions into a different log,
+retires a domain from today, and is asked once. A second, deliberate action is
+proportionate to that, and the confirm stays unavailable until a branch is
+chosen so there is nothing to confirm by accident.
+
+### What the copy promises, and why it is safe to promise
+
+That the rank, the history and every week already lived stay exactly as they
+are, and that nothing is deleted. Both are true in all three branches for
+reasons that predate this phase — the replay reads each day against the
+snapshot in force on it, and the conversion copies rather than moves — and
+both were already pinned by `legacySport.test.ts`. The interface says out loud
+what the tests already guaranteed.
+
+**No product decision was made here.** The three branches, what each carries,
+the inherited weekly target, the `legacyCarryOver` marker and the refusal to
+invent distance or pace are all D71, unchanged.

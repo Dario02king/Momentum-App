@@ -16,6 +16,7 @@ import type {
 } from '../../core/model';
 import { normaliseWeights, type BossWeights } from '../../core/boss';
 import { ensureCurrentSnapshot } from '../configService';
+import { legacySportPrompt, type LegacySportPrompt } from './legacySportService';
 import {
   domainsRepository,
   questionsRepository,
@@ -46,16 +47,27 @@ export interface AppConfiguration {
   domains: Record<DomainType, DomainRecord | null>;
   /** RC2's generic Sport domain, where a migrated device still carries one. */
   legacySport: DomainRecord | null;
+  /**
+   * Whether the migrated user still has to be asked what their RC2 Sport
+   * sessions were, and what the answer would apply to.
+   *
+   * Carried here so there is one configuration load rather than a second
+   * parallel one. It costs nothing on a profile that has no legacy data:
+   * `legacySportPrompt` returns without reading the session log unless the
+   * question is genuinely outstanding.
+   */
+  legacySportChoice: LegacySportPrompt;
   activation: DomainActivation;
   /** Every question, including paused and archived ones. */
   questions: QuestionRecord[];
 }
 
 export async function loadConfiguration(): Promise<AppConfiguration> {
-  const [settings, domains, questions] = await Promise.all([
+  const [settings, domains, questions, legacySportChoice] = await Promise.all([
     settingsRepository.getOrCreate(),
     domainsRepository.list(),
     questionsRepository.list(),
+    legacySportPrompt(),
   ]);
 
   const byType = Object.fromEntries(
@@ -66,6 +78,7 @@ export async function loadConfiguration(): Promise<AppConfiguration> {
     settings,
     domains: byType,
     legacySport: domains.find((domain) => domain.type === 'sports') ?? null,
+    legacySportChoice,
     activation: activationOf(domains),
     questions,
   };

@@ -253,7 +253,21 @@ export function TodayScreen({
                   count for every week they were logged in, and nothing new
                   is ever added to it.
                 */}
-                {training.domain === 'sports' ? null : (
+                {training.domain === 'sports' ? (
+                  /*
+                    The retired log has no log button, so this is where a
+                    migrated user notices it and wonders what it is. Point at
+                    the answer rather than leaving the one-time question to be
+                    stumbled on — but only point: the choice itself is made in
+                    Areas, deliberately, with what each branch does spelled
+                    out beside it.
+                  */
+                  day.legacySportChoicePending ? (
+                    <button type="button" className="week__legacyAsk" onClick={onGoToAreas}>
+                      {t('legacySport.today.pending')}
+                    </button>
+                  ) : null
+                ) : (
                   <button
                     type="button"
                     className="week__log"

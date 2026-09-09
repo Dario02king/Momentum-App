@@ -8,7 +8,18 @@ import type {
   QuestionRecord,
 } from '../../core/model';
 import { QUESTION_CATEGORIES } from '../../core/model';
-import { Button, Card, EmptyState, Row, Section, Segmented, Switch } from '../../components';
+import { useRadioKeys } from '../../domains/mental/AnswerControls';
+import { LEGACY_SPORT_CHOICES, type LegacySportChoice } from '../../core/migration/legacySport';
+import {
+  Button,
+  Card,
+  EmptyState,
+  Row,
+  Section,
+  Segmented,
+  SelectionMark,
+  Switch,
+} from '../../components';
 import {
   ActivityIcon,
   ArchiveIcon,
@@ -34,6 +45,101 @@ import {
 } from '../../storage/services/configurationService';
 import '../food/food.css';
 import './areas.css';
+
+/**
+ * Asking a migrated user, once, what their RC2 Sport sessions were.
+ *
+ * It lives inside the card that already explains the retired domain, because
+ * that card is where somebody goes to ask "where did my old training go?" —
+ * and the answer to that question and the question itself belong together.
+ *
+ * **It is offered, never imposed.** There is no blocking step and no timeout
+ * that picks a branch: a user who scrolls past this loses nothing, keeps a
+ * fully working app, and is asked again next time. That is the whole of
+ * `core/migration/legacySport.ts`'s "no branch runs by itself", carried into
+ * the interface rather than only asserted in a test.
+ *
+ * The choice is confirmed rather than saved on tap. Every other selection in
+ * this app is one calendar day and reversible inside the edit window; this
+ * one writes a year of sessions into a different log, retires a domain and is
+ * asked only once, so it gets a deliberate second action.
+ */
+const LEGACY_CHOICE_COPY: Record<
+  LegacySportChoice,
+  { title: TranslationKey; body: TranslationKey }
+> = {
+  gym: { title: 'legacySport.choice.gym', body: 'legacySport.choice.gym.body' },
+  running: { title: 'legacySport.choice.running', body: 'legacySport.choice.running.body' },
+  kept: { title: 'legacySport.choice.kept', body: 'legacySport.choice.kept.body' },
+};
+
+function LegacySportChoiceForm({
+  sessions,
+  onChoose,
+}: {
+  sessions: number;
+  onChoose(choice: LegacySportChoice): void;
+}) {
+  const t = useT();
+  const [picked, setPicked] = useState<LegacySportChoice | null>(null);
+  const onKeyDown = useRadioKeys(LEGACY_SPORT_CHOICES.length, (index) =>
+    setPicked(LEGACY_SPORT_CHOICES[index] ?? null),
+  );
+
+  return (
+    <div className="legacy-choice">
+      <p className="legacy-choice__lead">
+        {sessions === 1
+          ? t('legacySport.ask.leadOne')
+          : t('legacySport.ask.lead', { count: sessions })}
+      </p>
+
+      <div className="legacy-choice__options" role="radiogroup" aria-label={t('legacySport.ask.title')}>
+        {LEGACY_SPORT_CHOICES.map((choice, index) => {
+          const copy = LEGACY_CHOICE_COPY[choice];
+          const selected = picked === choice;
+          return (
+            <button
+              key={choice}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              // One tab stop for the group, like every other single choice here.
+              tabIndex={selected || (picked === null && index === 0) ? 0 : -1}
+              className={`legacy-choice__option ${
+                selected ? 'legacy-choice__option--on' : ''
+              }`.trim()}
+              onClick={() => setPicked(choice)}
+              onKeyDown={(event) => onKeyDown(event, index)}
+            >
+              <span className="legacy-choice__body">
+                <span className="legacy-choice__title">{t(copy.title)}</span>
+                <span className="legacy-choice__hint">{t(copy.body)}</span>
+              </span>
+              <SelectionMark selected={selected} />
+            </button>
+          );
+        })}
+      </div>
+
+      {/* True in all three branches, and the thing a user is most likely to
+          be afraid of. Verified by the migration suite, not merely claimed. */}
+      <p className="legacy-choice__note">{t('legacySport.ask.safe')}</p>
+      <p className="legacy-choice__note">{t('legacySport.ask.once')}</p>
+
+      <Button
+        variant="primary"
+        block
+        disabled={picked === null}
+        onClick={() => {
+          if (picked) onChoose(picked);
+        }}
+      >
+        {t('legacySport.ask.confirm')}
+      </Button>
+    </div>
+  );
+}
 
 /**
  * Food's setup, in full.
@@ -97,6 +203,8 @@ export interface AreasActions {
   setWeeklyTarget(type: DomainType, target: number): void;
   /** Only ever switches the retired domain off — never on. */
   disableLegacySport(): void;
+  /** Answers, once, what RC2's generic Sport sessions actually were. */
+  chooseLegacySport(choice: LegacySportChoice): void;
   addQuestion(draft: QuestionSheetSubmit): void;
   updateQuestion(id: string, draft: QuestionSheetSubmit): void;
   pauseQuestion(id: string): void;
@@ -356,6 +464,12 @@ export function AreasScreen({
               </div>
               <div className="areas__domainBody">
                 <p className="areas__note">{t('areas.legacySport.note')}</p>
+                {configuration.legacySportChoice.needed ? (
+                  <LegacySportChoiceForm
+                    sessions={configuration.legacySportChoice.sessions}
+                    onChoose={actions.chooseLegacySport}
+                  />
+                ) : null}
               </div>
             </Card>
           </Section>

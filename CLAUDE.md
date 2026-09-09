@@ -153,6 +153,10 @@ Never conflate them.
   reach, not protected.
 - The generic `sports` domain is **retired**. It exists as a stored
   discriminator so RC2 history replays; nothing in the product may create one.
+  A migrated user is **offered** the one-time question about what those
+  sessions were (D112) — in Areas, never as a blocking step. No default, no
+  timeout and no guess may answer it: a user who never answers must keep a
+  fully working app and be asked again next time.
 - Colour is never the only carrier of meaning.
 
 ## Interface rules

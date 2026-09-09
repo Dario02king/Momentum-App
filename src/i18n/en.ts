@@ -584,4 +584,26 @@ export const en: Translations = {
   'food.rank.notStarted': 'Not started yet',
   'food.rank.hint': 'Rate your first day and Food starts counting.',
 
+
+  /* ── Legacy Sport: the one-time question (phase 7) ────────────────────── */
+  'legacySport.ask.title': 'What were these sessions?',
+  'legacySport.ask.lead':
+    'You have {count} sessions from the earlier version. Tell us what they were and they will go in the right log.',
+  'legacySport.ask.leadOne':
+    'You have one session from the earlier version. Tell us what it was and it will go in the right log.',
+  'legacySport.choice.gym': 'They were gym sessions',
+  'legacySport.choice.gym.body':
+    'They move into the gym log, without exercises or sets — the earlier version never recorded any. Your weekly target moves with them.',
+  'legacySport.choice.running': 'They were runs',
+  'legacySport.choice.running.body':
+    'They move into the running log, without distance or pace — the earlier version never recorded any. Your weekly target moves with them.',
+  'legacySport.choice.kept': 'Leave them as they are',
+  'legacySport.choice.kept.body':
+    'They stay as earlier training. Gym and Running start empty.',
+  'legacySport.ask.safe':
+    'Your rank, your history and every week you have already lived stay exactly as they are, whichever you choose. Nothing is deleted.',
+  'legacySport.ask.once': 'You are only asked this once.',
+  'legacySport.ask.confirm': 'Save answer',
+  'legacySport.today.pending': 'Say what these sessions were, under Areas.',
+
 };

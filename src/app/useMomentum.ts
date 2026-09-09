@@ -21,6 +21,8 @@ import {
   type AppConfiguration,
   type OnboardingSelection,
 } from '../storage/services/configurationService';
+import { applyLegacySportChoice } from '../storage/services/legacySportService';
+import type { LegacySportChoice } from '../core/migration/legacySport';
 import type { AreasActions } from '../features/areas/AreasScreen';
 
 export type MomentumState =
@@ -123,6 +125,16 @@ export function useMomentum() {
         const configuration = await loadConfiguration();
         if (configuration.legacySport) await disableDomain(configuration.legacySport.id);
       }),
+    /*
+     * The answer to "what were those RC2 sessions?", applied once.
+     *
+     * It goes through `run` like every other mutation, so a refused write
+     * says so and puts the screen back on what is actually stored — which
+     * matters more here than anywhere else, since the question is asked once
+     * and a silent failure would lose the user's only chance to answer it.
+     */
+    chooseLegacySport: (choice: LegacySportChoice) =>
+      run(() => applyLegacySportChoice(choice)),
     addQuestion: (draft) => run(() => addQuestion(draft)),
     updateQuestion: (id, draft) => run(() => updateQuestion(id, draft)),
     pauseQuestion: (id) => run(() => pauseQuestion(id)),

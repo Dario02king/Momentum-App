@@ -17,8 +17,15 @@ import './answerControls.css';
  * and `aria-checked` rather than `aria-pressed`.
  */
 
-/** Arrow-key movement within a radio group, selecting as it goes. */
-function useRadioKeys(count: number, select: (index: number) => void) {
+/**
+ * Arrow-key movement within a radio group, selecting as it goes.
+ *
+ * Exported because it is the behaviour every single-choice group in the app
+ * owes a keyboard user, and a second copy of it would be a second place for
+ * it to be subtly wrong. The options must be the direct children of the
+ * element carrying `role="radiogroup"`.
+ */
+export function useRadioKeys(count: number, select: (index: number) => void) {
   return (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const delta =
       event.key === 'ArrowRight' || event.key === 'ArrowDown'

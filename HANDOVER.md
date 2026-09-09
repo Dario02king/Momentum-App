@@ -1,8 +1,8 @@
-# Handover — end of Phase 6, plus D110/D111
+# Handover — end of Phase 7
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D111). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D112). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -86,6 +86,7 @@ records (answers, sessions, sets, snapshots)
 | `src/storage/services/gymRatingService.ts` | Gym's rating state, the era join, window memoisation |
 | `src/storage/services/runningRatingService.ts` | Running's rating state, the era join, window memoisation |
 | `src/storage/services/checkInService.ts` | Today; owns the edit-window rules |
+| `src/storage/services/legacySportService.ts` | The one-time RC2 Sport question, and applying the answer |
 | `src/components/BodyRenderer/index.tsx` | Muscle diagram; presentation only |
 | `src/features/gym/*` | Session logging, picker, bodyweight, overview, exercise detail, progress |
 | `src/features/running/*` | The Running overview and its distance ranges |
@@ -107,13 +108,13 @@ records (answers, sessions, sets, snapshots)
   Maintenance, optional distance/duration entry with derived pace, and the
   Running overview that explains them**
 - Boss Rank + four domain ranks, user-configurable weights, mystery ladder
-- Backup export/import, PWA, offline, migrations v1→v2→v3→v4
+- Backup export/import, PWA, offline, migrations v1→v2→v3→v4→v5
+- **Legacy Sport migration, end to end.** A migrated RC2 user is now offered
+  the one-time question in Areas and pointed at it from Today (D112). The
+  conversion engine is unchanged — it was always correct, it simply had no
+  door.
 
 **Infrastructure only — built, tested, not reachable from any screen**
-- **Legacy Sport migration.** `legacySportService.ts` and its 18 tests work,
-  but *nothing calls them*: a migrated RC2 user is never asked what their
-  Sport sessions were, so `legacySportMigration` stays `pending` for ever.
-  This needs a UI. It is the largest known gap.
 - Gym plans, rest days, pause periods, tombstones, profile: stores +
   repositories exist, no logic and no UI. **Weight entries are now reachable**
   — the Gym session screen writes one when a bodyweight exercise needs it.
@@ -409,14 +410,16 @@ in, except where noted.
 
 | | |
 |---|---|
-| Unit tests | **937 passing, 55 files, exit 0** (`npm run test`) — 932 at the Phase 6 baseline plus five pinning D110 |
+| Unit tests | **946 passing, 56 files, exit 0** (`npm run test`) — 932 at the Phase 6 baseline, plus five pinning D110 and nine pinning that the legacy question is reachable |
 | Typecheck | `tsc -b` clean |
 | Production build | clean; no stale `.js` beside any `.ts` |
 | Migration + continuity | v5 adds `foodDays` and declares no transform; a version-4 database carrying food *entries* upgrades with **no** ratings invented from them. RC2 fixtures still reproduce exactly, v1→v2→v3→v4→v5 (including the v2→v4 jump D98 fixed), backup round trip with Food data, newer-file refusal |
 | Food era continuity | a day before Food was enabled has no food entry at all; a rating reads back as the number entered after a year of other configuration changes; every Boss value before the switch-on day is bit-identical to a profile that never enabled it |
 | Gym/Running isolation | with Food rated every day, both training ratings, peaks, ranks and whole ladder series are bit-identical to the same profile without Food |
-| Browser (Phase 6) | **47/47** at 320/360/393/430px (`phase6.mjs`) |
-| Accessibility (Phase 6) | **20/20** (`phase6-a11y.mjs`) |
+| Browser (Phase 7) | **57/57** at 320/360/393/430px (`phase7.mjs`) |
+| Accessibility (Phase 7) | **18/18** (`phase7-a11y.mjs`) |
+| Browser (Phase 6, regression) | 47/47 at 320/360/393/430px |
+| Accessibility (Phase 6) | 20/20 |
 | Browser (Phase 5, regression) | 46/46 at 320/360/393/430px |
 | Accessibility (Phase 5) | 15/15 |
 | Browser (Phase 4.1, regression) | 52/52 at 320/360/393/430px |
@@ -450,22 +453,19 @@ Do not read Food's existence as the gate having been closed. There is no
 calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
 
-**Phase 7 has no agreed scope yet, and that is a live blocker.** This file has
-said since Phase 4.1 that Phase 7 is the **general** cooling-off gate (D72).
-That gate is a product-owner decision about a formula, and the standing
-instruction is that D72 is not to be modified and `DECAY_MODEL_APPROVED` is to
-stay `false` — so the work this file names as Phase 7 cannot be the work
-Phase 7 does. Nothing was invented to fill the gap. `core/decay` is untouched,
-the placeholder still reproduces RC2 exactly, and **Food has no decay rule at
-all** (D107).
+**Phase 7 closed the legacy-Sport gap** (D112), which this file had called the
+largest known one. It did **not** touch the cooling-off gate: `core/decay` is
+untouched, the placeholder still reproduces RC2 exactly, `DECAY_MODEL_APPROVED`
+is still `false`, and **Food has no decay rule at all** (D107).
 
-The unbuilt work the repository actually contains, none of it designated:
+The unbuilt work the repository still contains, none of it designated:
 
 | Candidate | Product decisions needed |
 |---|---|
-| **Legacy Sport migration UI** | none — D71 is settled and `legacySportService.ts` is built and tested. It is simply unreachable, and a migrated RC2 user is never asked. The largest known gap |
 | "Warum diese Zahl?" panel | none — it explains numbers that already exist |
+| Gym plans, profile | stores and repositories exist; what they are *for* is partly a product question |
 | Rest days / pause periods in the replay | D42/D43 are approved, but they feed the decay model, which is gated |
+| The general cooling-off formula | **blocked** — Gate 1, open (D72) |
 | Tombstone unlocking | **blocked** — the benchmark values are an open gate |
 | Nutrition targets | **blocked** — Gate 2, open by design (D106) |
 
