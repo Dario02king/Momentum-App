@@ -84,6 +84,25 @@ export function TodayScreen({
   const day = state.value;
   const mental = day.mental;
 
+  /*
+   * What is due *today*, across every daily domain — not just Wellbeing.
+   *
+   * This line used to count Wellbeing alone, so a user who answered every
+   * question but had not yet rated Food was told "Für heute erledigt" while
+   * Food sat unrated below it and the day was being held open precisely
+   * because of it (D111). The app contradicted itself and then quietly
+   * postponed the day.
+   *
+   * Counting every daily obligation removes the contradiction without
+   * touching scoring: nothing is fabricated, no day closes earlier, and the
+   * replay is untouched. A weekly quota is deliberately not counted here —
+   * it is not due today, it is due this week, and the training cards say so
+   * themselves.
+   */
+  const dailyDue = (mental?.items.length ?? 0) + (day.food ? 1 : 0);
+  const dailyDone =
+    (mental?.answeredCount ?? 0) + (day.food?.adherence !== null && day.food ? 1 : 0);
+
   const openGym = (sessionId?: string) => {
     if (sessionId) {
       setGymSessionId(sessionId);
@@ -117,12 +136,12 @@ export function TodayScreen({
             date: formatDayAndMonth(language, date),
           })}
         </p>
-        {mental && mental.items.length > 0 ? (
-          <p className={`today__progress ${mental.complete ? 'today__progress--complete' : ''}`.trim()}>
+        {dailyDue > 0 ? (
+          <p className={`today__progress ${dailyDone === dailyDue ? 'today__progress--complete' : ''}`.trim()}>
             <span className="today__progressDot" aria-hidden="true" />
-            {mental.complete
+            {dailyDone === dailyDue
               ? t('today.allDone')
-              : t('today.progress', { done: mental.answeredCount, total: mental.items.length })}
+              : t('today.progress', { done: dailyDone, total: dailyDue })}
           </p>
         ) : null}
       </header>

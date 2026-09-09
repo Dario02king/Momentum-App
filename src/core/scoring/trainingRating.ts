@@ -379,6 +379,26 @@ export function computeTrainingRating(
         maintenance = true;
         target = Math.max(target, rating);
       }
+      /*
+       * A paused day's target may raise the rating but never lower it.
+       *
+       * Without this, training *some* during a pause was far worse than
+       * training none: a week with one session of two is 50 % attendance,
+       * and attendance is a measure of the absence the pause exists to
+       * excuse. Measured over a 28-day pause from 899.58 — logging nothing
+       * held 899.58, logging one session a week gave 520.91, and logging the
+       * full target gave 936.10. Honest partial effort cost 378 points and a
+       * rank, which is D35's failure mode ("reporting must never cost more
+       * than silence") reappearing inside this feature.
+       *
+       * The floor is deliberately one-sided. Real work still counts: train
+       * well through a pause and the rating climbs, because a pause protects
+       * against what was not done and never against what was.
+       *
+       * Wellbeing and Food get no such floor, and should not: there a low
+       * day is a *reported result*, not a measure of absence.
+       */
+      if (day.paused === true) target = Math.max(target, rating);
       movement = movementFactor(rating, target);
       rating = clamp(rating + (target - rating) * movement);
     }

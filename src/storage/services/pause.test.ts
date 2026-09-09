@@ -345,6 +345,42 @@ describe('a pause and the training model', () => {
     expect(withPause.gym.rating).toBeGreaterThan(without.gym.rating);
   });
 
+  it('never punishes honest partial effort during a pause', async () => {
+    /*
+     * The defect this pins, found by measurement during the release pass.
+     * Attendance is a measure of the absence a pause exists to excuse, so a
+     * paused week with one session of two read as 50 % and pulled the rating
+     * down hard: over a 28-day pause from 899.58, logging nothing held
+     * 899.58 while logging one session a week gave 520.91 — 378 points and a
+     * rank for turning up. That is D35's rule ("reporting must never cost
+     * more than silence") failing inside this feature.
+     *
+     * The floor is one-sided, so real work still counts.
+     */
+    const run = async (offsets: readonly number[]) => {
+      await deleteDatabase();
+      freezeAt(START);
+      await buildActive({ gym: true });
+      const silence = addDays(START, ACTIVE);
+      await pauseFrom(silence, PAUSE.MAX_DAYS);
+      for (const offset of offsets) {
+        const date = addDays(silence, offset);
+        freezeAt(date);
+        await logSession('gym', date, {}, date);
+      }
+      return at(addDays(silence, PAUSE.MAX_DAYS - 1));
+    };
+
+    const nothing = await run([]);
+    const partial = await run([1, 8, 15, 22]);
+    const full = await run([1, 4, 8, 11, 15, 18, 22, 25]);
+
+    // Turning up a little costs exactly nothing.
+    expect(partial.gym.rating).toBeCloseTo(nothing.gym.rating, 6);
+    // And turning up properly still climbs — a pause is not a ceiling.
+    expect(full.gym.rating).toBeGreaterThan(nothing.gym.rating);
+  });
+
   it('is not attendance, and is not a saved session', async () => {
     await buildActive({ gym: true });
     const silenceStarts = addDays(START, ACTIVE);

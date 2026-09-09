@@ -8,7 +8,12 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [claude/momentum-pwa-spec-j82dhm]
+    # The branch V1 is developed and released on. The original entry here
+    # named a branch that stopped receiving work after RC2, so every phase
+    # from 1 to 8 built and tested green and deployed nothing: the published
+    # site was still the RC2 bundle. A deploy workflow pointing at a dead
+    # branch is worse than none, because the pipeline reports success.
+    branches: [claude/gym-scoring-integration-9oeblv]
   workflow_dispatch:
 
 permissions:

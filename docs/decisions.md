@@ -2293,3 +2293,115 @@ place to name the decisions that actually govern them (D115, D116). No
 replacement semantics were invented from them: what rest days and pauses do is
 decided in D115 and D116 on their own merits, not reconstructed from a
 reference nobody can read.
+
+## D118 — A pause may raise the training rating, never lower it (closes the pause/activity case)
+
+Phase 8 stopped a pause from *charging* for absence. The release pass found
+the other half, by measurement: it was still punishing people for turning up.
+
+Over a 28-day pause from a settled 899.58 Gym rating:
+
+| During the pause | Rating after |
+|---|---|
+| logged nothing | 899.58 |
+| logged **one** session a week | **520.91** |
+| logged the full target | 936.10 |
+
+Honest partial effort cost 378 points and a rank, while doing nothing cost
+zero. That is D35's rule — *reporting must never cost more than silence* —
+failing inside the pause feature, and it is exactly the incentive this app
+exists to avoid.
+
+The cause is not a bug in the attendance model. A week with one session of
+two genuinely *is* 50 % attendance. But attendance is a **measure of the
+absence a pause exists to excuse**, so charging it during a declared pause is
+the very penalty being suspended.
+
+**The rule: on a paused day the training target may raise the rating and may
+not lower it.** One line, the same shape the Maintenance rule already uses, so
+no new mechanism. It is deliberately one-sided — train well through a pause
+and the rating still climbs, because a pause protects against what was not
+done and never against what was.
+
+Wellbeing and Food get no such floor, and must not: there a low day is a
+**reported result**, not a measure of absence, and forgiving it would be
+forgiving something the user actually told us.
+
+Nothing else moves. No attendance is credited, no session invented, the week's
+counts and `met` flag are untouched, streaks break as normal, XP stays
+monotone, replay stays deterministic, and every history with no pause in it is
+byte-identical.
+
+## D119 — The Today status counts every daily obligation (closes D111)
+
+D111 recorded that one unanswered daily domain holds the whole day open, and
+left it deliberately unchanged. The release pass looked at what a user
+actually sees, and found the harm was not the postponement — it was the app
+contradicting itself.
+
+With Wellbeing and Food both on, answering every question while leaving Food
+unrated showed **"Für heute erledigt"** — *done for today* — while Food sat
+unrated below it and the day was being held open precisely because of it. The
+app said finished, then quietly postponed.
+
+The header now counts every **daily** obligation: Wellbeing's questions plus
+Food's one rating. The same case now reads "2 von 3 beantwortet", which is
+true, and names what is left.
+
+A weekly quota is deliberately not counted. It is not due today; it is due
+this week, and the training cards say so themselves.
+
+**The open-day mechanism itself is unchanged.** No day closes earlier, nothing
+is fabricated, no score moves, and the replay is untouched — this is a
+statement about what the interface says, not about what the app counts. The
+underlying property D111 describes stands, and so does its note that
+domain-independent closure deserves revisiting as daily domains multiply.
+
+## D120 — Nutrition targets stay out of V1, deliberately
+
+Gate 2 is closed for V1 by deciding **not** to build it.
+
+Food is already a coherent, finished feature: the user writes what they are
+aiming at in their own words, rates each day 1–10 against it, and logs what
+they ate for their own reference. That loop is complete, understandable,
+editable, replay-safe and consistent with the rest of Momentum. Nothing in it
+is waiting on a target.
+
+Adding a calorie or macro target now would mean inventing the exact model D106
+reserved, to close a gap the feature does not have. The reserved decision
+stays reserved, and if targets ever arrive they arrive as something new the
+user can be measured against — the entered 1–10 stays what it always was, and
+no stored value needs rewriting.
+
+## D121 — Tombstones are post-V1, not a release blocker
+
+Checked during the release pass: `tombstonesRepository` is dead code, nothing
+writes an unlock, no screen renders one, and no rating or rank reads one. The
+"earned / locked" wording on the Rank screen is the **rank ladder**, a
+different thing.
+
+Tombstones are therefore invisible to a V1 user and cannot block the release.
+The benchmark values remain an open product decision, and the boundary D95
+draws — domain ranks measure you against your own history, Tombstones against
+an absolute benchmark — still holds for whenever they are built.
+
+## D122 — The dormant restDays collection stays, and the deploy branch was the real release blocker
+
+Two release-hygiene findings, recorded so neither is rediscovered.
+
+**`restDays` stays.** Removing the collection is provably safe — no writer has
+ever existed — but it is a `BACKUP_FORMAT_VERSION` change and a migration for
+tidiness alone. Cleanup is subordinate to release safety (D115 already
+deprecates the concept), so it stays dormant and documented.
+
+**The deploy workflow pointed at a dead branch.** `.github/workflows/deploy.yml`
+triggered on `claude/momentum-pwa-spec-j82dhm`, which stopped receiving work
+after RC2. Every phase from 1 to 8 built green, tested green and **deployed
+nothing**: the published site was still the RC2 bundle from `452c835`, months
+of work behind the repository.
+
+This is worse than having no deploy at all, because the pipeline reported
+success the whole time — the same failure shape as `core/decay` being a
+contract nobody called, and as `legacySportService` being an engine with no
+door. A pipeline is only a pipeline if something is actually at the other end
+of it.

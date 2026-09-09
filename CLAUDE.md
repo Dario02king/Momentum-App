@@ -164,10 +164,18 @@ Never conflate them.
   A paused training week nobody trained in is scored as **no data**, not as
   zero attendance: suppressing only the decay made a pause strictly worse
   than no pause, because the decay branch is rank-floored and the ordinary
-  target is not.
+  target is not. And on a paused day the training target may **raise** the
+  rating but never lower it (D118) — attendance is a measure of the absence a
+  pause excuses, so charging it punished people for turning up. The floor is
+  one-sided, and Wellbeing and Food get none: there a low day is a reported
+  result, not a measure of absence.
 - **Rest days are deprecated** (D115). Never shipped, never approved, and made
   redundant by the seven-day abstinence rule and D37. The store stays for
   backup compatibility; nothing creates one, and no UI ever should.
+- **Today's status counts every daily obligation** — Wellbeing's questions and
+  Food's one rating (D119). A weekly quota is not due today and is not
+  counted. The app must never say "done for today" while something daily is
+  outstanding.
 - **One unanswered daily domain currently holds the whole day open** (D111).
   That is the existing mechanism, it only postpones closure inside the edit
   window, and it is deliberately unchanged — but it deserves revisiting as

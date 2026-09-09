@@ -1,8 +1,8 @@
-# Handover — end of Phase 8 (pause periods)
+# Handover — Momentum V1, released
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D117). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D122). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -428,7 +428,8 @@ in, except where noted.
 
 | | |
 |---|---|
-| Unit tests | **1021 passing, 62 files, exit 0** (`npm run test`) — 976 at the D113 baseline plus 45 for pause |
+| Unit tests | **1022 passing, 62 files, exit 0** (`npm run test`) |
+| Release smoke (production build) | **82/82** (`release.mjs`) — cold load, the whole journey through all four domains, refresh and persistence, backup export / malformed refusal / restore, five widths including desktop, zero console errors |
 | Pause regression | the same 2709-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, a live four-domain profile through five weeks of silence — is **byte-identical before and after**, same MD5. Only histories that contain a pause differ |
 | D113 numeric equivalence | a 64 KB, 2691-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, and a live four-domain profile through five weeks of silence — is **byte-identical before and after the refactor**, same MD5, zero mismatches |
 | D113 live path | `core/decay` proved on the production path by spying the model through `computeRating`, and model *selection* proved connected by substituting a model in an isolated file and watching the fold follow it |
@@ -437,7 +438,7 @@ in, except where noted.
 | Migration + continuity | v5 adds `foodDays` and declares no transform; a version-4 database carrying food *entries* upgrades with **no** ratings invented from them. RC2 fixtures still reproduce exactly, v1→v2→v3→v4→v5 (including the v2→v4 jump D98 fixed), backup round trip with Food data, newer-file refusal |
 | Food era continuity | a day before Food was enabled has no food entry at all; a rating reads back as the number entered after a year of other configuration changes; every Boss value before the switch-on day is bit-identical to a profile that never enabled it |
 | Gym/Running isolation | with Food rated every day, both training ratings, peaks, ranks and whole ladder series are bit-identical to the same profile without Food |
-| Browser (Phase 8) | **56/56** at 320/360/393/430px (`phase8.mjs`) |
+| Browser (Phase 8) | 56/56 at 320/360/393/430px (`phase8.mjs`) |
 | Accessibility (Phase 8) | **23/23** (`phase8-a11y.mjs`) |
 | Browser (Phase 7, regression) | 57/57 at 320/360/393/430px |
 | Accessibility (Phase 7) | 18/18 |
@@ -476,19 +477,29 @@ Do not read Food's existence as the gate having been closed. There is no
 calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
 
-**Phase 8 built pause periods** (D116) and retired rest days (D115). That was
-the last "engine with no door" — the shape Phase 7 fixed for legacy Sport and
-D113 fixed for the decay contract.
+**V1 is released.** The release pass closed the last four open items —
+Gate 2 by deciding not to build it (D120), tombstones as post-V1 (D121),
+D111's real harm (D119), and `restDays` left dormant (D122) — and fixed two
+defects found by measurement rather than by reading: a pause punished people
+for turning up (D118), and the deploy workflow had been pointing at a dead
+branch since RC2, so every green build published nothing (D122).
 
-The unbuilt work the repository still contains, none of it designated:
+**Deployment.** GitHub Pages, from `.github/workflows/deploy.yml`, on push to
+this branch. Pages is already enabled on the repository; the base path
+`/Momentum-App/` in `vite.config.ts` matches the project-site path, so the
+build needs no deployment-specific configuration. Live at
+<https://dario02king.github.io/Momentum-App/>.
+
+Genuine post-V1 work, none of it blocking:
 
 | Candidate | Product decisions needed |
 |---|---|
 | "Warum diese Zahl?" panel | none — it explains numbers that already exist. The largest remaining user-facing gap |
 | Gym plans, profile | stores and repositories exist; what they are *for* is partly a product question |
-| Tombstone unlocking | **blocked** — the benchmark values are an open gate |
-| Nutrition targets | **blocked** — Gate 2, open by design (D106) |
-| Removing the dormant `restDays` collection | a deliberate `BACKUP_FORMAT_VERSION` cleanup, safe but not urgent (D115) |
+| Tombstone unlocking | the benchmark values are an open decision (D121) |
+| Nutrition targets | deliberately out of V1 (D120); D106's reservation stands |
+| Removing the dormant `restDays` collection | a deliberate `BACKUP_FORMAT_VERSION` cleanup, safe but not urgent (D115, D122) |
+| Domain-independent day closure | D111's note, worth revisiting as daily domains multiply |
 
 **If a third training domain ever arrives**, add only its evidence — what one
 comparable observation is, and what makes two of them comparable. Everything
