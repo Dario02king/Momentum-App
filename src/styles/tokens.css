@@ -200,6 +200,25 @@
   --space-10: 40px;
   --space-12: 48px;
 
+  /*
+   * The one internal inset a card gives its content, on all four sides.
+   *
+   * A card is a rounded, clipping surface. A child sitting at its edge is
+   * therefore not merely tight — the 22px corner *removes* the first and
+   * last glyphs of the top and bottom lines. So the inset belongs to the
+   * card, once, and no child inside one sets a horizontal padding of its
+   * own.
+   */
+  --card-pad: 18px;
+
+  /* Card to screen edge on the browsing screens. Today is roomier and keeps
+     --space-5; the page canvas itself stays edge to edge on both. */
+  --card-gutter: var(--space-4);
+
+  /* A progress bar is a widget detail, not a rail: inset with the rest of
+     the content, thin, fully rounded, on a track tinted from its own fill. */
+  --meter-height: 7px;
+
   /* Generous radii — the references are soft, and so is this. */
   --radius-card: 22px;
   --radius-inner: 16px;

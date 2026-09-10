@@ -74,17 +74,19 @@
  */
 .running-meter {
   position: relative;
-  height: 8px;
+  height: var(--meter-height);
   margin-top: var(--space-3);
-  border-radius: 999px;
-  background: var(--surface-secondary);
+  border-radius: var(--radius-pill);
+  /* Tinted from its own fill, and inset with the content rather than run out
+     to the card edges. See the note on .gym-meter. */
+  background: var(--domain-running-tint);
   overflow: hidden;
 }
 
 .running-meter__fill {
   display: block;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--domain-running-mid);
   transition: width 240ms ease;
 }

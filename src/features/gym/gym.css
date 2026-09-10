@@ -492,21 +492,35 @@
 /*
  * The bar is an image with a name, never the only carrier of the number: the
  * figure it draws is always printed beside it.
+ *
+ * Geometry, not decoration. It is inset with the rest of the card's content
+ * — the card's padding does that now — rather than running out to both
+ * edges, because a rail touching the tile edges is what made these cards
+ * read as list rows with a divider instead of as one widget. The track is
+ * tinted from the fill rather than neutral grey, so the bar is one object
+ * with an unfilled remainder instead of two unrelated greys.
+ *
+ * `overflow: hidden` is intentional masking — it is what rounds the fill's
+ * leading end inside the track — and stays.
  */
 .gym-meter {
   position: relative;
-  height: 8px;
+  height: var(--meter-height);
   margin-top: var(--space-3);
-  border-radius: 999px;
-  background: var(--surface-secondary);
+  border-radius: var(--radius-pill);
+  background: var(--domain-gym-tint);
   overflow: hidden;
 }
 
 .gym-meter__fill {
   display: block;
   height: 100%;
-  border-radius: 999px;
-  background: var(--domain-gym-mid);
+  border-radius: var(--radius-pill);
+  /* The `-ink` weight, not `-mid`: `-mid` is the palette's promise about a
+     control on *white*, and a fill on its own tint is a different pair.
+     Running and Food already resolve their `-mid` to an ink for this reason;
+     Gym was the one that did not, and shipped a bar at 2.89:1. */
+  background: var(--domain-gym-ink);
   transition: width 240ms ease;
 }
 

@@ -168,3 +168,73 @@ export async function seed(page, { days = 30 } = {}) {
     return { answers: answers.length, sessions: sessions.length };
   }, { days });
 }
+
+/**
+ * Gym sets, runs and food ratings across the same window `seed()` fills.
+ *
+ * `seed()` writes answers and bare gym *sessions*; a session with no sets
+ * carries attendance but no performance, and Running and Food it does not
+ * touch at all. The geometry suite needs every card on Verlauf to have
+ * something to say — a rating, an Endurance figure, a year-to-date change,
+ * an attendance line — because the whole point of measuring a card is
+ * measuring it with its real content in it.
+ *
+ * Purely additive: no existing suite calls this.
+ */
+export async function seedTraining(page, { days = 40, gymPerWeek = 3, runsPerWeek = 2 } = {}) {
+  return page.evaluate(async ({ days, gymPerWeek, runsPerWeek }) => {
+    const open = () => new Promise((res, rej) => { const r = indexedDB.open('momentum'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const all = (db, s) => new Promise((res, rej) => { const r = db.transaction([s], 'readonly').objectStore(s).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const putAll = (db, s, recs) => new Promise((res, rej) => { const tx = db.transaction([s], 'readwrite'); for (const r of recs) tx.objectStore(s).put(r); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+    const pad = (n, l = 2) => String(n).padStart(l, '0');
+    const key = (d) => `${pad(d.getFullYear(), 4)}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const shift = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return d; };
+    const isoWeek = (d) => { const t = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12); t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + 3); const y = t.getFullYear(); const f = new Date(y, 0, 4, 12); f.setDate(f.getDate() - ((f.getDay() + 6) % 7) + 3); return `${pad(y, 4)}-W${pad(1 + Math.round((t - f) / (7 * 86400000)))}`; };
+
+    const db = await open();
+    const snaps = await all(db, 'configSnapshots');
+    const stamp = new Date().toISOString();
+    const weeks = Math.floor(days / 7);
+
+    const sessions = [], sets = [], runs = [], foodDays = [];
+    let n = 0;
+    for (let week = 0; week < weeks; week += 1) {
+      for (let slot = 0; slot < gymPerWeek; slot += 1) {
+        const back = days - (week * 7 + slot * 2);
+        const at = shift(-back);
+        const date = key(at);
+        const id = `geo-gym-${date}-${slot}`;
+        sessions.push({ id, date, weekKey: isoWeek(at), performedAt: new Date(shift(-back).setHours(18, 0, 0, 0)).toISOString(),
+          planId: null, note: null, legacyCarryOver: false, configSnapshotId: snaps[0].id, createdAt: stamp, updatedAt: stamp });
+        // Load climbs week on week, so the year-to-date figure is a real one.
+        sets.push({ id: `geo-set-${n}`, sessionId: id, exerciseId: 'ex_squat', date,
+          weightGrams: Math.round((80 + week * 5) * 1000), reps: 5, order: 0,
+          muscles: ['quadriceps', 'hamstringsGlutes', 'core'], primaryMuscles: ['quadriceps'],
+          loadType: 'external', createdAt: stamp });
+        n += 1;
+      }
+      for (let slot = 0; slot < runsPerWeek; slot += 1) {
+        const back = days - (week * 7 + 1 + slot * 3);
+        const at = shift(-back);
+        const date = key(at);
+        const minPerKm = 6.0 - week * 0.1;
+        runs.push({ id: `geo-run-${date}-${slot}`, date, weekKey: isoWeek(at),
+          performedAt: new Date(shift(-back).setHours(7, 0, 0, 0)).toISOString(),
+          source: 'manual', externalId: null, distanceMetres: 5000,
+          durationSeconds: Math.round(5 * minPerKm * 60), elevationMetres: null, steps: null,
+          note: null, legacyCarryOver: false, configSnapshotId: snaps[0].id, createdAt: stamp, updatedAt: stamp });
+      }
+    }
+    for (let i = days; i >= 1; i -= 1) {
+      const date = key(shift(-i));
+      foodDays.push({ id: date, date, adherence: 6 + (i % 4), note: null, sensitivity: 'private',
+        configSnapshotId: snaps[0].id, createdAt: stamp, updatedAt: stamp });
+    }
+
+    await putAll(db, 'gymSessions', sessions);
+    await putAll(db, 'gymSets', sets);
+    await putAll(db, 'runs', runs);
+    await putAll(db, 'foodDays', foodDays);
+    return { sessions: sessions.length, sets: sets.length, runs: runs.length, foodDays: foodDays.length };
+  }, { days, gymPerWeek, runsPerWeek });
+}

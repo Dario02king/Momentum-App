@@ -158,7 +158,7 @@ export function RankScreen({
         {state.refreshFailed ? <StaleNotice onRetry={reload} /> : null}
 
         <Section>
-          <div className="rank-hero">
+          <div data-card className="rank-hero">
             {reveal ? <span className="rank-hero__flash" aria-hidden="true" /> : null}
             {reveal ? <span className="rank-hero__pill">{t('rank.newRank')}</span> : null}
 
@@ -185,7 +185,7 @@ export function RankScreen({
 
         {/* The three progression concepts, kept strictly distinct. */}
         <Section>
-          <Card>
+          <Card rows>
             <div className="standing">
               <RankBadge rankId={boss.rank.id} size={38} />
               <span className="standing__label">
@@ -257,7 +257,7 @@ export function RankScreen({
           and its silhouette; what it does not get is the emblem.
         */}
         <Section label={t('rank.ladder')}>
-          <Card>
+          <Card rows>
             {ladder.map(({ rank, earned }) => (
               <div
                 key={rank.id}
@@ -303,7 +303,7 @@ export function RankScreen({
         </Section>
 
         <Section label={t('rank.history')}>
-          <Card>
+          <Card rows>
             {boss.changes.length === 0 ? (
               <EmptyState icon={<RankIcon size={24} />} title={t('rank.historyEmpty')} />
             ) : (

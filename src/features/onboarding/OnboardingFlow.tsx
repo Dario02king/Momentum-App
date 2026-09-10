@@ -355,12 +355,12 @@ export function OnboardingFlow({
               </p>
             </div>
 
-            <Card padded>
+            <Card>
               <span className="field-label">{t('onboarding.sport.gym')}</span>
               <TargetPicker domain="gym" value={gymTarget} onChange={setGymTarget} />
             </Card>
 
-            <Card padded>
+            <Card>
               <span className="field-label">{t('onboarding.sport.running')}</span>
               <TargetPicker domain="running" value={runningTarget} onChange={setRunningTarget} />
             </Card>

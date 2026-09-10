@@ -11,7 +11,17 @@
   padding-right: calc(var(--safe-right) + var(--space-5));
 }
 
+/*
+ * The title block. Not sticky, and deliberately so: it is a flex item above
+ * an independent scroll port, so card content is clipped by the port rather
+ * than passing behind the title. It still paints the ground explicitly and
+ * stacks above the port, so the arrangement cannot be undone by a later
+ * change to either one.
+ */
 .screen__header {
+  position: relative;
+  z-index: 1;
+  background: var(--surface-base);
   padding-top: calc(var(--safe-top) + var(--space-7));
   padding-bottom: var(--space-6);
 }
@@ -39,19 +49,46 @@
   font-weight: var(--weight-semibold);
   letter-spacing: -0.05px;
   color: var(--text-secondary);
-  padding: 0 var(--space-4) var(--space-2);
+  /* Aligned with the text inside the card below it, not with the card edge. */
+  padding: 0 var(--card-pad) var(--space-2);
 }
 
-/* A card is white on a tinted ground, lifted by shadow rather than outlined. */
+/*
+ * A card is white on a tinted ground, lifted by shadow rather than outlined.
+ *
+ * **The card owns the inset, on all four sides.** It used to own none:
+ * `Card` defaulted to no padding at all and each child was expected to bring
+ * its own, which about half of them did. A paragraph at `padding: 0` inside
+ * a 22px radius with `overflow: hidden` does not merely sit at the edge — it
+ * is *cut* by the corner, at the top-left and again at the bottom-right,
+ * symmetrically, which is exactly what the device screenshots showed. One
+ * source of inset is the only arrangement a child cannot forget.
+ *
+ * `overflow: hidden` stays. It is what makes a child's own background follow
+ * the corner, and with the content inset it no longer has any text to reach.
+ */
 .card {
   background: var(--surface-elevated);
   border-radius: var(--radius-card);
   overflow: hidden;
   box-shadow: var(--shadow-card);
+  padding: var(--card-pad);
 }
 
-.card--padded {
-  padding: var(--space-5);
+/*
+ * A card whose children are rows: the rows carry the vertical rhythm, so the
+ * card does not add its own on top of theirs. It keeps a little, though — a
+ * row's first line sits inside its own padding, and with none here at all the
+ * top line of the first row came within 8px of the corner.
+ */
+.card--rows {
+  padding-block: var(--space-2);
+}
+
+/* A card that is one edge-to-edge visual. Anything with text inside one has
+   to bring its own inset — nothing else will. */
+.card--flush {
+  padding: 0;
 }
 
 /* A row is a whole tap target, with room to breathe. */
@@ -61,7 +98,7 @@
   gap: var(--space-3);
   width: 100%;
   min-height: 56px;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-4) 0;
   text-align: left;
   color: inherit;
   background: transparent;
@@ -69,9 +106,12 @@
 }
 
 /*
- * Separators are inset from the leading edge, the way iOS insets them.
  * A real hairline element, not an inset shadow — an inset shadow with an
  * x-offset fills the offset area instead of drawing a line down it.
+ *
+ * It spans the card's content box rather than running out to the card edge.
+ * A rule that touches both edges is what makes a tile read as a list with
+ * dividers; held inside the inset, the same rule reads as one widget.
  */
 .row {
   position: relative;
@@ -81,7 +121,7 @@
   content: '';
   position: absolute;
   top: 0;
-  left: var(--space-5);
+  left: 0;
   right: 0;
   height: 1px;
   background: var(--separator);
@@ -383,7 +423,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-6) var(--space-5) var(--space-5);
+  padding: var(--space-2) 0;
   color: var(--text-secondary);
 }
 

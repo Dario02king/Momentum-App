@@ -172,7 +172,7 @@ export function TodayScreen({
         ) : null}
 
         {day.empty ? (
-          <Card>
+          <Card rows>
             <EmptyState
               icon={<SparkIcon size={26} />}
               title={t('today.emptyTitle')}

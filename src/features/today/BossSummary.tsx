@@ -34,7 +34,7 @@ export function BossSummary({ onOpen }: { onOpen(): void }) {
       : t('rank.boss.maxed');
 
   return (
-    <button type="button" className="boss-summary" onClick={onOpen}>
+    <button type="button" data-card className="boss-summary" onClick={onOpen}>
       <RankBadge rankId={boss.rank.id} size={52} />
       <span className="boss-summary__body">
         <span className="boss-summary__kicker">{t('today.boss.title')}</span>

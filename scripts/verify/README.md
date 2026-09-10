@@ -41,6 +41,7 @@ scripts rather than running `npx playwright install`.
 | `phase7.mjs` | The one-time legacy-Sport question: reachable from Today and answered in Areas, three branches each doing what it says, nothing preselected, nothing resolved by reloading or wandering, picking without confirming applying nothing, a fresh profile never asked, four widths |
 | `phase7-a11y.mjs` | The three branches as one named radio group, nothing chosen at the start, one tab stop with arrow-key movement, each branch spelling out its consequence, the confirm named and unavailable until a branch is chosen, choosing by keyboard still applying nothing, reduced motion |
 | `phase8.mjs` | Pause periods: the section and what it promises, creating one, the 28-day limit and every other rule refused on screen, editing and deleting a future pause, ending a running one from today, Today's paused line, logging still working while paused, no Rest Day surface, four widths |
+| `geometry.mjs` | **Card geometry.** Every line of text measured against the box that clips it, on all four sides, at 393/430/320px — plus the card gutter and a document-level sideways check. Writes screenshots to a gitignored `.artifacts/` |
 | `release.mjs` | **The V1 release smoke test, against the production build.** A cold load of the built bundle, the whole journey through all four domains, a refresh proving persistence, a backup export / malformed refusal / restore round trip, five widths including desktop, and zero console errors throughout. A dev server proves none of this |
 | `phase8-a11y.mjs` | Both date fields as real labelled date controls, the rejection in a live alert region, the save exposed as unavailable while invalid, saving from the keyboard alone, the paused state as a status rather than an alert, nothing disabled by a pause, reduced motion |
 
@@ -54,6 +55,18 @@ false failures here first:
   the standard idiom — it keeps `transitionend` firing — so a check for
   `> 0` counts every transition in the app. Assert that no keyframe animation
   runs and that no duration is long enough to perceive.
+
+One found in this pass, and it is the reason `geometry.mjs` exists:
+
+- **`scrollWidth` and a right-edge comparison cannot see a leftward or upward
+  clip.** `clipped()` in `lib.mjs` measures `child.right − clipper.right`,
+  which is only ever positive when content escapes to the right. A card with
+  `padding: 0`, a 22px radius and `overflow: hidden` cuts the *first* glyph of
+  its top line and the *last* of its bottom line, symmetrically, and every
+  suite here reported zero clipping while it did. Rectangle comparison on all
+  four sides is the only check that sees it, and "inside" is not enough —
+  a corner radius removes far more than a pixel, so the harness asks for
+  `MIN_INSET` of clear space rather than for non-negative overlap.
 
 Two more, found in phase 6:
 

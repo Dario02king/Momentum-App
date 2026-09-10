@@ -201,7 +201,7 @@ export function RunningOverview({
       {/* 4 — the distance ranges, in the user's own units. */}
       {state.ytd && state.ytd.comparisons.length > 0 ? (
         <Section label={t('running.progress.distances')}>
-          <Card>
+          <Card rows>
             {state.ytd.comparisons.map((entry) => {
               const range = bandRange(entry.band);
               const change =

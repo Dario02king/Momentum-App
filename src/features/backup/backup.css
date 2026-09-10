@@ -1,12 +1,12 @@
 .backup__explain {
-  padding: var(--space-5) var(--space-5) var(--space-4);
+  padding: 0 0 var(--space-3);
   font-size: var(--type-footnote);
   color: var(--text-secondary);
   line-height: 1.45;
 }
 
 .backup__status {
-  padding: var(--space-3) var(--space-5) var(--space-4);
+  padding: var(--space-3) 0;
   font-size: var(--type-footnote);
   line-height: 1.4;
 }

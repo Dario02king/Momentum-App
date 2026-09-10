@@ -181,6 +181,35 @@ describe('the 1-10 semantic bands', () => {
   });
 });
 
+/**
+ * Progress bars.
+ *
+ * The track used to be a neutral grey and is now tinted from the bar's own
+ * fill, which is a geometry decision with an accessibility consequence: the
+ * filled part is a graphical object and has to stay 3:1 against the
+ * unfilled part, or the bar stops saying anything. Each pair is checked
+ * rather than assumed, exactly as the history bands are.
+ */
+describe('meter fill on its own track', () => {
+  it.each([
+    ['--domain-gym-ink', '--domain-gym-tint'],
+    ['--domain-running-ink', '--domain-running-tint'],
+    ['--domain-sports-ink', '--domain-sports-tint'],
+    ['--domain-food-ink', '--domain-food-tint'],
+    ['--domain-mental-ink', '--domain-mental-tint'],
+    // The Boss and domain-rank bars, which sit on the accent tint.
+    ['--accent', '--accent-tint'],
+  ])('%s separates from %s', (fill, track) => {
+    expect(contrast(hex(fill), hex(track))).toBeGreaterThanOrEqual(LARGE);
+  });
+
+  it('does not use a -mid weight as a fill on a tint', () => {
+    // `-mid` is verified against *white* and nothing else. Reaching for it
+    // here is how the Gym bar shipped at 2.89:1 on a neutral track.
+    expect(contrast(hex('--mint-mid'), hex('--mint-tint'))).toBeLessThan(LARGE);
+  });
+});
+
 describe('surfaces', () => {
   it('separates the ground from a card', () => {
     // Subtle, but it has to be an actual difference — the card is what makes

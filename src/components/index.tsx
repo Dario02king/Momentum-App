@@ -3,13 +3,28 @@ import { CheckIcon, CloseIcon } from './Icons';
 import { useT } from '../i18n/I18nProvider';
 import './ui.css';
 
-export function Card({ children, padded = false, className = '' }: {
+/**
+ * The tile everything sits on.
+ *
+ * The card carries its own inset on all four sides, so a child never has to
+ * remember to. Two variants exist and neither adds anything — they only say
+ * which part of that inset the card is *not* responsible for:
+ *
+ * - `rows` — the children are rows and carry the vertical rhythm themselves.
+ * - `flush` — the child is one edge-to-edge visual and insets its own text.
+ *
+ * `data-card` marks the tile for the geometry harness, which measures every
+ * line of text against the box that clips it.
+ */
+export function Card({ children, rows = false, flush = false, className = '' }: {
   children: ReactNode;
-  padded?: boolean;
+  rows?: boolean;
+  flush?: boolean;
   className?: string;
 }) {
+  const variant = flush ? 'card--flush' : rows ? 'card--rows' : '';
   return (
-    <div className={`card ${padded ? 'card--padded' : ''} ${className}`.trim()}>{children}</div>
+    <div data-card className={`card ${variant} ${className}`.trim()}>{children}</div>
   );
 }
 

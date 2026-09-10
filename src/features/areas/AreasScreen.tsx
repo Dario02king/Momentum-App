@@ -318,7 +318,7 @@ export function AreasScreen({
 
     return (
       <Section key={type}>
-        <Card>
+        <Card rows>
           <div className="areas__domainHeader">
             <span className={`areas__domainMark areas__domainMark--${type}`} aria-hidden="true">
               {type === 'mental' || type === 'food' ? (
@@ -450,7 +450,7 @@ export function AreasScreen({
         */}
         {legacySport ? (
           <Section>
-            <Card>
+            <Card rows>
               <div className="areas__domainHeader">
                 <span className="areas__domainMark areas__domainMark--sports" aria-hidden="true">
                   <ActivityIcon size={22} />
@@ -487,7 +487,7 @@ export function AreasScreen({
 
         {/* Settings ---------------------------------------------------- */}
         <Section label={t('common.settings')}>
-          <Card padded>
+          <Card>
             <span className="field-label">{t('common.language')}</span>
             <Segmented<Language>
               label={t('common.language')}
