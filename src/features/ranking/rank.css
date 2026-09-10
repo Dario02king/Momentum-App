@@ -1,12 +1,11 @@
 .rank__scroll {
   flex: 1;
   overflow-y: auto;
-  /* Room for the card shadows, which would otherwise be clipped. */
-  margin: 0 calc(var(--space-2) * -1);
-  /* Only end-of-list breathing room. The tab bar is a sibling in the shell's
-     flex column, not an overlay, so the scroller already ends above it and it
-     owns its own safe-area inset — reserving its height here a second time
-     left 86px of dead space under every list. */
+  /* `--space-2` is the room the card shadows need; on a full-width route that
+     is real padding, not the negative margin Today borrows from its page
+     inset. The bottom is end-of-list breathing room only — the tab bar is a
+     sibling in the shell's flex column, not an overlay, so the scroller
+     already ends above it and it owns its own safe-area inset. */
   padding: var(--space-1) var(--space-2) var(--space-10);
 }
 

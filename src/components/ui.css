@@ -11,9 +11,28 @@
   padding-right: calc(var(--safe-right) + var(--space-5));
 }
 
+/*
+ * Verlauf, Rang and Bereiche put their cards on the whole width of the
+ * display; only Today keeps the page inset. The screen box gives up its
+ * horizontal padding and keeps the safe-area inset, so the route canvas is
+ * the full viewport — the cards inside it hold their own margins and their
+ * own padding, and no text ever reaches the physical edge.
+ */
+.screen--full {
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
 .screen__header {
   padding-top: calc(var(--safe-top) + var(--space-7));
   padding-bottom: var(--space-6);
+}
+
+/* The title keeps the ordinary content inset even where the cards below it
+   do not: a large title flush against the display edge reads as a mistake. */
+.screen--full > .screen__header {
+  padding-left: var(--space-5);
+  padding-right: var(--space-5);
 }
 
 .screen__title {

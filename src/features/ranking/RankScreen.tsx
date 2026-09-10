@@ -121,7 +121,7 @@ export function RankScreen({
   // Loading, failure and loaded stay three distinct states.
   if (state.status !== 'ready') {
     return (
-      <div className="screen">
+      <div className="screen screen--full">
         <header className="screen__header">
           <h1 className="screen__title">{t('nav.rank')}</h1>
         </header>
@@ -149,7 +149,7 @@ export function RankScreen({
   };
 
   return (
-    <div className="screen">
+    <div className="screen screen--full">
       <header className="screen__header">
         <h1 className="screen__title">{t('nav.rank')}</h1>
       </header>

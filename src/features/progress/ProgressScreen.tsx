@@ -123,7 +123,7 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
   // Emptiness is a property of the loaded data and is decided below.
   if (state.status !== 'ready' || !window) {
     return (
-      <div className="screen">
+      <div className="screen screen--full">
         <header className="screen__header">
           <h1 className="screen__title">{t('nav.progress')}</h1>
         </header>
@@ -213,7 +213,7 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
   }
 
   return (
-    <div className="screen">
+    <div className="screen screen--full">
       <header className="screen__header">
         <h1 className="screen__title">{t('nav.progress')}</h1>
       </header>

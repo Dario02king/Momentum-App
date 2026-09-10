@@ -427,7 +427,7 @@ export function AreasScreen({
   };
 
   return (
-    <div className="screen">
+    <div className="screen screen--full">
       <header className="screen__header">
         <h1 className="screen__title">{t('nav.areas')}</h1>
         <p className="screen__subtitle">{t('areas.subtitle')}</p>
