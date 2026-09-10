@@ -105,6 +105,11 @@
   font-size: var(--type-body);
   line-height: 1.3;
   letter-spacing: -0.2px;
+  /* A row title is user text — a question the user wrote. `.row__body` already
+     lets the flex item shrink, but `min-width: 0` cannot break a word that has
+     nowhere to break: measured at 320px, a 30-character German compound pushed
+     the whole row 24px past the display. */
+  overflow-wrap: anywhere;
 }
 
 .row__subtitle {

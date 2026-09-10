@@ -38,6 +38,11 @@
 .question-detail__title {
   font-size: var(--type-title);
   line-height: 1.25;
+  /* The title here is the user's own question, and German builds words no
+     line box can break at a space. Measured at 320px, a 26-character compound
+     runs 417px wide against 320px available. The gym detail title, which is
+     likewise user text, has always broken; this is the same guarantee. */
+  overflow-wrap: anywhere;
 }
 
 .question-detail__scroll {
