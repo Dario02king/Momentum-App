@@ -14,7 +14,14 @@
     <meta name="theme-color" content="#f4f4f8" />
     <meta name="description" content="Sieh, wohin dein Leben steuert." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- `black-translucent` is the only style under which the web view reaches
+         the physical top edge: with `default` iOS keeps the view below the
+         status bar and paints that band itself, from neither `theme-color` nor
+         the manifest's `background_color` — which is the light strip above the
+         app. Translucent hands the whole display to the page, so the ground
+         set on `body` runs to the edge and `env(safe-area-inset-top)` becomes
+         a real value for the first time; `.screen__header` already spends it. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Momentum" />
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="manifest" href="./manifest.webmanifest" />
