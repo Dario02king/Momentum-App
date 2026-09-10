@@ -15,3 +15,5 @@ coverage
 !/src/sw/*.js
 /*.config.js
 /vitest.workspace.js
+# Screenshots and reports from scripts/verify — evidence, never sources.
+.artifacts
