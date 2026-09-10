@@ -69,7 +69,7 @@ export function TodayScreen({
   if (state.status !== 'ready') {
     return (
       <div className="screen">
-        <header className="screen__header">
+        <header className="screen__header today__header">
           <h1 className="screen__title">{t('nav.today')}</h1>
         </header>
         <div className="today__scroll" aria-busy={state.status === 'loading'}>
@@ -128,7 +128,7 @@ export function TodayScreen({
 
   return (
     <div className="screen">
-      <header className="screen__header">
+      <header className="screen__header today__header">
         <h1 className="screen__title">{t('nav.today')}</h1>
         <p className="today__date">
           {t('today.date', {

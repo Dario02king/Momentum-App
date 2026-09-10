@@ -15,8 +15,20 @@
   padding: var(--space-1) var(--space-2) var(--space-10);
 }
 
+/*
+ * Today opens the app, so its header earns its space rather than reserving
+ * it. `.screen__header` spends `--safe-top` once, at the layout layer; this
+ * only trims what sits *after* that inset — 28px of it, before the title had
+ * a date and a status line under it. The gaps below are tightened with it so
+ * the block reads as one unit and not as three stacked ones.
+ */
+.screen__header.today__header {
+  padding-top: calc(var(--safe-top) + var(--space-2));
+  padding-bottom: var(--space-5);
+}
+
 .today__date {
-  margin-top: var(--space-2);
+  margin-top: var(--space-1);
   font-size: var(--type-subhead);
   color: var(--text-secondary);
 }
@@ -26,7 +38,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
   padding: 6px var(--space-3);
   border-radius: var(--radius-pill);
   background: var(--surface-elevated);
