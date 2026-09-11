@@ -243,19 +243,10 @@ for (const [width, height] of [
   await scrollTo(page, '.food__scale');
   await audit(page, 'today-ernaehrung', width);
 
-  /* ── Verlauf: the overall overview, Running's board on it ──────────────── */
+  /* ── Verlauf: the overall overview ─────────────────────────────────────── */
   await page.getByRole('button', { name: 'Verlauf' }).click();
   await page.waitForTimeout(1200);
   await audit(page, 'verlauf', width);
-  await scrollTo(page, '[data-metric="running-rating"]');
-  await audit(page, 'verlauf-laufen', width);
-
-  /* ── A detail sheet, opened from a tile ────────────────────────────────── */
-  await page.locator('[data-metric="running-rating"] .metric-tile__open').click();
-  await page.waitForTimeout(500);
-  await audit(page, 'verlauf-sheet', width);
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(400);
 
   /* ── Rang, including the Gewichtung card ───────────────────────────────── */
   await page.getByRole('button', { name: 'Rang' }).click();
@@ -269,8 +260,19 @@ for (const [width, height] of [
   await page.waitForTimeout(1200);
   await audit(page, 'bereiche-mental', width);
   await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(3500);
   await audit(page, 'bereiche-gym', width);
+  /* The muscle module: the body, the ten rows and their charts. */
+  await scrollTo(page, '.muscle-rows');
+  await audit(page, 'bereiche-gym-muskeln', width);
+  /* Laufen, now inside the Gym workspace, and a sheet opened from its tile. */
+  await scrollTo(page, '[data-metric="running-rating"]');
+  await audit(page, 'bereiche-laufen', width);
+  await page.locator('[data-metric="running-rating"] .metric-tile__open').click();
+  await page.waitForTimeout(500);
+  await audit(page, 'bereiche-laufen-sheet', width);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
   await page.getByRole('radio', { name: 'Ernährung' }).click();
   await page.waitForTimeout(900);
   await audit(page, 'bereiche-food', width);
@@ -288,12 +290,10 @@ for (const [width, height] of [
   await page2.getByRole('button', { name: 'Bereiche' }).click();
   await page2.waitForTimeout(1200);
   await page2.getByRole('radio', { name: 'Gym' }).click();
-  await page2.waitForTimeout(1200);
+  await page2.waitForTimeout(3500);
   await audit(page2, 'bereiche-gym-locked', width);
-  await page2.getByRole('button', { name: 'Verlauf' }).click();
-  await page2.waitForTimeout(1200);
   await scrollTo(page2, '[data-metric="running-rating"]');
-  await audit(page2, 'verlauf-laufen-locked', width);
+  await audit(page2, 'bereiche-laufen-locked', width);
   await young.close();
 }
 

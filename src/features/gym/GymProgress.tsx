@@ -9,6 +9,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { exerciseHistory, type GymHistory } from '../../storage/services/gymService';
 import { ExerciseDetail } from './ExerciseDetail';
 import { MuscleModule } from './MuscleModule';
+import { toMuscleAnalytics } from './muscleAnalytics';
 import { muscleStateOf } from './muscleState';
 import './gym.css';
 
@@ -50,6 +51,9 @@ export function GymProgress({ history }: { history: GymHistory }) {
   const [selected, setSelected] = useState<MuscleGroup | null>(null);
   const [openExercise, setOpenExercise] = useState<string | null>(null);
   const [overallOpen, setOverallOpen] = useState(false);
+
+  /** The rows' view model: states, deltas, recency and the trends. */
+  const analytics = useMemo(() => toMuscleAnalytics(history), [history]);
 
   const views: MuscleView[] = useMemo(
     () =>
@@ -146,9 +150,12 @@ export function GymProgress({ history }: { history: GymHistory }) {
         <Card>
           <MuscleModule
             muscles={history.overall.muscles}
+            analytics={analytics}
             views={views}
             selected={selected}
-            onSelect={(muscle) => setSelected((current) => (current === muscle ? null : muscle))}
+            /* The body selects; the rows keep their toggle. */
+            onSelect={(muscle) => setSelected(muscle)}
+            onToggle={(muscle) => setSelected((current) => (current === muscle ? null : muscle))}
           />
         </Card>
       </Section>

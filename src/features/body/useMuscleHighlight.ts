@@ -54,6 +54,8 @@ type Slot = {
   targetRimColor: Color;
 };
 
+const BLACK = '#000000';
+
 /** Below this the eye cannot tell, and continuing to lerp would never settle. */
 const COLOR_EPSILON = 0.002;
 const SCALAR_EPSILON = 0.002;
@@ -96,6 +98,68 @@ export function regionMaterial(): { material: MeshStandardMaterial; rim: RimUnif
       );
   };
   return { material, rim };
+}
+
+/** What one region should look like: the whole decision, as data. */
+export interface RegionTarget {
+  color: string;
+  emissive: string;
+  emissiveIntensity: number;
+  rim: number;
+  rimColor: string;
+}
+
+/** Mixes the grey toward a hue without a renderer, for `color` below. */
+function lerpHex(from: string, to: string, amount: number): string {
+  const a = parseInt(from.slice(1), 16);
+  const b = parseInt(to.slice(1), 16);
+  const mix = (shift: number) => {
+    const x = (a >> shift) & 255;
+    const y = (b >> shift) & 255;
+    return Math.round(x + (y - x) * amount);
+  };
+  const hex = (v: number) => v.toString(16).padStart(2, '0');
+  return `#${hex(mix(16))}${hex(mix(8))}${hex(mix(0))}`;
+}
+
+/**
+ * The approved treatment, as a pure function of one region's visual and
+ * whether it is selected — colour toward the state ink, an emissive glow,
+ * and a Fresnel rim, each at the strength `REGION_MATERIAL` names (§13).
+ *
+ * **A region with nothing to say still shows that it was chosen.** With no
+ * tint at all, or an intensity of zero — which is every untrained group,
+ * since `stateIntensity()` returns 0 there — the performance channel is
+ * silent, and multiplying the selected treatment by it left a successful tap
+ * looking like a miss. Such a region keeps its neutral grey and its
+ * `noData` meaning, and gains the existing neutral selection rim instead. It
+ * is never tinted as though it had improved or declined.
+ */
+export function regionTargets(
+  visual: MuscleVisual | undefined,
+  selected: boolean,
+  tinted = true,
+): RegionTarget {
+  const { resting, selected: chosen } = REGION_MATERIAL;
+  const amount = visual?.intensity == null ? 1 : Math.max(0, Math.min(1, visual.intensity));
+  if (!tinted || !visual?.tint || amount === 0) {
+    return {
+      color: BODY_BASE_COLOR,
+      emissive: selected ? NEUTRAL_HIGHLIGHT : BLACK,
+      emissiveIntensity: selected ? 0.1 : 0,
+      rim: selected ? chosen.rim * 0.6 : 0,
+      rimColor: selected ? NEUTRAL_HIGHLIGHT : BLACK,
+    };
+  }
+  // intensity carries the magnitude of the change (core/gym decides it).
+  // Resting emissive and rim scale with it; the selected rim does not.
+  return {
+    color: lerpHex(BODY_BASE_COLOR, visual.tint, (selected ? chosen.mix : resting.mix) * amount),
+    emissive: visual.tint,
+    emissiveIntensity: (selected ? chosen.emissiveIntensity : resting.emissiveIntensity) * amount,
+    rim: selected ? chosen.rim : resting.rim * amount,
+    rimColor: visual.tint,
+  };
 }
 
 export function useMuscleHighlight({
@@ -147,30 +211,13 @@ export function useMuscleHighlight({
   // Recompute targets when data or selection changes; the frame loop eases to
   // them. Mirrors body-viewer.js #retarget.
   useEffect(() => {
-    const base = new Color(BODY_BASE_COLOR);
-    const { resting, selected: chosen } = REGION_MATERIAL;
     for (const [id, slot] of slots.current) {
-      const visual = visuals?.[id];
-      const on = id === selected;
-      if (!tinted || !visual?.tint) {
-        slot.target.copy(base);
-        slot.targetEmissive.set(on ? NEUTRAL_HIGHLIGHT : 0x000000);
-        slot.targetEmissiveIntensity = on ? 0.1 : 0;
-        slot.targetRimColor.set(on ? NEUTRAL_HIGHLIGHT : 0x000000);
-        slot.targetRim = on ? chosen.rim * 0.6 : 0;
-        continue;
-      }
-      // intensity carries the magnitude of the change (core/gym decides it);
-      // an untrained region arrives at 0 and stays base grey. Resting emissive
-      // and rim scale with it; the selected rim does not.
-      const amount = visual.intensity == null ? 1 : Math.max(0, Math.min(1, visual.intensity));
-      const strength = (on ? chosen.mix : resting.mix) * amount;
-      const tint = new Color(visual.tint);
-      slot.target.copy(base).lerp(tint, strength);
-      slot.targetEmissive.copy(tint);
-      slot.targetEmissiveIntensity = (on ? chosen.emissiveIntensity : resting.emissiveIntensity) * amount;
-      slot.targetRimColor.copy(tint);
-      slot.targetRim = on ? chosen.rim : resting.rim * amount;
+      const next = regionTargets(visuals?.[id], id === selected, tinted);
+      slot.target.set(next.color);
+      slot.targetEmissive.set(next.emissive);
+      slot.targetEmissiveIntensity = next.emissiveIntensity;
+      slot.targetRimColor.set(next.rimColor);
+      slot.targetRim = next.rim;
     }
     invalidate();
   }, [visuals, selected, tinted, meshes, invalidate]);

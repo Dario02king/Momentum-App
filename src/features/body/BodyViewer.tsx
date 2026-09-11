@@ -103,6 +103,12 @@ export default function BodyViewer({
   const environment = useRef<Texture | null>(null);
   const rotate = useRef(onRotate);
   rotate.current = onRotate;
+  // Nothing to draw for a body nobody can see. The demand loop already
+  // sleeps when the body is still; this covers the other case — an animation
+  // running while the tab is in the background or the card has been scrolled
+  // away — by stopping the loop outright rather than letting it burn frames.
+  const [live, setLive] = useState(true);
+  const invalidate = useRef<(() => void) | null>(null);
 
   const registerPick = useCallback((fn: (ndc: { x: number; y: number }) => MuscleGroup | null) => {
     pick.current = fn;
@@ -144,6 +150,40 @@ export default function BodyViewer({
     [],
   );
 
+  // One observer and one listener, both removed on unmount, so leaving Gym
+  // and coming back leaves exactly one of each rather than two.
+  useEffect(() => {
+    const element = shell.current;
+    let onScreen = true;
+    const apply = () => setLive(onScreen && !document.hidden);
+    const onVisibility = () => apply();
+    document.addEventListener('visibilitychange', onVisibility);
+    let observer: IntersectionObserver | null = null;
+    if (element && typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[entries.length - 1];
+          if (!entry) return;
+          onScreen = entry.isIntersecting;
+          apply();
+        },
+        { threshold: 0 },
+      );
+      observer.observe(element);
+    }
+    apply();
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      observer?.disconnect();
+    };
+  }, []);
+
+  // Waking is one frame, not a loop: the demand loop goes back to sleep by
+  // itself once whatever was moving has settled.
+  useEffect(() => {
+    if (live) invalidate.current?.();
+  }, [live]);
+
   // Bring a selection made in the list into view when it faces away. Only when
   // the selected group is on the far side — otherwise the body twitches on
   // every list tap.
@@ -166,10 +206,12 @@ export default function BodyViewer({
         // visible difference at this size.
         dpr={[1, 2]}
         // A static body must not burn 60fps. Every interaction invalidates.
-        frameloop="demand"
+        frameloop={live ? 'demand' : 'never'}
         camera={{ fov: 27, near: 0.1, far: 40, position: [0, 0.92, 4.05] }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        onCreated={({ gl, scene }) => {
+        onCreated={(state) => {
+          const { gl, scene } = state;
+          invalidate.current = state.invalidate;
           gl.outputColorSpace = SRGBColorSpace;
           gl.toneMapping = ACESFilmicToneMapping;
           // Studio lighting with ZERO bytes over the wire: RoomEnvironment is

@@ -16,6 +16,17 @@ export const en: Translations = {
   'areas.terminalSwitch': 'Choose an area',
   'areas.terminal.mental': 'Mental',
   'areas.general': 'Other areas and settings',
+  'areas.credits': 'Credits',
+  'areas.credits.body': '3D body model',
+  'areas.credits.bodySubtitle': 'By patmateee, CC BY 4.0',
+  'areas.credits.modified':
+    'Modified for Momentum: merged into one surface, re-posed, simplified, normals recomputed '
+    + 'and split into ten muscle regions. Textures and animation were removed.',
+  'gym.body.credit':
+    '3D model: "Muscular Athletic Body – Male Base Mesh" by patmateee, '
+    + 'licensed under CC BY 4.0, modified for Momentum.',
+  'gym.body.credit.model': 'View model',
+  'gym.body.credit.license': 'License',
   'areas.standing': 'Rank in this area',
   'areas.standing.value': '{value} of 1000',
   'areas.standing.summary': 'Measured against your own history',
@@ -368,6 +379,9 @@ export const en: Translations = {
   'muscle.state.improved': 'Improved',
   'muscle.state.unchanged': 'Held',
   'muscle.state.declined': 'Declined',
+  'muscle.lastTrained.today': 'Today',
+  'muscle.lastTrained.yesterday': 'Yesterday',
+  'muscle.lastTrained.days': '{count} days ago',
   'body.view': 'View',
   'body.view.front': 'Front',
   'body.view.side': 'Side',

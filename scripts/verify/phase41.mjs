@@ -229,8 +229,8 @@ async function openProgress(page) {
 
   check('the detail hierarchy is still below it',
     await page.locator('[data-metric="gym-overall"]').isVisible());
-  check('and the body renderer is still there',
-    (await page.locator('.body-renderer__figure').count()) === 2);
+  check('and the muscle module is still there, with its ten rows',
+    (await page.locator('.muscle-module').count()) === 1 && (await page.locator('.muscle-row').count()) === 10);
 
   let clip = await clipped(page);
   check('the mature Gym state is not clipped', clip.length === 0, clip.slice(0, 2).join('; '));

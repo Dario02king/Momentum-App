@@ -284,21 +284,39 @@ export async function seedMuscles(page, { days = 42 } = {}) {
         loadType: 'external', createdAt: stamp });
     };
 
+    // Everything sits inside the last four weeks, so it is all in the range
+    // the workspace opens on; a set outside the window is not history, it is
+    // simply not in this question.
     for (let i = 0; i < 12; i += 1) {
-      const back = days - i * 3;
+      const back = 26 - i * 2;
       log(back, 'ex_squat', ['quadriceps', 'hamstringsGlutes', 'core'], ['quadriceps'], 80 + i * 2.5, 5);
       log(back, 'ex_bench_press', ['chest', 'triceps'], ['chest'], 60 + i * 1.5, 5 + (i % 3));
     }
     // Identical performances, so every point of the series is the same number.
-    for (const back of [days - 6, days - 15, days - 24]) log(back, 'ex_lat_pulldown', ['back'], ['back'], 55, 8);
+    for (const back of [19, 12, 5]) log(back, 'ex_lat_pulldown', ['back'], ['back'], 55, 8);
     // Two days: one comparison, which is a value and not yet a direction.
-    for (const back of [days - 9, days - 21]) log(back, 'ex_hammer_curl', ['biceps', 'forearms'], ['biceps'], 16, 10);
+    for (const back of [15, 6]) log(back, 'ex_hammer_curl', ['biceps', 'forearms'], ['biceps'], 16, 10);
     // One day: trained, with nothing to compare against.
-    log(days - 12, 'ex_calf_raise', ['calves'], ['calves'], 40, 12);
+    log(8, 'ex_calf_raise', ['calves'], ['calves'], 40, 12);
+
+    // The catalogue rows the app writes the first time the picker opens, so
+    // the rows can name an exercise rather than fall back to its id.
+    const known = new Set((await all(db, 'exercises')).map((e) => e.id));
+    const catalogue = [
+      ['ex_squat', 'Back Squat', ['quadriceps', 'hamstringsGlutes', 'core'], ['quadriceps']],
+      ['ex_bench_press', 'Bench Press', ['chest', 'triceps', 'shoulders'], ['chest']],
+      ['ex_lat_pulldown', 'Lat Pulldown', ['back', 'biceps'], ['back']],
+      ['ex_hammer_curl', 'Hammer Curl', ['biceps', 'forearms'], ['biceps']],
+      ['ex_calf_raise', 'Calf Raise', ['calves'], ['calves']],
+    ].filter(([id]) => !known.has(id)).map(([id, name, muscles, primaryMuscles]) => ({
+      id, name, muscles, primaryMuscles, builtIn: true, loadType: 'external',
+      durationSeconds: null, attributes: {}, createdAt: stamp, updatedAt: stamp,
+    }));
 
     await putAll(db, 'gymSessions', sessions);
     await putAll(db, 'gymSets', sets);
-    return { sessions: sessions.length, sets: sets.length };
+    if (catalogue.length) await putAll(db, 'exercises', catalogue);
+    return { sessions: sessions.length, sets: sets.length, exercises: catalogue.length };
   }, { days });
 }
 

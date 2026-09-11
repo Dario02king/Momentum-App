@@ -7,6 +7,7 @@ import { lazy } from 'react';
  * `./BodyViewer` directly, or the chunk boundary is gone.
  */
 export const BodyViewer = lazy(() => import('./BodyViewer'));
+export { BodyBoundary } from './BodyBoundary';
 export type { BodyView, BodyViewerProps, MuscleVisual } from './BodyViewer';
 export { BODY_REGIONS, REGION_FACING } from './muscleMeshMap';
 export { toBodyVisuals, visualsByMuscle, type BodyMuscleVisual } from './bodyVisuals';

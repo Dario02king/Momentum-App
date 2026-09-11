@@ -5,8 +5,6 @@ import { Card, EmptyState, LoadFailure, Section, Segmented, StaleNotice } from '
 import { ProgressIcon } from '../../components/Icons';
 import { formatDayAndMonth } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
-import { RunningOverview } from '../running/RunningOverview';
-import { useRunningRating } from '../running/useRunningRating';
 import { Heatmap, type HeatmapRow } from './Heatmap';
 import { QuestionDetail } from './QuestionDetail';
 import { TrendCurve } from './TrendCurve';
@@ -22,10 +20,9 @@ import './progress.css';
  * word before any number, and neither view is ever rendered against
  * zero-filled data.
  *
- * Domain workspaces are not here. Gym's board lives in the Gym terminal
- * under Bereiche; Running's board stays here for now, because Running has no
- * terminal of its own and where it belongs is a product decision that is
- * still open.
+ * Domain workspaces are not here. Gym's board and Laufen's both live in the
+ * Gym workspace under Bereiche; their daily rows stay in the grid below,
+ * because the whole record belongs in one place.
  */
 export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {}) {
   const t = useT();
@@ -33,10 +30,6 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
   const [range, setRange] = useState<number>(TREND_RANGES[TREND_RANGES.length - 1]!);
   const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
   const { state, reload } = useProgression();
-  // Running replays from its runs rather than from the day scores, so it
-  // loads alongside rather than inside the progression. Gym's board lives in
-  // the Gym terminal under Bereiche; its daily row stays in the grid below.
-  const runningRating = useRunningRating();
 
   /** The last `range` days of the replay, for both views. */
   const window = useMemo(() => {
@@ -137,20 +130,6 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
 
   const empty = window.days.every((day) => day.score === null);
 
-  /*
-   * Running's own hierarchy, in the same order as Gym's: the rating, the
-   * year-to-date pace, attendance, then the distance ranges underneath.
-   */
-  const runningSection = runningRating?.started ? (
-    <Section label={t('running.progress.title')}>
-      <RunningOverview
-        state={runningRating.state}
-        rank={runningRating.rank}
-        started={runningRating.started}
-      />
-    </Section>
-  ) : null;
-
   const rangeSelector = (
     <div className="progress__ranges">
       <Segmented<string>
@@ -196,23 +175,14 @@ export function ProgressScreen({ onGoToToday }: { onGoToToday?: () => void } = {
 
         {rangeSelector}
 
-        {/*
-          Running stands on its own data: it is replayed from different rows
-          than the Wellbeing history, and one being empty says nothing about
-          the other. (Gym's board moved to the Gym terminal under Bereiche.)
-        */}
-        {runningSection}
-
         {empty ? (
-          runningSection !== null ? null : (
-            <Card>
-              <EmptyState
-                icon={<ProgressIcon size={26} />}
-                title={t('progress.emptyTitle')}
-                body={t('progress.emptyBody')}
-              />
-            </Card>
-          )
+          <Card>
+            <EmptyState
+              icon={<ProgressIcon size={26} />}
+              title={t('progress.emptyTitle')}
+              body={t('progress.emptyBody')}
+            />
+          </Card>
         ) : (
           <>
             <Section label={t('progress.trendTitle')} labelHidden>

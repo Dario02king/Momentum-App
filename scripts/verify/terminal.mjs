@@ -49,8 +49,8 @@ const rowLabels = (await page.locator('.heatmap__label').allTextContents()).map(
 check('Verlauf carries the overall grid with every domain row',
   ['Gesamt', 'Wellbeing', 'Gym', 'Laufen'].every((label) => rowLabels.includes(label)), rowLabels.join(' | '));
 let metrics = await metricsOn();
-check('the Gym board is no longer on Verlauf', !metrics.some((m) => m.startsWith('gym')), metrics.join(','));
-check('Running\'s board still is', metrics.some((m) => m === 'running-rating'), metrics.join(','));
+check('neither training board is on Verlauf any more — both live in the Gym workspace',
+  !metrics.some((m) => m.startsWith('gym') || m.startsWith('running')), metrics.join(','));
 
 /* ── Rang is unchanged ─────────────────────────────────────────────────── */
 await page.getByRole('button', { name: 'Rang' }).click();
@@ -81,15 +81,16 @@ check('the switch is on screen at entry, above the scroll port',
 const names = async () => (await page.locator('.areas__domainName').allTextContents()).map((s) => s.trim());
 metrics = await metricsOn();
 check('Mental shows its standing and its card, and no other area\'s',
-  metrics.every((m) => m.startsWith('mental')) && JSON.stringify(await names()) === JSON.stringify(['Wellbeing', 'Laufen']),
+  metrics.every((m) => m.startsWith('mental')) && JSON.stringify(await names()) === JSON.stringify(['Wellbeing']),
   metrics.join(',') + ' / ' + (await names()).join(','));
 check('the Wellbeing questions are configured here', await page.getByText('Frage hinzufügen').isVisible());
 
 await group.getByRole('radio', { name: 'Gym' }).click();
 await page.waitForTimeout(1400);
 metrics = await metricsOn();
-check('Gym shows the Gym workspace and nothing of Mental or Ernährung',
-  metrics.length > 0 && metrics.every((m) => m.startsWith('gym')) && JSON.stringify(await names()) === JSON.stringify(['Gym', 'Laufen']),
+check('Gym shows the Gym workspace, with Laufen inside it and nothing of Mental or Ernährung',
+  metrics.length > 0 && metrics.every((m) => m.startsWith('gym') || m.startsWith('running')) &&
+  JSON.stringify(await names()) === JSON.stringify(['Gym', 'Laufen']),
   metrics.join(','));
 check('the Gym workspace carries the rating board and the progress hierarchy',
   (await page.locator('[data-metric="gym-rating"]').count()) === 1 && (await page.locator('[data-metric="gym-overall"]').count()) === 1);
@@ -100,7 +101,7 @@ await group.getByRole('radio', { name: 'Ernährung' }).click();
 await page.waitForTimeout(1000);
 metrics = await metricsOn();
 check('Ernährung shows its standing and its card only',
-  metrics.every((m) => m.startsWith('food')) && JSON.stringify(await names()) === JSON.stringify(['Ernährung', 'Laufen']),
+  metrics.every((m) => m.startsWith('food')) && JSON.stringify(await names()) === JSON.stringify(['Ernährung']),
   metrics.join(','));
 check('the Vorsatz is configured there', await page.getByText('Dein Vorsatz').first().isVisible());
 check('the rest of Bereiche stays below whichever area is open',

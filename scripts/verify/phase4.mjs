@@ -172,17 +172,18 @@ async function fillSet(page, index, reps, weight) {
   check('it keeps the Tombstone boundary visible',
     /Absolute Bestleistungen gehören zu den Meilensteinen/.test(overallSheet.text ?? ''));
 
-  check('the body renderer draws two figures',
-    (await page.locator('.body-renderer__figure').count()) === 2);
-  const legend = await page.locator('.body-renderer__row').count();
+  // Since the muscle map the body is drawn in 3D and the groups are rows
+  // beneath it; the flat figure is the stand-in when WebGL is missing.
+  check('the muscle module draws a body', (await page.locator('.muscle-module').count()) === 1);
+  const legend = await page.locator('.muscle-row').count();
   check('and lists all ten groups', legend === 10, String(legend));
-  const chestState = await page.locator('.body-renderer__row', { hasText: 'Brust' }).textContent();
-  check('an improved group says so in words', /Verbessert/.test(chestState ?? ''), chestState?.trim());
-  const calfState = await page.locator('.body-renderer__row', { hasText: 'Waden' }).textContent();
+  const chestState = await page.locator('.muscle-row', { hasText: 'Brust' }).textContent();
+  check('an improved group says so with a signed number', /\+\d+ %/.test(chestState ?? ''), chestState?.trim());
+  const calfState = await page.locator('.muscle-row', { hasText: 'Waden' }).textContent();
   check('an untrained group is told apart from a declining one',
     /Noch nicht trainiert/.test(calfState ?? ''), calfState?.trim());
 
-  await page.locator('.body-renderer__button', { hasText: 'Brust' }).click();
+  await page.locator('.muscle-row__button', { hasText: 'Brust' }).click();
   await page.waitForTimeout(500);
   check('selecting a group filters the exercises below it',
     (await page.locator('.gym-progress__row').count()) === 1);

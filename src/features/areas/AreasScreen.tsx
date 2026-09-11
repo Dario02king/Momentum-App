@@ -48,6 +48,8 @@ import { TERMINALS, type DomainTerminal } from '../../app/route';
 import { DomainStandingTile } from './DomainStandingTile';
 import { DomainSwitch } from './DomainSwitch';
 import { GymTerminal } from './GymTerminal';
+import { RunningTerminal } from './RunningTerminal';
+import { CreditsSection } from './CreditsSection';
 import '../food/food.css';
 import '../progress/progress.css';
 import './areas.css';
@@ -470,6 +472,18 @@ export function AreasScreen({
           <>
             <GymTerminal />
             {domainCard('gym', domains.gym)}
+
+            {/*
+              Laufen lives inside this workspace rather than beside it: it is
+              training, it is where the user comes to look at training, and it
+              has no terminal of its own. Its own quota, rating and history are
+              untouched — only where they are shown has moved.
+            */}
+            <div className="areas__running">
+              <h2 className="section__label">{t('domain.running')}</h2>
+              <RunningTerminal />
+              {domainCard('running', domains.running)}
+            </div>
           </>
         ) : null}
         {terminal === 'food' ? (
@@ -483,10 +497,6 @@ export function AreasScreen({
 
         <div className="areas__general">
           <h2 className="section__label">{t('areas.general')}</h2>
-
-          {/* Laufen keeps its card here, unchanged, until its place in the
-              terminal is decided. */}
-          {domainCard('running', domains.running)}
 
           {/*
             Pause sits below the areas rather than inside one: it is about a
@@ -536,6 +546,8 @@ export function AreasScreen({
         ) : null}
 
           <BackupSection onRestored={actions.reload} />
+
+          <CreditsSection />
 
           {/* Settings -------------------------------------------------- */}
           <Section label={t('common.settings')}>

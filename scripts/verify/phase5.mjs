@@ -117,9 +117,17 @@ async function ready(opts = {}, seed = null) {
   return { ctx, page };
 }
 
+/**
+ * Where Running's board lives: inside the Gym workspace under Bereiche, in
+ * its own Laufen section. Verlauf keeps the daily Laufen row and nothing else.
+ */
 async function openProgress(page) {
-  await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
-  await page.waitForTimeout(1500);
+  await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
+  await page.waitForTimeout(700);
+  await page.getByRole('radio', { name: 'Gym' }).click();
+  await page.waitForTimeout(2500);
+  await page.locator('[data-metric="running-rating"]').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
 }
 
 /* ── Logging stays one tap, distance is optional ────────────────────────── */
