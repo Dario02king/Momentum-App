@@ -9,7 +9,7 @@ either — it says where things stand.
 
 | | |
 |---|---|
-| Branch | `claude/gym-scoring-integration-9oeblv` |
+| Branch | `claude/momentum-pwa-spec-j82dhm` — the default branch, which is the only one Pages deploys from. Pass 2 was developed on `claude/momentum-pass-2-geometry-r2qzkd` and fast-forwarded here |
 | Working tree | clean at the commit this file was committed in |
 | `SCHEMA_VERSION` | **5** (`src/core/model/index.ts`) — v5 adds the `foodDays` store |
 | `BACKUP_FORMAT_VERSION` | **3** (`src/core/backup/format.ts`) — v3 adds the `foodDays` collection; a v1 or v2 file still imports, every later collection reading as empty when absent |
@@ -429,6 +429,7 @@ in, except where noted.
 
 | | |
 |---|---|
+| Real device (Pass 2) | iPhone 15 class, from the preview build: the five conditions above, all clean. Recorded here because nothing in `scripts/verify/` can stand in for it |
 | Card geometry (Pass 2) | `geometry.mjs`: every line of text measured on all four sides against the box that clips it, 12px of clear space required, at 393/430/320 — Today, Verlauf (both domains, an opened sheet, and a locked-Endurance profile), Rang, Bereiche. **90/90.** The earlier suites' `clipped()` measures `child.right − clipper.right` and cannot see a leftward or upward clip, which is how V1 shipped cards whose corners cut their first and last glyphs |
 | Unit tests | **1029 passing, 62 files, exit 0** (`npm run test`) — Pass 2 adds the meter-track contrast pairs |
 | Release smoke (production build) | **82/82** (`release.mjs`) — cold load, the whole journey through all four domains, refresh and persistence, backup export / malformed refusal / restore, five widths including desktop, zero console errors |
@@ -479,8 +480,13 @@ Do not read Food's existence as the gate having been closed. There is no
 calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
 
-**Pass 2 (card geometry, widget layout, detail sheets) is on
-`claude/momentum-pass-2-geometry-r2qzkd`, awaiting real-device approval.**
+**Pass 2 (card geometry, widget layout, detail sheets) is merged and
+deployed.** Both stages were approved on a real iPhone 15-class device from
+the `Momentum-preview` build: no wrap of "853 von 1000" at 393px, the 2-up
+tiles balanced and readable, no clipping or horizontal overflow, the bottom
+sheets respecting the safe area, and the metric sheets consistent across Gym
+and Running. Those five are the device's verdict, not the desktop harness's —
+the harness cannot see SF Pro widths or `env(safe-area-inset-*)`, and says so.
 Stage A made the card own its inset on all four sides (`--card-pad`), which
 was the whole cause of the corner-clipped text on the phone. Stage B turned
 Verlauf into a widget board: rating hero, year-to-date full width, attendance
