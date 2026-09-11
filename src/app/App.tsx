@@ -9,7 +9,8 @@ import { Button } from '../components';
 import type { BossWeights } from '../core/boss';
 import type { StorageFailure } from '../storage/db';
 import { registerServiceWorker, type UpdateHandle } from './serviceWorker';
-import { TabBar, type TabId } from './TabBar';
+import { TabBar } from './TabBar';
+import { useRoute } from './route';
 import { useMomentum } from './useMomentum';
 import type { AppConfiguration } from '../storage/services/configurationService';
 import type { AreasActions } from '../features/areas/AreasScreen';
@@ -31,25 +32,35 @@ function MainApp({
   onDismissFailure(): void;
 }) {
   // Today is where the app opens: the daily check-in is the whole point.
-  const [tab, setTab] = useState<TabId>('today');
+  // The tab and the terminal's area are one route, mirrored to the URL.
+  const { route, navigate } = useRoute({ tab: 'today', terminal: 'mental' });
+  const { tab } = route;
 
   return (
     <div className="app">
       <main className="app__content">
         {tab === 'today' ? (
-          <TodayScreen onGoToAreas={() => setTab('areas')} onGoToRank={() => setTab('rank')} />
+          <TodayScreen
+            onGoToAreas={() => navigate({ tab: 'areas' })}
+            onGoToRank={() => navigate({ tab: 'rank' })}
+          />
         ) : null}
-        {tab === 'progress' ? <ProgressScreen onGoToToday={() => setTab('today')} /> : null}
+        {tab === 'progress' ? <ProgressScreen onGoToToday={() => navigate({ tab: 'today' })} /> : null}
         {tab === 'rank' ? (
           <RankScreen configuration={configuration} onSetBossWeights={onSetBossWeights} />
         ) : null}
         {tab === 'areas' ? (
-          <AreasScreen configuration={configuration} actions={actions} />
+          <AreasScreen
+            configuration={configuration}
+            actions={actions}
+            terminal={route.terminal}
+            onSelectTerminal={(terminal) => navigate({ terminal })}
+          />
         ) : null}
       </main>
       {actionFailed ? <ActionFailureBanner onDismiss={onDismissFailure} /> : null}
       {update ? <UpdateBanner onApply={update.apply} /> : null}
-      <TabBar active={tab} onSelect={setTab} />
+      <TabBar active={tab} onSelect={(next) => navigate({ tab: next })} />
     </div>
   );
 }

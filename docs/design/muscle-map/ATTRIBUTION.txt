@@ -1,0 +1,60 @@
+MOMENTUM MUSCLE MAP — MODEL ATTRIBUTION
+=======================================
+
+The 3D body in this package is a derivative work. The licence requires that
+the credit below stays with the asset and is reachable by the end user.
+
+SOURCE ASSET
+  Title   Muscular Athletic Body - Male Base Mesh
+  Author  patmateee
+  Source  https://sketchfab.com/3d-models/muscular-athletic-body-male-base-mesh-a58450cb3c23429f8f7acb2c7b22b552
+  Author page  https://sketchfab.com/patmateee
+  Licence CC BY 4.0
+  Licence text  http://creativecommons.org/licenses/by/4.0/
+  Full original licence file: license.txt (shipped next to this file)
+
+REQUIRED CREDIT (copy verbatim)
+  This work is based on "Muscular Athletic Body - Male Base Mesh"
+  (https://sketchfab.com/3d-models/muscular-athletic-body-male-base-mesh-a58450cb3c23429f8f7acb2c7b22b552)
+  by patmateee (https://sketchfab.com/patmateee) licensed under CC-BY-4.0
+  (http://creativecommons.org/licenses/by/4.0/)
+
+MODIFICATIONS MADE FOR MOMENTUM
+  - 7 source sub-meshes merged into one continuous surface
+  - re-posed from the source T-pose to a relaxed A-pose
+  - grid-cluster decimated 615,940 -> 40,000 triangles
+  - smooth area-weighted normals recomputed across the whole welded surface
+  - split into one primitive per Momentum muscle region (10 regions + inert)
+  - quantized with KHR_mesh_quantization; textures, UVs and animation removed
+  The mesh is therefore modified. State that in the credit.
+
+WHERE THE CREDIT GOES IN THE APP (not applied by this package)
+  The credit must be visible on a surface the user can reach — Settings /
+  About / Credits, and/or a small credit line in the Gym muscle-group area.
+  asset.copyright inside the GLB is preserved on every export but does NOT
+  satisfy attribution on its own: a user cannot open a binary.
+
+  Do NOT bake the credit into the 3D viewport itself.
+
+  Prepared strings (de / en):
+    gym.body.credit
+      "3D-Modell: „Muscular Athletic Body – Male Base Mesh" von patmateee,
+       lizenziert unter CC BY 4.0, für Momentum bearbeitet."
+      "3D model: \"Muscular Athletic Body – Male Base Mesh\" by patmateee,
+       licensed under CC BY 4.0, modified for Momentum."
+    gym.body.credit.model    "Modell ansehen" / "View model"
+    gym.body.credit.license  "Lizenz" / "License"
+
+  Both links must be real links (target=_blank, rel="noopener noreferrer").
+
+CHECKLIST
+  [ ] credit visible on a user-reachable surface
+  [ ] author named: patmateee
+  [ ] licence named and linked: CC BY 4.0
+  [ ] source URL linked
+  [ ] modification indicated
+  [ ] asset.copyright kept in the GLB on every re-export
+  [ ] THIRD-PARTY-NOTICES.md shipped with the build
+
+CC BY 4.0 has no ShareAlike clause: Momentum's own source stays under
+whatever licence you choose. Only the attribution travels.

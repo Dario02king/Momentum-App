@@ -243,19 +243,10 @@ for (const [width, height] of [
   await scrollTo(page, '.food__scale');
   await audit(page, 'today-ernaehrung', width);
 
-  /* ── Verlauf: the Gym half, then the Laufen half ───────────────────────── */
+  /* ── Verlauf: the overall overview ─────────────────────────────────────── */
   await page.getByRole('button', { name: 'Verlauf' }).click();
   await page.waitForTimeout(1200);
-  await audit(page, 'verlauf-gym', width);
-  await scrollTo(page, '[data-metric="running-rating"]');
-  await audit(page, 'verlauf-laufen', width);
-
-  /* ── A detail sheet, opened from a tile ────────────────────────────────── */
-  await page.locator('[data-metric="running-rating"] .metric-tile__open').click();
-  await page.waitForTimeout(500);
-  await audit(page, 'verlauf-sheet', width);
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(400);
+  await audit(page, 'verlauf', width);
 
   /* ── Rang, including the Gewichtung card ───────────────────────────────── */
   await page.getByRole('button', { name: 'Rang' }).click();
@@ -264,10 +255,27 @@ for (const [width, height] of [
   await scrollTo(page, '.boss-weights__explain');
   await audit(page, 'rang-gewichtung', width);
 
-  /* ── Bereiche, which carries the same cards ────────────────────────────── */
+  /* ── Bereiche: the domain terminal, one area at a time ─────────────────── */
   await page.getByRole('button', { name: 'Bereiche' }).click();
+  await page.waitForTimeout(1200);
+  await audit(page, 'bereiche-mental', width);
+  await page.getByRole('radio', { name: 'Gym' }).click();
+  await page.waitForTimeout(3500);
+  await audit(page, 'bereiche-gym', width);
+  /* The muscle module: the body, the ten rows and their charts. */
+  await scrollTo(page, '.muscle-rows');
+  await audit(page, 'bereiche-gym-muskeln', width);
+  /* Laufen, now inside the Gym workspace, and a sheet opened from its tile. */
+  await scrollTo(page, '[data-metric="running-rating"]');
+  await audit(page, 'bereiche-laufen', width);
+  await page.locator('[data-metric="running-rating"] .metric-tile__open').click();
+  await page.waitForTimeout(500);
+  await audit(page, 'bereiche-laufen-sheet', width);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  await page.getByRole('radio', { name: 'Ernährung' }).click();
   await page.waitForTimeout(900);
-  await audit(page, 'bereiche', width);
+  await audit(page, 'bereiche-food', width);
 
   await ctx.close();
 
@@ -279,11 +287,13 @@ for (const [width, height] of [
     hasTouch: true,
   });
   const page2 = await profile(young, { days: 12 });
-  await page2.getByRole('button', { name: 'Verlauf' }).click();
+  await page2.getByRole('button', { name: 'Bereiche' }).click();
   await page2.waitForTimeout(1200);
-  await audit(page2, 'verlauf-gym-locked', width);
+  await page2.getByRole('radio', { name: 'Gym' }).click();
+  await page2.waitForTimeout(3500);
+  await audit(page2, 'bereiche-gym-locked', width);
   await scrollTo(page2, '[data-metric="running-rating"]');
-  await audit(page2, 'verlauf-laufen-locked', width);
+  await audit(page2, 'bereiche-laufen-locked', width);
   await young.close();
 }
 

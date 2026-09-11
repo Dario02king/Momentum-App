@@ -1,0 +1,46 @@
+# Bundle and worker — 5e554aa — dist built from this commit
+
+## production build (base /Momentum-App/)
+index-BOj1S-LQ.js                             421235 bytes    123633 gzip
+index-c0r-SqIw.css                             73027 bytes     11566 gzip
+BodyViewer-CyH-vmvt.js                        860923 bytes    234197 gzip
+BodyViewer-jpdF9QL8.css                         1010 bytes       507 gzip
+momentum-body.glb                             478008 bytes    344867 gzip
+sw.js                                           3471 bytes      1410 gzip
+
+precache entries in dist/sw.js:
+  "/Momentum-App/"
+  "/Momentum-App/apple-touch-icon.png"
+  "/Momentum-App/assets/BodyViewer-CyH-vmvt.js"
+  "/Momentum-App/assets/BodyViewer-jpdF9QL8.css"
+  "/Momentum-App/assets/index-BOj1S-LQ.js"
+  "/Momentum-App/assets/index-c0r-SqIw.css"
+  "/Momentum-App/icon-192.png"
+  "/Momentum-App/icon-512.png"
+  "/Momentum-App/index.html"
+  "/Momentum-App/manifest.webmanifest"
+  "/Momentum-App/models/momentum-body.glb"
+stale preview paths in production sw.js: 0
+
+## preview build (--base=/Momentum-preview/, scratch outDir)
+  ✓ built in 8.19s
+precache entries in preview sw.js:
+  "/Momentum-preview/"
+  "/Momentum-preview/apple-touch-icon.png"
+  "/Momentum-preview/assets/BodyViewer-hDJmfRtX.js"
+  "/Momentum-preview/assets/BodyViewer-jpdF9QL8.css"
+  "/Momentum-preview/assets/index-CVyd9Y_w.js"
+  "/Momentum-preview/assets/index-c0r-SqIw.css"
+  "/Momentum-preview/icon-192.png"
+  "/Momentum-preview/icon-512.png"
+  "/Momentum-preview/index.html"
+  "/Momentum-preview/manifest.webmanifest"
+  "/Momentum-preview/models/momentum-body.glb"
+stale production paths in preview sw.js: 0
+model URL inside the preview's viewer chunk: /Momentum-preview/models/momentum-body.glb
+model URL inside the production viewer chunk: /Momentum-App/models/momentum-body.glb
+
+## baselines
+Stage 2  main:    410.33 kB   119.44 kB gzip
+Stage 4b main:    420.86 kB   123.70 kB gzip
+Stage 4b viewer:  860.92 kB   235.23 kB gzip

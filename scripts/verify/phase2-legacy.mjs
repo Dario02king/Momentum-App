@@ -41,9 +41,9 @@ check('Areas shows the retired Sport domain to whoever has one',
   await page.getByText('Sport (bisher)').isVisible());
 check('and explains what it is',
   await page.getByText(/stammen aus der früheren Version/).isVisible());
-check('it is not offered as one of the four areas',
-  (await page.locator('.areas__domainName').allTextContents()).slice(0, 4).join() ===
-    'Wellbeing,Gym,Laufen,Ernährung');
+check('it is not offered as one of the terminal\'s areas',
+  (await page.getByRole('radiogroup', { name: 'Bereich wählen' }).getByRole('radio').allTextContents())
+    .map((s) => s.trim()).join() === 'Mental,Gym,Ernährung');
 
 await page.locator('.tab-bar button', { hasText: 'Heute' }).click();
 await page.waitForTimeout(500);

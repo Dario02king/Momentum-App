@@ -3,16 +3,14 @@ import { MUSCLE_GROUPS, type MuscleGroup } from '../../core/model';
 import { Card, EmptyState, Section } from '../../components';
 import { MetricDetailSheet, MetricTile } from '../../components/metrics';
 import { ChevronRightIcon, ProgressIcon } from '../../components/Icons';
-import {
-  BodyRenderer,
-  MUSCLE_LABEL_KEYS,
-  type MuscleState,
-  type MuscleView,
-} from '../../components/BodyRenderer';
-import { percentChange, type MusclePerformance } from '../../core/gym/performance';
+import { MUSCLE_LABEL_KEYS, type MuscleView } from '../../components/BodyRenderer';
+import { percentChange } from '../../core/gym/performance';
 import { useT } from '../../i18n/I18nProvider';
 import { exerciseHistory, type GymHistory } from '../../storage/services/gymService';
 import { ExerciseDetail } from './ExerciseDetail';
+import { MuscleModule } from './MuscleModule';
+import { toMuscleAnalytics } from './muscleAnalytics';
+import { muscleStateOf } from './muscleState';
 import './gym.css';
 
 /**
@@ -31,13 +29,9 @@ import './gym.css';
  * none of them is.
  */
 
-/** The five states the body renderer draws, from one group's performance. */
-export function muscleStateOf(entry: MusclePerformance): MuscleState {
-  if (entry.status === 'noData') return 'noData';
-  if (entry.status === 'insufficientBaseline') return 'awaitingBaseline';
-  const ratio = entry.ratio ?? 1;
-  return ratio > 1 ? 'improved' : ratio < 1 ? 'declined' : 'unchanged';
-}
+// The state mapping lives in its own module so the adapters can share it
+// without importing a screen; re-exported here for the callers that had it.
+export { muscleStateOf };
 
 const changeText = (
   ratio: number | null,
@@ -57,6 +51,9 @@ export function GymProgress({ history }: { history: GymHistory }) {
   const [selected, setSelected] = useState<MuscleGroup | null>(null);
   const [openExercise, setOpenExercise] = useState<string | null>(null);
   const [overallOpen, setOverallOpen] = useState(false);
+
+  /** The rows' view model: states, deltas, recency and the trends. */
+  const analytics = useMemo(() => toMuscleAnalytics(history), [history]);
 
   const views: MuscleView[] = useMemo(
     () =>
@@ -151,10 +148,14 @@ export function GymProgress({ history }: { history: GymHistory }) {
 
       <Section label={t('gym.progress.muscles')}>
         <Card>
-          <BodyRenderer
-            muscles={views}
+          <MuscleModule
+            muscles={history.overall.muscles}
+            analytics={analytics}
+            views={views}
             selected={selected}
-            onSelect={(muscle) => setSelected((current) => (current === muscle ? null : muscle))}
+            /* The body selects; the rows keep their toggle. */
+            onSelect={(muscle) => setSelected(muscle)}
+            onToggle={(muscle) => setSelected((current) => (current === muscle ? null : muscle))}
           />
         </Card>
       </Section>

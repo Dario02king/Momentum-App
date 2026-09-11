@@ -480,6 +480,23 @@ Do not read Food's existence as the gate having been closed. There is no
 calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
 
+**The domain terminal, Stage A (revised), is on
+`claude/momentum-pass-2-geometry-r2qzkd` awaiting review.** Bereiche is the
+terminal: one switch — Mental · Gym · Ernährung — and beneath it one area's
+workspace (its standing or board, then the card that switches it on and
+configures it), with the area in the route (`src/app/route.ts`, mirrored to
+`#/areas/<area>`; Back walks the areas visited). Heute, Verlauf and Rang are
+unchanged in role: Verlauf stays the overall, historical overview. Gym's
+board moved from Verlauf into the Gym area; Running keeps its board on
+Verlauf and its card under "Weitere Bereiche und Einstellungen" because it
+has no terminal of its own and where it belongs is an open product decision.
+Nothing in scoring, ranking, persistence or the questions was touched, and
+`src/storage/services/domainOutputs.test.ts` proves it: three fingerprints
+pinned before the terminal existed, unchanged after. The QA record is
+`docs/design/DOMAIN-TERMINAL-QA.md`. Stages B–E (BodyMap3D, charts, Mental
+and Food detail, global QA) wait on the *Muscle Groups Redesign* design files
+being seeded into the workspace; no BodyMap3D or Three.js exists here.
+
 **Pass 2 (card geometry, widget layout, detail sheets) is merged and
 deployed.** Both stages were approved on a real iPhone 15-class device from
 the `Momentum-preview` build: no wrap of "853 von 1000" at 393px, the 2-up

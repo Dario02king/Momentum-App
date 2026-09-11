@@ -1,0 +1,50 @@
+/*
+ * The domain terminal: one switch, one domain's content at a time.
+ *
+ * The switch lives in the screen header, above the scroll port, so it is on
+ * screen at entry and stays there while the domain's content scrolls — the
+ * header is a static flex item, not a sticky element, so this costs no
+ * vertical space and needs no scroll-edge treatment.
+ */
+
+.domain-switch {
+  margin-top: var(--space-4);
+}
+
+/* Four German labels on one line at 393px and above: footnote weight, no
+   inner padding beyond a hair, and nothing truncated. */
+.domain-switch__option {
+  min-width: 0;
+  padding: 0 var(--space-1);
+  font-size: var(--type-footnote);
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+}
+
+/* Below 360px four labels do not fit one line without cutting them, and a
+   cut label is not a label. Two rows of two keep every word whole and every
+   target 40px tall; readability over shape, as everywhere at this width. */
+@media (max-width: 359px) {
+  .domain-switch {
+    flex-wrap: wrap;
+  }
+
+  .domain-switch__option {
+    flex: 1 1 45%;
+  }
+}
+
+/* The header's bottom padding is generous for a title alone; with the switch
+   beneath it the switch carries the spacing. */
+.screen__header--terminal {
+  padding-bottom: var(--space-4);
+}
+
+/* The rest of Bereiche — Laufen, pauses, the retired domain, backup, the
+   language — sits below whichever area is open, under its own label, and
+   does not change when the area does. */
+.areas__general {
+  margin-top: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--separator);
+}

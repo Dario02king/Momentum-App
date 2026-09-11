@@ -1,0 +1,49 @@
+
+[network per route, cold boot, no worker]
+  Heute (boot)           | none                                                 | none
+  Verlauf                | none                                                 | none
+  Rang                   | none                                                 | none
+  Bereiche → Mental      | none                                                 | none
+  Bereiche → Ernährung   | none                                                 | none
+  Bereiche → Gym         | 200 /assets/BodyViewer-jpdF9QL8.css, 200 /assets/BodyViewer-CyH-vmvt.js | 200 /models/momentum-body.glb
+PASS  no route before Gym fetches the viewer chunk or the model
+PASS  Gym fetches the viewer chunk, its CSS and the model, each 200  — 200 /assets/BodyViewer-jpdF9QL8.css, 200 /assets/BodyViewer-CyH-vmvt.js | 200 /models/momentum-body.glb
+
+[worker precache] momentum-assets/BodyViewer-CyH-vmvt.js|assets/BodyViewer-jpdF9QL8.css|assets/index-BOj1S-LQ.js|assets/index-c0r-SqIw.css 12 entries
+PASS  the worker precached the model, the viewer chunk and its CSS  — /Momentum-App/models/momentum-body.glb, /Momentum-App/assets/BodyViewer-jpdF9QL8.css, /Momentum-App/assets/BodyViewer-CyH-vmvt.js
+PASS  offline, the shell still loads from the worker  — Heute
+[offline Gym responses] 200 /assets/BodyViewer-jpdF9QL8.css | 200 /assets/BodyViewer-CyH-vmvt.js | 200 /models/momentum-body.glb
+PASS  offline, Gym still shows the 3D body and its rows  — canvas 1, rows 10, figure 0
+
+[mini charts at 393]
+  Brust                  box 80,24    pts 11 dots 1 line bbox 3,4,74,16              stroke rgb(206, 105, 85) → +78 % rgb(23, 122, 76)
+  Rücken                 box 80,24    pts 2 dots 1 line bbox 3,12,74,0              stroke rgb(53, 110, 172) → 0 % rgb(122, 100, 16)
+  Schultern              box 0,0      pts 0 dots 0 line bbox null                   stroke null → Noch nicht trainiert rgb(160, 160, 168)
+  Bizeps                 box 80,24    pts 0 dots 1 line bbox null                   stroke rgb(122, 93, 189) → 0 % rgb(122, 100, 16)
+  Trizeps                box 80,24    pts 11 dots 1 line bbox 3,4,74,16              stroke rgb(188, 98, 155) → +78 % rgb(23, 122, 76)
+  Rumpf                  box 80,24    pts 12 dots 1 line bbox 3,4,74,16              stroke rgb(196, 162, 55) → +17 % rgb(23, 122, 76)
+  Quadrizeps             box 80,24    pts 12 dots 1 line bbox 3,4,74,16              stroke rgb(42, 153, 144) → +17 % rgb(23, 122, 76)
+  Beinbeuger und Gesäss  box 80,24    pts 12 dots 1 line bbox 3,4,74,16              stroke rgb(136, 99, 63) → +17 % rgb(23, 122, 76)
+  Waden                  box 0,0      pts 0 dots 0 line bbox null                   stroke null → Noch kein Vergleich rgb(22, 109, 182)
+  Unterarme              box 80,24    pts 0 dots 1 line bbox null                   stroke rgb(111, 123, 137) → 0 % rgb(122, 100, 16)
+PASS  measured rows draw a line with a readable height, not a 1–2px mark  — Brust 16px, Rücken 0px, Trizeps 16px, Rumpf 16px, Quadrizeps 16px, Beinbeuger und Gesäss 16px
+PASS  the flat series is the one exception, drawn on purpose down the middle
+PASS  no line leaves its 80×24 box
+PASS  a single observation is a dot and nothing else
+PASS  groups with nothing to plot draw nothing
+PASS  every drawn chart has its own identity colour  — rgb(206, 105, 85) rgb(53, 110, 172) rgb(122, 93, 189) rgb(188, 98, 155) rgb(196, 162, 55) rgb(42, 153, 144) rgb(136, 99, 63) rgb(111, 123, 137)
+PASS  the number beside a chart is never in the chart's colour
+PASS  the stroke is thin and crisp, about 1.6px  — 1.6,1.6,1.6,1.6,1.6,1.6
+
+[rows to assistive technology] {"buttons":10,"hiddenCharts":true,"textOnly":["BrustVor 4 Tagen+78 %","RückenVor 5 Tagen0 %","SchulternNoch nicht trainiert","BizepsVor 6 Tagen0 %","TrizepsVor 4 Tagen+78 %","RumpfVor 3 Tagen+17 %","QuadrizepsVor 3 Tagen+17 %","Beinbeuger und GesässVor 3 Tagen+17 %","WadenVor 8 TagenNoch kein Vergleich","UnterarmeVor 6 Tagen0 %"]}
+PASS  all ten rows are buttons with a pressed state
+PASS  each row names its muscle and its number or state in text
+PASS  the charts are hidden from the accessibility tree
+PASS  every row keeps a 44px target  — 60,60,60,60,60,60,60,72,60,60
+PASS  the view controls carry translated labels
+PASS  a selected row is exposed as pressed
+PASS  the credits sheet is a modal dialog with a name
+PASS  and Escape closes it
+
+--- summary ---
+21/21 checks passed

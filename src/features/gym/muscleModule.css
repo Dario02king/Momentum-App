@@ -1,0 +1,217 @@
+/*
+ * The body and its rows, inside an ordinary card.
+ *
+ * The body is sized by the card it sits in — never by the viewport — and is
+ * bounded at both ends: tall enough that the smaller regions stay tappable
+ * on a narrow phone, short enough that the Gym screen around it stays in
+ * view.
+ */
+.muscle-module {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.muscle-module .body-viewer,
+.muscle-module__placeholder {
+  width: 100%;
+  aspect-ratio: 1 / 1.02;
+  min-height: 280px;
+  max-height: 360px;
+  border-radius: var(--radius-control);
+  background: var(--surface-secondary);
+}
+
+.muscle-module__placeholder {
+  aspect-ratio: 1 / 1.02;
+}
+
+/* The SVG figure stands in for the canvas in the same box. */
+.muscle-module__figure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  padding: var(--space-3) 0;
+}
+
+/* ── The ten groups, as one list ───────────────────────────────────────── */
+
+.muscle-rows {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+.muscle-row {
+  border-bottom: 1px solid var(--separator);
+}
+
+.muscle-row:last-child {
+  border-bottom: none;
+}
+
+.muscle-row__button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 60px;
+  padding: var(--space-2) 0;
+  text-align: left;
+  background: none;
+}
+
+.muscle-row__dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* The only column that may shrink: the chart and the number keep their
+   room, and a long name wraps rather than being cut. */
+.muscle-row__text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.muscle-row__name {
+  font-size: var(--type-subhead);
+  color: var(--text-primary);
+}
+
+.muscle-row__button[aria-pressed='true'] .muscle-row__name {
+  font-weight: var(--weight-semibold);
+}
+
+.muscle-row__sub {
+  font-size: var(--type-caption);
+  color: var(--text-tertiary);
+}
+
+/* A group with no number gives its chart's room to the words instead. */
+.muscle-row__chart:empty {
+  display: none;
+}
+
+.muscle-row__chart {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  /* The chart's floor. Below this it stops showing a shape, so the name
+     gives way first — never the other way round. */
+  min-width: 56px;
+  width: 80px;
+  height: 24px;
+}
+
+.muscle-row__spark {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.muscle-row__right {
+  display: flex;
+  flex: none;
+  min-width: 62px;
+  max-width: 124px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--text-secondary);
+}
+
+.muscle-row__delta {
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.muscle-row__badge {
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  color: inherit;
+  background: var(--surface-secondary);
+}
+
+/* State — how the group is doing — on the number and the badge only. */
+.muscle-row__right--improved {
+  color: var(--scale-good-ink);
+}
+.muscle-row__right--improved .muscle-row__badge {
+  background: var(--scale-good-tint);
+}
+.muscle-row__right--declined {
+  color: var(--scale-poor-ink);
+}
+.muscle-row__right--declined .muscle-row__badge {
+  background: var(--scale-poor-tint);
+}
+.muscle-row__right--unchanged {
+  color: var(--scale-okay-ink);
+}
+.muscle-row__right--unchanged .muscle-row__badge {
+  background: var(--scale-okay-tint);
+}
+.muscle-row__right--awaitingBaseline {
+  color: var(--sky-ink);
+}
+.muscle-row__right--awaitingBaseline .muscle-row__badge {
+  background: var(--sky-tint);
+}
+.muscle-row__right--noData {
+  color: var(--text-tertiary);
+}
+
+/*
+ * At the regression width there is not enough room for a name, a chart and a
+ * state on one line — a 320px screen leaves the name about 60px once the
+ * others have taken their minimum, and "Beinbeuger und Gesäss" does not fit
+ * in 60px at any size the type scale allows.
+ *
+ * So the row keeps all three and wraps: the name and its recency take the
+ * full width, the chart and the state sit beneath them. Nothing is dropped,
+ * nothing is truncated and no type shrinks — the row simply gets taller,
+ * which is what a narrow screen is for.
+ */
+@media (max-width: 360px) {
+  .muscle-row__button {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+
+  /* The dot stays beside the name; the chart and the state drop below.
+     22px is the dot plus the gap it sits in. */
+  .muscle-row__text {
+    flex: 1 1 calc(100% - 26px);
+  }
+
+  .muscle-row__chart {
+    width: 56px;
+    /* Lines up under the name rather than under the dot. */
+    margin-left: 22px;
+  }
+
+  .muscle-row__right {
+    flex: 1;
+  }
+}
+
+/* Two links side by side in the credits sheet, wrapping on a narrow phone. */
+.credits__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}

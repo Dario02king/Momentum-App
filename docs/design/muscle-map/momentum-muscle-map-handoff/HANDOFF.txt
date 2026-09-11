@@ -1,0 +1,455 @@
+MOMENTUM MUSCLE MAP — IMPLEMENTATION HANDOFF
+============================================
+Plain UTF-8 text. No Markdown renderer required.
+
+This package is the APPROVED body-map visual implementation plus its
+interaction contract. It contains no Momentum business logic and must not
+grow any: scoring, deltas, "last trained", history, ranks, persistence,
+routing and chart data all stay in core/gym, untouched.
+
+Everything needed to integrate is in this folder. Nothing is left to be
+recreated, guessed or re-derived.
+
+
+0. FILE TREE
+------------
+  momentum-body.glb            production asset (THE model)
+  muscleMeshMap.ts             id <-> GLB mapping, runtime resolver
+  tokens.ts                    identity + state colour tokens, material mix
+  body-viewer.js               standalone viewer (framework independent)
+  index.html                   standalone demo host
+  styles.css                   demo card styling (app replaces this)
+  demo.js                      demo host wiring — DEMO DATA ONLY
+  HANDOFF.txt                  this file
+  ATTRIBUTION.txt              CC BY 4.0 credit + where it must appear
+  license.txt                  original Sketchfab licence file, verbatim
+  react/                       the real React 18 + TS implementation
+    BodyViewer.tsx  BodyModel.tsx  CameraRig.tsx
+    useGLTF.ts  useMuscleHighlight.ts  useTapVsDrag.ts  bodyViewer.css
+  tools/
+    validate-body-glb.mjs      build-time asset contract validator
+  reference/                   approved look, five canonical views
+    front.png  front-45.png  side.png  rear-45.png  back.png
+    debug/                     segmentation review, same five views
+      front.png  front-45.png  side.png  rear-45.png  back.png
+
+  Deliberate deviations from the requested tree, all harmless:
+  - demo.js exists so index.html is not one inlined blob. Demo only.
+  - react/ is added: it is the actual approved implementation. body-viewer.js
+    is a faithful plain-JS port of it for framework-free use. Port either.
+  - support.js and body3d.js are NOT included. support.js is a design-tool
+    runtime with nothing to do with the body. body3d.js was the superseded
+    v1 prototype against the old 87k model. Neither belongs in the app.
+  - reference/debug/ holds the segmentation renders (not the product palette).
+
+
+1. WHICH FILE IS THE PRODUCTION GLB
+-----------------------------------
+  momentum-body.glb
+  Ships to: public/models/momentum-body.glb
+  In the app, load it by URL. Do not embed it in JS.
+
+
+2. TRIANGLE COUNT
+-----------------
+  40,000 triangles, 19,446 vertices, one mesh, 11 primitives.
+  Per region: chest 1450 · back 3603 · shoulders 3624 · biceps 1781 ·
+  triceps 1868 · core 2341 · quadriceps 4554 · hamstringsGlutes 5175 ·
+  calves 3863 · forearms 4785 · none 6956.
+  Source mesh was 615,940 triangles. At mobile card size (about 390x380 CSS
+  px) the decimation is not visible; the silhouette and the muscle relief of
+  the original athletic proportions are preserved.
+
+
+3. PACKED FILE SIZE
+-------------------
+  478,008 bytes on disk (467 KB). About 335 KB gzipped over the wire.
+  No textures, no images, no animation, nothing else to fetch.
+
+
+4. COORDINATE SYSTEM / UP AXIS
+------------------------------
+  glTF standard: Y up, right-handed, metres.
+  Feet on the ground plane: bbox y = [0.000, 1.750].
+  bbox x = [-0.474, 0.473]   bbox z = [-0.139, 0.138]
+
+
+5. FORWARD DIRECTION
+--------------------
+  The body faces +Z. The camera at azimuth 0 sits on +Z and sees the chest.
+  Anatomical left is -X.
+
+
+6. MODEL SCALE
+--------------
+  1 unit = 1 metre. Body height 1.750 m. Do not rescale the node: the node
+  already carries a UNIFORM dequantization scale (see 9). A non-uniform
+  scale would invalidate the stored normals via the inverse-transpose, and
+  the validator rejects it.
+
+
+7. MODEL ORIGIN
+---------------
+  Between the feet, on the ground plane. Horizontally centred at
+  x = -0.0001 (measured, not assumed). No offset correction needed.
+  Camera target used by the approved framing: (0, 0.92, 0).
+
+
+8. THREE.JS VERSION
+-------------------
+  three 0.160.x, pinned exact. Nothing here uses a newer API.
+  Loaders/helpers all come from three/addons:
+    GLTFLoader, RoomEnvironment, PMREMGenerator
+  React path: @react-three/fiber ^8 (the React-18 line; Momentum stays on
+  React 18.3.1 and R3F v9 would require React 19). @react-three/drei is
+  deliberately NOT adopted — everything needed is in three/addons.
+  The whole 3D layer is lazy-loaded; none of it belongs in the initial bundle.
+
+  KHR_mesh_quantization is decoded by GLTFLoader core: no decoder file, no
+  wasm, no worker, no CDN. That is why quantization was chosen over Draco
+  and meshopt for an offline-first PWA.
+
+
+9. COLOUR-SPACE SETTINGS
+------------------------
+  renderer.outputColorSpace = THREE.SRGBColorSpace
+  All token hex values are sRGB and are fed to THREE.Color unchanged
+  (three r160 converts to working space itself).
+  Keep these exact settings or the approved tints shift.
+
+
+10. TONE-MAPPING SETTINGS
+-------------------------
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  toneMappingExposure: default (1).
+  antialias: true · alpha: true · powerPreference: 'high-performance'
+  setPixelRatio(Math.min(2, devicePixelRatio))  — iPhone reports 3; capping
+  at 2 is a large, invisible win.
+  No postprocessing.
+
+
+11. CAMERA SETTINGS
+-------------------
+  PerspectiveCamera, near 0.1, far 40.
+  Orbit distance   4.05 (fixed)
+  Target           (0, 0.92, 0)
+  fov              27 at 400 px of viewer height, adapted per height as
+                   clamp(27 * (400 / heightPx), 22, 40) so the body keeps its
+                   framing in a short card. Head and feet never clip through
+                   a full rotation at the card sizes in 26.
+  Pitch            default +8 degrees, clamped [-22, +30]
+  No panning, no user zoom.
+  React path (OrbitControls): enableDamping, enablePan = false, polar clamped
+  to roughly 0.35pi–0.65pi, zoom clamped to +/-30 % of the fit distance.
+
+
+12. LIGHTING SETUP
+------------------
+  Generated in memory; ships zero bytes; never fetches an HDRI.
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();                       // after generating, once
+
+    HemisphereLight(0xffffff, 0xcdcdda, 1.35)
+    DirectionalLight(0xffffff, 2.15)  position (-1.7,  2.6,  2.4)   key
+    DirectionalLight(0xdfe4f5, 0.75)  position ( 2.4,  0.9,  1.5)   fill
+    DirectionalLight(0xffffff, 1.05)  position ( 0.4,  1.9, -2.8)   rim
+
+  No shadow maps. The rim light plus the material's own Fresnel term (13)
+  carry the muscle read.
+
+
+13. MATERIAL APPEARANCE
+-----------------------
+  Every region gets its OWN MeshStandardMaterial instance (clone per region,
+  once, at load): roughness 0.74, metalness 0, base colour #c9c9d2.
+  The inert 'none' primitive keeps a separate material (roughness 0.8) so it
+  can never be tinted.
+
+  Region tinting is three coupled parts — flat fill was explicitly rejected,
+  the body must stay plastic and region edges must fall off softly:
+
+    colour    lerp(#c9c9d2, state.ink, mix * intensity)
+    emissive  state.ink at emissiveIntensity * intensity
+    rim       state.ink added to totalEmissiveRadiance through a Fresnel
+              term, pow(1 - abs(dot(N, V)), 2.6) * rim * intensity
+
+               mix    emissiveIntensity   rim
+    resting    0.55         0.11          0.42
+    selected   0.72         0.26          0.95
+
+  The rim is a small onBeforeCompile patch on MeshStandardMaterial with two
+  uniforms (uRim, uRimColor) and its OWN varyings (vRimN, vRimP), so it never
+  depends on three's internal varying names. Injection points:
+    vertex:   after  #include <begin_vertex>
+    fragment: after  #include <emissivemap_fragment>
+  The patch is in body-viewer.js, function regionMaterial(). Copy it verbatim.
+
+  intensity (0…1) is supplied by the HOST and carries the MAGNITUDE of the
+  change, so +12 % burns visibly brighter than +2 %. tokens.ts ships the
+  exact curve as stateIntensity(): noData -> 0 (region stays base grey and
+  draws no attention), awaitingBaseline -> 0.42, unchanged -> 0.40, otherwise
+  clamp(0.34 + |pct|/12 * 0.66, 0.34, 1).
+
+  Because the tint lives in the material, it is correct on every view and on
+  free rotation by construction — there is no view-dependent colour code.
+
+  Transitions: colour, emissive and rim all ease with the same curve,
+  k = 1 - exp(-dt * 12), i.e. about 250 ms to settle. Frame-rate independent.
+  State changes and selection changes cross-fade; they never snap.
+
+
+14. DEFAULT ROTATION
+--------------------
+  azimuth 0 (front), pitch +8. The viewer boots facing the chest.
+
+
+15/16/17. CANONICAL ANGLES
+--------------------------
+  front   azimuth   0 degrees
+  side    azimuth  90 degrees   (the body's left side toward the camera)
+  back    azimuth 180 degrees
+
+  These are SHORTCUTS ONLY. The authoritative state is the continuous angle:
+  free 360-degree horizontal rotation, pointer/touch drag, inertia with 0.93
+  friction per frame, 0.55 deg per px yaw, 0.22 deg per px pitch.
+  Animated approach to a shortcut: 18 % of the remaining delta per frame,
+  snapping inside 0.4 degrees, always by the SHORT way round.
+
+  The reported view label is derived from the angle, not stored:
+    deg < 45 or deg > 315 -> front
+    135 < deg < 225       -> back
+    otherwise             -> side
+  So dragging past 180 lights the "Hinten" pill by itself.
+
+  Selecting a group from the list rotates the body to that group's facing
+  (see REGION_FACING / MUSCLE_MESH_MAP.facing) only when it is more than 70
+  degrees away — a small correction is never worth a camera move.
+
+
+18. HOW SEGMENTATION IS REPRESENTED
+-----------------------------------
+  One mesh, eleven primitives. Each primitive's MATERIAL NAME *IS* the
+  MuscleGroup id, verbatim, plus one primitive named 'none' for head, hands
+  and feet. Selection is therefore a raycast hit followed by reading
+  intersect.object.material.name — no table, nothing that can drift.
+
+  All eleven primitives SHARE one POSITION accessor and one NORMAL accessor,
+  so the whole body is a single GPU upload; only the index buffers differ.
+
+  Region membership is a triangle-level property. Left and right are
+  deliberately NOT separable: Momentum has no laterality, so both biceps are
+  one selectable unit and both carry geometry on either side of x = 0.
+
+  Normals are smooth and area-weighted, computed across the WHOLE surface
+  before the region split. The source is fully welded, so region borders are
+  shared vertices and cannot produce a shading seam. On any re-export: NEVER
+  split vertices at a region border.
+
+  Attributes: POSITION quantized UNSIGNED_SHORT (stride 8), NORMAL quantized
+  signed BYTE normalized (stride 4), indices UNSIGNED_SHORT. No UVs, no
+  tangents, no vertex colours, no textures, unskinned, unanimated.
+
+  Two boundaries were placed from landmarks measured on the mesh itself:
+  - lumbar belongs to 'back'. Waistband y = 1.025 + 0.28*|x| — lowest at the
+    sacral midline, rising over the iliac crests.
+  - the lower leg belongs to 'calves'. The cut sits at y = 0.42, just below
+    the knee's narrowest section at y = 0.44, so the joint itself stays inert.
+
+  tools/validate-body-glb.mjs enforces the whole contract at build time:
+  exactly one primitive per region, material name === id, one 'none', no
+  unknown names, shared accessors, uniform node scale, bilateral geometry,
+  per-region anatomical y-envelopes, unskinned/unanimated. Wire it into CI —
+  a silently missing region is a muscle the user can tap forever with nothing
+  happening.
+
+
+19. HOW muscleMeshMap.ts MAPS INTO THE GLB
+------------------------------------------
+  BODY_REGIONS        the ten ids, in display order
+  INERT_REGION        'none'
+  REGION_FACING       azimuth at which each group is visible (0 or 180).
+                      Centroids cannot answer this — for a paired group the
+                      halves cancel to the body axis — so it is stated.
+  isMuscleGroup()     type guard
+  resolveMuscleMeshes(root)
+                      walks the loaded scene, returns Map<MuscleGroup, Mesh>,
+                      sets mesh.userData.muscle, and THROWS on a violated
+                      contract (missing, duplicate or unknown region).
+  MUSCLE_MESH_MAP     documentation of the shipped asset: primitive index,
+                      material name, triangle count and facing per id.
+
+  The ten ids come from src/core/model/index.ts (MuscleGroup, D21) and are
+  authoritative. The model follows the domain. Nothing in this package adds,
+  splits, renames or merges an id:
+
+    chest · back · shoulders · biceps · triceps
+    core · quadriceps · hamstringsGlutes · calves · forearms
+
+  Note the camelCase 'hamstringsGlutes' — that is the domain id. Do not
+  rewrite it as 'hamstrings-glutes'.
+
+
+20. HOW SELECTION HIGHLIGHTING WORKS
+------------------------------------
+  The host sets data-selected (or the "selected" prop). The selected region
+  moves to the 'selected' row of the table in 13: stronger tint, roughly
+  double emissive, and a much brighter Fresnel rim, which reads as a light
+  contour around the region rather than a flat flood. It cross-fades in about
+  250 ms like every other change.
+
+  With tinting off (data-tint="off") a selected region instead glows in
+  NEUTRAL_HIGHLIGHT #5e5ce6 at emissiveIntensity 0.1.
+
+  Tap vs drag: a pointerup selects only if ACCUMULATED travel is within slop
+  (touch 10 px, pen 6 px, mouse 4 px), duration is within the limit (touch/pen
+  500 ms, mouse 400 ms) and exactly ONE pointer was down for the whole
+  gesture. A tap that hits no region does NOTHING — an accidental deselect is
+  worse than a missed tap. A tap on the inert 'none' geometry is a miss.
+
+  Selection stays in sync across model, detail card and list row because all
+  three read the same host state; the viewer never owns it.
+
+
+21. REQUIRED data-* ATTRIBUTES
+------------------------------
+  data-visuals    JSON string: { [MuscleGroup]: { tint: string,
+                  intensity: number } }. Unparseable JSON keeps the last good
+                  value on purpose. A group that is absent stays base grey.
+  data-selected   MuscleGroup id, or '' for none.
+  data-view       'front' | 'side' | 'back' — optional shortcut. Writing it
+                  animates to that canonical angle. The attribute is not the
+                  state; the angle is.
+  data-tint       'on' (default) | 'off'.
+  data-model-url  optional; defaults to './momentum-body.glb'.
+
+  React equivalent (react/BodyViewer.tsx):
+    muscles, visuals, selected, onSelectMuscle, view, modelUrl
+
+
+22. EMITTED CustomEvents
+------------------------
+  muscle-select   detail { id: MuscleRegionId }        bubbles
+  body-rotate     detail { angle: number,              bubbles
+                           deg: number,
+                           view: 'front'|'side'|'back' }
+                  angle is the authoritative rotation in degrees, 0…359.
+                  deg is the same number under its legacy name — the existing
+                  host reads deg; new code should read angle.
+                  Throttled to 200 ms while moving AND always emitted once on
+                  the settled frame, so the final resting angle is never lost.
+  body-ready      detail { regions: number, triangles: number,
+                           hasNormals: boolean }
+                  Fired twice (immediately and again after 300 ms) because a
+                  cached model can resolve before the host has attached its
+                  listener. Make the handler idempotent.
+  body-fallback   detail { message: string }  — see 25.
+
+
+23. LOCAL ASSETS REQUIRED
+-------------------------
+  momentum-body.glb — that is all. Precache it in the service worker.
+  Lighting is generated in memory. No HDRI, no texture, no font, no icon, no
+  decoder, no CDN at runtime.
+  index.html resolves three r160 through an import map pointing at unpkg for
+  convenience; repoint both entries at your own node_modules copy for a fully
+  offline run. In the app, three comes from the bundle.
+
+
+24. LICENSING / ATTRIBUTION
+---------------------------
+  CC BY 4.0, author patmateee. See ATTRIBUTION.txt (required credit, the
+  modifications to declare, the prepared de/en strings and where the credit
+  must appear) and license.txt (the original licence file, verbatim).
+  asset.copyright is already inside the GLB and must survive every re-export.
+  It does not satisfy attribution on its own.
+
+
+25. KNOWN LIMITATIONS
+---------------------
+  Asset, all three needing a human in Blender rather than reassignment:
+  1. Pec outline. 'chest' is a rounded slab with a straight lower edge; it
+     does not follow the pec border. Most visible flaw when chest highlights.
+  2. A thin 'none' band at the collar, between chest, shoulders and neck,
+     reads as a gap rather than as intent.
+  3. Deltoid/chest and biceps/triceps boundaries are straight cuts, not
+     anatomical ones. Accepted for V1.
+  These are deliberately not "fixed": an automatic approximation would damage
+  the model to remove a seam.
+
+  Viewer:
+  4. Pitch is clamped [-22, +30] and there is no zoom. Intentional: the body
+     must stay framed inside a small card.
+  5. No WebGL, a lost context or a failed model load fires body-fallback and
+     shows a short German message. In the app, fall back to the existing SVG
+     BodyRenderer, which stays in the tree as the accessible legend anyway.
+  6. Demand loop (frameloop="demand" in R3F). Each rule below cost a real bug
+     during integration testing:
+       a. Any event that leaves motion pending must call invalidate() itself.
+          pointerup is the dangerous one: while the finger is down the coast
+          branch is skipped, so the loop is idle at exactly the moment
+          inertia should start.
+       b. invalidate() called synchronously inside useFrame is consumed by
+          the frame already in flight. To continue an animation, defer it one
+          rAF.
+       c. Deferred wakes must be coalesced behind a flag, or several per
+          frame stack into a runaway loop that pins the main thread.
+       d. Every eased value needs an epsilon snap. Comparing lerped colours
+          for exact equality never settles and keeps the loop awake forever.
+       e. Throttled reporting must always emit on the settled frame.
+  7. reference/*.png were produced by the project's offline CPU rasterizer,
+     not by WebGL. Framing, region assignment and tint/intensity are exact;
+     the rasterizer has no Fresnel rim and no PBR environment, so real output
+     is softer at the region edges and slightly richer overall. Compare
+     against the running viewer, not against these PNGs, for shading.
+
+
+26. MOBILE ENVELOPE
+-------------------
+  Designed and checked at 393x852 and 430x932.
+  - viewer height 380 px inside a 20 px-radius card, never a viewport height
+  - head, hands and feet stay clear of the frame through a full rotation
+  - no horizontal overflow; the card keeps its gutter
+  - touch-action: none on the canvas; user-select and tap highlight off
+  - the front/side/back pill is 30 px tall, top-right, inside the viewer, and
+    does not dominate the card
+  - list rows are 60 px tall: swatch, name, "Zuletzt vor X Tagen", an 80x24
+    axis-less sparkline in the group's identity colour, the percentage in the
+    state colour and the state badge
+
+
+27. TWO COLOUR SYSTEMS — DO NOT MIX
+-----------------------------------
+  IDENTITY answers "which muscle is this": ten fixed hues, state-independent,
+  rendered about 13 % desaturated. Used for the row swatch, the row
+  sparkline, the dot in the detail card, and any legend listing GROUPS.
+
+  STATE answers "how did it go": the five training states at full saturation.
+  Used for the tinted 3D regions (colour + emissive + rim), the percentage in
+  the row, the status badge, the percentage in the detail card, and any legend
+  listing STATES.
+
+  Special cases:
+  - Noch nicht trainiert: swatch keeps its identity hue at 35 % opacity, no
+    sparkline, percentage and badge grey, region stays base grey on the model.
+  - Kein Vergleich: flat sparkline in the identity hue, percentage and badge
+    blue.
+
+  All values, plus mutedIdentity() and stateIntensity(), are in tokens.ts.
+  That file is the single source of truth for both the three.js materials and
+  the 2D rows and charts. demo.js mirrors the values for the standalone demo
+  only — do not fork that copy.
+
+
+28. RUNNING THE STANDALONE PACKAGE
+----------------------------------
+  Serve the folder over HTTP and open index.html:
+    npx serve momentum-muscle-map-handoff
+  A static server is required — ES modules and a binary GLB fetch do not work
+  from file://.
+  Expected: the body appears facing front with the ten regions tinted from
+  the demo states, the view pill switches front/side/back, dragging rotates
+  freely with inertia, tapping a region selects it and the matching row, and
+  the readout under the viewer shows the live angle plus "10 Regionen ·
+  40'000 Dreiecke".

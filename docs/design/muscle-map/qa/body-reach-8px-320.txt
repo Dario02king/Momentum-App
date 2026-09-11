@@ -1,0 +1,5 @@
+--- 320px, canvas 252×280, 8px grid: 10/10 · Unterarme 11 · Quadrizeps 11 · Schultern 6 · Rumpf 6 · Rücken 5 · Bizeps 4 · Waden 3 · Beinbeuger und Gesäss 3 · Brust 2 · Trizeps 2
+PASS  320: measured against the accepted 9/10  — 10/10 — Unterarme 11 · Quadrizeps 11 · Schultern 6 · Rumpf 6 · Rücken 5 · Bizeps 4 · Waden 3 · Beinbeuger und Gesäss 3 · Brust 2 · Trizeps 2
+
+--- summary ---
+1/1 checks passed

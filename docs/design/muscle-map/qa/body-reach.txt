@@ -1,0 +1,11 @@
+--- 393px, canvas 325×332, 12px grid: 10/10 · Quadrizeps 11 · Unterarme 9 · Beinbeuger und Gesäss 8 · Schultern 6 · Rumpf 5 · Brust 3 · Trizeps 3 · Rücken 2 · Bizeps 2 · Waden 2
+--- 430px, canvas 362×360, 12px grid: 9/10 · Quadrizeps 11 · Beinbeuger und Gesäss 11 · Unterarme 9 · Rumpf 8 · Bizeps 8 · Schultern 5 · Rücken 4 · Brust 2 · Waden 2
+--- 320px, canvas 252×280, 12px grid: 9/10 · Quadrizeps 5 · Schultern 4 · Rumpf 4 · Beinbeuger und Gesäss 4 · Unterarme 3 · Brust 2 · Bizeps 2 · Waden 2 · Rücken 1
+PASS  393: every region is reachable by a direct tap  — 10/10
+FAIL  430: every region is reachable by a direct tap  — 9/10
+PASS  320: measured against the accepted 9/10  — 9/10 — Quadrizeps 5 · Schultern 4 · Rumpf 4 · Beinbeuger und Gesäss 4 · Unterarme 3 · Brust 2 · Bizeps 2 · Waden 2 · Rücken 1
+
+--- summary ---
+2/3 checks passed
+FAILED:
+  • 430: every region is reachable by a direct tap — 9/10

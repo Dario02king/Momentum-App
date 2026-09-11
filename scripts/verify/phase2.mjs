@@ -139,10 +139,11 @@ async function fresh(opts = {}) {
 
   await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
   await page.waitForTimeout(400);
-  const areaHeadings = await page.locator('.areas__domainName').allTextContents();
-  check('Areas lists the four domains in order',
-    JSON.stringify(areaHeadings) === JSON.stringify(['Wellbeing', 'Gym', 'Laufen', 'Ernährung']),
-    JSON.stringify(areaHeadings));
+  const areaSwitch = await page.getByRole('radiogroup', { name: 'Bereich wählen' }).getByRole('radio').allTextContents();
+  check('Areas offers the three terminal areas in order, and shows one at a time',
+    JSON.stringify(areaSwitch.map((s) => s.trim())) === JSON.stringify(['Mental', 'Gym', 'Ernährung']) &&
+      JSON.stringify(await page.locator('.areas__domainName').allTextContents()) === JSON.stringify(['Wellbeing']),
+    JSON.stringify(areaSwitch));
   check('questions are grouped by category in Areas',
     await page.getByText('Gesundheit').first().isVisible());
   await ctx.close();

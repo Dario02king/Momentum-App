@@ -240,6 +240,87 @@ export async function seedTraining(page, { days = 40, gymPerWeek = 3, runsPerWee
 }
 
 /**
+ * Gym sets chosen so every muscle data state is on screen at once.
+ *
+ * `seedTraining` logs squats only, which leaves seven groups untrained and
+ * no way to see a trend, a flat series or a single observation. This adds
+ * the rest, as sets carrying the muscles they were logged under:
+ *
+ *   chest, triceps      12 rising bench days      measured, a real trend
+ *   quadriceps, hamstringsGlutes, core   12 rising squat days   measured
+ *   back                3 identical pulldown days measured, every point equal
+ *   biceps, forearms    2 curl days               a single observation
+ *   calves              1 calf-raise day          trained, awaiting a baseline
+ *   shoulders           nothing                   no history
+ */
+export async function seedMuscles(page, { days = 42 } = {}) {
+  return page.evaluate(async ({ days }) => {
+    const open = () => new Promise((res, rej) => { const r = indexedDB.open('momentum'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const all = (db, s) => new Promise((res, rej) => { const r = db.transaction([s], 'readonly').objectStore(s).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const putAll = (db, s, recs) => new Promise((res, rej) => { const tx = db.transaction([s], 'readwrite'); for (const r of recs) tx.objectStore(s).put(r); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+    const pad = (n, l = 2) => String(n).padStart(l, '0');
+    const key = (d) => `${pad(d.getFullYear(), 4)}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const shift = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return d; };
+    const isoWeek = (d) => { const t = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12); t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + 3); const y = t.getFullYear(); const f = new Date(y, 0, 4, 12); f.setDate(f.getDate() - ((f.getDay() + 6) % 7) + 3); return `${pad(y, 4)}-W${pad(1 + Math.round((t - f) / (7 * 86400000)))}`; };
+
+    const db = await open();
+    const snaps = await all(db, 'configSnapshots');
+    const stamp = new Date().toISOString();
+    const sessions = [], sets = [];
+    const sessionOn = (back) => {
+      const at = shift(-back);
+      const date = key(at);
+      const id = `mus-gym-${date}`;
+      if (!sessions.some((s) => s.id === id)) {
+        sessions.push({ id, date, weekKey: isoWeek(at), performedAt: new Date(shift(-back).setHours(18, 0, 0, 0)).toISOString(),
+          planId: null, note: null, legacyCarryOver: false, configSnapshotId: snaps[0].id, createdAt: stamp, updatedAt: stamp });
+      }
+      return { id, date };
+    };
+    const log = (back, exerciseId, muscles, primary, kg, reps) => {
+      const { id, date } = sessionOn(back);
+      sets.push({ id: `mus-set-${exerciseId}-${date}`, sessionId: id, exerciseId, date,
+        weightGrams: Math.round(kg * 1000), reps, order: 0, muscles, primaryMuscles: primary,
+        loadType: 'external', createdAt: stamp });
+    };
+
+    // Everything sits inside the last four weeks, so it is all in the range
+    // the workspace opens on; a set outside the window is not history, it is
+    // simply not in this question.
+    for (let i = 0; i < 12; i += 1) {
+      const back = 26 - i * 2;
+      log(back, 'ex_squat', ['quadriceps', 'hamstringsGlutes', 'core'], ['quadriceps'], 80 + i * 2.5, 5);
+      log(back, 'ex_bench_press', ['chest', 'triceps'], ['chest'], 60 + i * 1.5, 5 + (i % 3));
+    }
+    // Identical performances, so every point of the series is the same number.
+    for (const back of [19, 12, 5]) log(back, 'ex_lat_pulldown', ['back'], ['back'], 55, 8);
+    // Two days: one comparison, which is a value and not yet a direction.
+    for (const back of [15, 6]) log(back, 'ex_hammer_curl', ['biceps', 'forearms'], ['biceps'], 16, 10);
+    // One day: trained, with nothing to compare against.
+    log(8, 'ex_calf_raise', ['calves'], ['calves'], 40, 12);
+
+    // The catalogue rows the app writes the first time the picker opens, so
+    // the rows can name an exercise rather than fall back to its id.
+    const known = new Set((await all(db, 'exercises')).map((e) => e.id));
+    const catalogue = [
+      ['ex_squat', 'Back Squat', ['quadriceps', 'hamstringsGlutes', 'core'], ['quadriceps']],
+      ['ex_bench_press', 'Bench Press', ['chest', 'triceps', 'shoulders'], ['chest']],
+      ['ex_lat_pulldown', 'Lat Pulldown', ['back', 'biceps'], ['back']],
+      ['ex_hammer_curl', 'Hammer Curl', ['biceps', 'forearms'], ['biceps']],
+      ['ex_calf_raise', 'Calf Raise', ['calves'], ['calves']],
+    ].filter(([id]) => !known.has(id)).map(([id, name, muscles, primaryMuscles]) => ({
+      id, name, muscles, primaryMuscles, builtIn: true, loadType: 'external',
+      durationSeconds: null, attributes: {}, createdAt: stamp, updatedAt: stamp,
+    }));
+
+    await putAll(db, 'gymSessions', sessions);
+    await putAll(db, 'gymSets', sets);
+    if (catalogue.length) await putAll(db, 'exercises', catalogue);
+    return { sessions: sessions.length, sets: sets.length, exercises: catalogue.length };
+  }, { days });
+}
+
+/**
  * Opens a metric tile's detail sheet, runs `fn` against the sheet, closes it.
  *
  * Since pass 2 the methodology copy lives in the sheet a tile opens, not on

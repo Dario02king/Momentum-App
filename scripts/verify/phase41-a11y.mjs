@@ -149,8 +149,11 @@ async function seedGym(page, { metWeeks, silentDays = 0 }) {
 await seedGym(page, { metWeeks: 2 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(1400);
-await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
+await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
 await page.waitForTimeout(1500);
+// The Gym workspace is the Gym area of the domain terminal under Bereiche.
+await page.getByRole('radio', { name: 'Gym' }).click();
+await page.waitForTimeout(900);
 
 let nodes = await tree();
 check('every control and image on the Gym overview has a name',
@@ -214,8 +217,11 @@ await page.evaluate(async () => {
 await seedGym(page, { metWeeks: 6, silentDays: 16 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
-await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
+await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
 await page.waitForTimeout(1500);
+// The Gym workspace is the Gym area of the domain terminal under Bereiche.
+await page.getByRole('radio', { name: 'Gym' }).click();
+await page.waitForTimeout(900);
 
 nodes = await tree();
 check('the break state names every control too', unnamed(nodes).length === 0,
@@ -252,8 +258,11 @@ const reduced = await ctx.newPage();
 await reduced.emulateMedia({ reducedMotion: 'reduce' });
 await reduced.goto(URL_APP, { waitUntil: 'networkidle' });
 await reduced.waitForTimeout(1200);
-await reduced.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
+await reduced.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
 await reduced.waitForTimeout(1400);
+// The Gym workspace is the Gym area of the domain terminal under Bereiche.
+await reduced.getByRole('radio', { name: 'Gym' }).click();
+await reduced.waitForTimeout(900);
 /*
  * The app's promise, and the shape of it: `global.css` collapses every
  * animation and transition to 0.001ms under reduced motion rather than to

@@ -93,12 +93,24 @@ async function seedRuns(page, { metWeeks, silentDays = 0, second = null }) {
   );
 }
 
+/**
+ * Running's board lives in the Gym workspace under Bereiche, in its own
+ * Laufen section; Verlauf keeps the daily row and nothing else.
+ */
+async function openRunning(target) {
+  await target.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
+  await target.waitForTimeout(700);
+  await target.getByRole('radio', { name: 'Gym' }).click();
+  await target.waitForTimeout(2500);
+  await target.locator('[data-metric="running-rating"]').scrollIntoViewIfNeeded();
+  await target.waitForTimeout(700);
+}
+
 /* ── Inside the Endurance Phase ─────────────────────────────────────────── */
 await seedRuns(page, { metWeeks: 2 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
-await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
-await page.waitForTimeout(1600);
+await openRunning(page);
 
 let nodes = await tree();
 check('every control and image on the Running overview has a name',
@@ -142,8 +154,7 @@ check('rating comes before year-to-date pace, which comes before attendance',
 await seedRuns(page, { metWeeks: 6, second: 10000 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
-await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
-await page.waitForTimeout(1600);
+await openRunning(page);
 
 nodes = await tree();
 check('the mature state names every control too', unnamed(nodes).length === 0,
@@ -178,7 +189,7 @@ const reduced = await ctx.newPage();
 await reduced.emulateMedia({ reducedMotion: 'reduce' });
 await reduced.goto(URL_APP, { waitUntil: 'networkidle' });
 await reduced.waitForTimeout(1200);
-await reduced.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
+await openRunning(reduced);
 await reduced.waitForTimeout(1500);
 /*
  * `global.css` collapses motion to 0.001ms rather than to zero — the standard

@@ -14,6 +14,24 @@ export const de = {
   'nav.progress': 'Verlauf',
   'nav.rank': 'Rang',
   'nav.areas': 'Bereiche',
+  'areas.terminalSwitch': 'Bereich wählen',
+  'areas.terminal.mental': 'Mental',
+  'areas.general': 'Weitere Bereiche und Einstellungen',
+  'areas.credits': 'Danksagungen',
+  'areas.credits.body': '3D-Körpermodell',
+  'areas.credits.bodySubtitle': 'Von patmateee, CC BY 4.0',
+  'areas.credits.modified':
+    'Für Momentum bearbeitet: zu einer Fläche zusammengeführt, in eine entspannte Haltung gebracht, '
+    + 'vereinfacht, mit neu berechneten Normalen und in zehn Muskelregionen unterteilt. '
+    + 'Texturen und Animationen wurden entfernt.',
+  'gym.body.credit':
+    '3D-Modell: „Muscular Athletic Body – Male Base Mesh" von patmateee, '
+    + 'lizenziert unter CC BY 4.0, für Momentum bearbeitet.',
+  'gym.body.credit.model': 'Modell ansehen',
+  'gym.body.credit.license': 'Lizenz',
+  'areas.standing': 'Rang in diesem Bereich',
+  'areas.standing.value': '{value} von 1000',
+  'areas.standing.summary': 'Gemessen an deiner eigenen Historie',
 
   'domain.mental': 'Mental Wellbeing',
   'domain.sports': 'Sport',
@@ -367,6 +385,15 @@ export const de = {
   'muscle.state.improved': 'Verbessert',
   'muscle.state.unchanged': 'Gehalten',
   'muscle.state.declined': 'Zurückgegangen',
+  // When a muscle group was last worked, from the day its sets were logged.
+  'muscle.lastTrained.today': 'Heute',
+  'muscle.lastTrained.yesterday': 'Gestern',
+  'muscle.lastTrained.days': 'Vor {count} Tagen',
+  // The 3D body's view shortcuts.
+  'body.view': 'Ansicht',
+  'body.view.front': 'Vorne',
+  'body.view.side': 'Seite',
+  'body.view.back': 'Hinten',
 
   'gym.title': 'Gym',
   'gym.session': 'Session',
