@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, phone, onboard, clipped, smallTargets } from './lib.mjs';
+import { URL_APP, check, summary, phone, onboard, clipped, smallTargets, inSheet } from './lib.mjs';
 
 /**
  * Phase 4.1: the Gym scoring model on the screen.
@@ -141,27 +141,28 @@ async function openProgress(page) {
   const { ctx, page } = await ready({}, { metWeeks: 2 });
   await openProgress(page);
 
-  check('the Gym rating is the headline', await page.locator('.gym-overview__rating').isVisible());
-  const rating = await page.locator('.gym-overview__rating').textContent();
+  check('the Gym rating is the headline', await page.locator('[data-metric="gym-rating"] .metric-tile__value').isVisible());
+  const rating = await page.locator('[data-metric="gym-rating"] .metric-tile__value').textContent();
   check('and it is stated out of 1000', /von 1000/.test(rating ?? ''), rating?.trim());
 
   check('the Endurance Phase is named', await page.getByText('Ausdauerphase').first().isVisible());
   check('the first rank is said to be locked',
     await page.getByText('Erster Rang noch gesperrt').isVisible());
-  const progress = await page.locator('.gym-overview__lineValue').first().textContent();
+  const progress = await page.locator('[data-metric="gym-endurance"] .metric-tile__value').textContent();
   check('endurance progress is stated in weeks', /von 4 Wochen/.test(progress ?? ''), progress?.trim());
   check('it is not mislabelled as performance',
-    !/Leistungsentwicklung/.test((await page.locator('.gym-overview__lineLabel').first().textContent()) ?? ''));
+    !/Leistungsentwicklung/.test((await page.locator('[data-metric="gym-endurance"] .metric-tile__line').textContent()) ?? ''));
   check('it says the rating is calculating anyway',
-    await page.getByText(/Rating wird bereits normal berechnet/).isVisible());
+    await inSheet(page, 'gym-endurance', (sheet) =>
+      sheet.getByText(/Rating wird bereits normal berechnet/).isVisible()));
   check('the rank shown is still the first one',
-    /Rookie/.test((await page.locator('.gym-overview__rank').textContent()) ?? ''));
+    /Rookie/.test((await page.locator('[data-metric="gym-rating"] .metric-tile__kicker').textContent()) ?? ''));
 
   check('the year-to-date performance is a visible secondary headline',
     await page.getByText('Leistung seit Jahresbeginn').isVisible());
   check('attendance is visible and separate',
     await page.getByText('Anwesenheit').first().isVisible());
-  const attendance = await page.locator('.gym-overview__lineValue').nth(2).textContent();
+  const attendance = await page.locator('[data-metric="gym-attendance"] .metric-tile__value').textContent();
   check('attendance is stated as sessions against the target',
     /von 3 Sessions/.test(attendance ?? ''), attendance?.trim());
 
@@ -200,7 +201,7 @@ async function openProgress(page) {
   await page.waitForTimeout(1400);
   await openProgress(page);
 
-  const progress = await page.locator('.gym-overview__lineValue').first().textContent();
+  const progress = await page.locator('[data-metric="gym-endurance"] .metric-tile__value').textContent();
   check('a missed week costs half a week rather than the balance',
     /1\.5 von 4 Wochen/.test(progress ?? ''), progress?.trim());
   check('and the gate is still shut', await page.getByText('Erster Rang noch gesperrt').isVisible());
@@ -214,16 +215,17 @@ async function openProgress(page) {
 
   check('the Endurance Phase is gone once it is complete',
     !(await page.getByText('Erster Rang noch gesperrt').isVisible().catch(() => false)));
-  const rank = await page.locator('.gym-overview__rank').textContent();
+  const rank = await page.locator('[data-metric="gym-rating"] .metric-tile__kicker').textContent();
   check('the rank has moved off the first one', !/Rookie/.test(rank ?? ''), rank?.trim());
   check('the 40/60 split is explained',
-    await page.getByText(/40 % Anwesenheit und 60 % persönlicher Leistungsentwicklung/).isVisible());
+    await inSheet(page, 'gym-rating', (sheet) =>
+      sheet.getByText(/40 % Anwesenheit und 60 % persönlicher Leistungsentwicklung/).isVisible()));
 
-  const ytd = await page.locator('.gym-overview__lineValue--large').textContent();
+  const ytd = await page.locator('[data-metric="gym-ytd"] .metric-tile__value').textContent();
   check('the year-to-date figure is a real percentage', /%|Gehalten/.test(ytd ?? ''), ytd?.trim());
 
   check('the detail hierarchy is still below it',
-    await page.locator('.gym-progress__headline').isVisible());
+    await page.locator('[data-metric="gym-overall"]').isVisible());
   check('and the body renderer is still there',
     (await page.locator('.body-renderer__figure').count()) === 2);
 
@@ -242,14 +244,16 @@ async function openProgress(page) {
   check('it says how long the break has been', /\d+ Tage ohne Session/.test(days ?? ''), days?.trim());
   check('it says what has been reduced',
     await page.getByText(/deines Rangfortschritts abgebaut/).isVisible());
-  check('it says what has not been touched',
-    await page.getByText(/aufgezeichneten Sätze und deine Leistungswerte bleiben unverändert/).isVisible());
-  check('it says the rank floor holds',
-    await page.getByText(/fällst dadurch nicht unter deinen aktuellen Rang/).isVisible());
-  check('it says how to stop it',
-    await page.getByText(/gespeicherte Session beendet die Pause sofort/).isVisible());
+  const breakSheet = await inSheet(page, 'gym-decay', async (sheet) => ({
+    untouched: await sheet.getByText(/aufgezeichneten Sätze und deine Leistungswerte bleiben unverändert/).isVisible(),
+    floor: await sheet.getByText(/fällst dadurch nicht unter deinen aktuellen Rang/).isVisible(),
+    resume: await sheet.getByText(/gespeicherte Session beendet die Pause sofort/).isVisible(),
+  }));
+  check('it says what has not been touched', breakSheet.untouched);
+  check('it says the rank floor holds', breakSheet.floor);
+  check('it says how to stop it', breakSheet.resume);
   // The performance figures are untouched by the break.
-  check('the performance detail is still shown', await page.locator('.gym-progress__headline').isVisible());
+  check('the performance detail is still shown', await page.locator('[data-metric="gym-overall"]').isVisible());
   await ctx.close();
 }
 

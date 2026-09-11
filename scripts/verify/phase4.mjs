@@ -1,5 +1,6 @@
 import { chromium } from 'playwright-core';
 import { URL_APP, check, summary, phone, onboard, clipped, smallTargets } from './lib.mjs';
+import { inSheet } from './lib.mjs';
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 
@@ -151,18 +152,22 @@ async function fillSet(page, index, reps, weight) {
   await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
   await page.waitForTimeout(1200);
 
-  check('Progress shows the Gym hierarchy', await page.locator('.gym-progress__headline').isVisible());
-  const counted = await page.locator('.gym-progress__counted').textContent();
+  check('Progress shows the Gym hierarchy', await page.locator('[data-metric="gym-overall"]').isVisible());
+  const counted = await page.locator('[data-metric="gym-overall"] .metric-tile__line').textContent();
   check('it says how many groups were counted', /von 10 Gruppen/.test(counted ?? ''), counted?.trim());
-  check('it explains the equal weighting',
-    await page.getByText(/Jede Muskelgruppe zählt gleich viel/).isVisible());
-  check('it names the metric', await page.getByText(/bester Satz des Tages/).isVisible());
+  const overallSheet = await inSheet(page, 'gym-overall', async (sheet) => ({
+    weighting: await sheet.getByText(/Jede Muskelgruppe zählt gleich viel/).isVisible(),
+    metric: await sheet.getByText(/bester Satz des Tages/).isVisible(),
+    text: await sheet.locator('.sheet__body').textContent(),
+  }));
+  check('it explains the equal weighting', overallSheet.weighting);
+  check('it names the metric', overallSheet.metric);
   // Phase 4.1 replaced this copy: performance now feeds the rating, and what
   // the screen has to keep separate is development from absolute strength.
   check('it says what the Gym rank actually measures',
-    await page.getByText(/40 % Anwesenheit, 60 % persönliche Leistungsentwicklung/).isVisible());
+    /40 % Anwesenheit, 60 % persönliche Leistungsentwicklung/.test(overallSheet.text ?? ''));
   check('it keeps the Tombstone boundary visible',
-    await page.getByText(/Absolute Bestleistungen gehören zu den Meilensteinen/).isVisible());
+    /Absolute Bestleistungen gehören zu den Meilensteinen/.test(overallSheet.text ?? ''));
 
   check('the body renderer draws two figures',
     (await page.locator('.body-renderer__figure').count()) === 2);

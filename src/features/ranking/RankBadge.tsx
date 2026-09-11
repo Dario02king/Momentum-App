@@ -448,8 +448,10 @@ export function RankBadge({
               <rect width="7" height="2.6" fill="#ffffff" opacity="0.85" />
             </pattern>
           </defs>
-          <rect x="0" y="0" width="120" height="140" fill="#eceef3" opacity="0.5" />
-          <rect x="0" y="0" width="120" height="140" fill={`url(#${id('frost')})`} opacity="0.4" />
+          {/* Rounded, so the veil is a fogged tile rather than a square block
+              sitting beside rounded cards. What it hides is unchanged. */}
+          <rect x="0" y="0" width="120" height="140" rx="18" fill="#eceef3" opacity="0.5" />
+          <rect x="0" y="0" width="120" height="140" rx="18" fill={`url(#${id('frost')})`} opacity="0.4" />
         </g>
       )}
     </svg>

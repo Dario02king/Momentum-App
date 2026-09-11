@@ -49,8 +49,10 @@
   font-weight: var(--weight-semibold);
   letter-spacing: -0.05px;
   color: var(--text-secondary);
-  /* Aligned with the text inside the card below it, not with the card edge. */
-  padding: 0 var(--card-pad) var(--space-2);
+  /* Aligned with the text inside the card below it, not with the card edge,
+     and with enough air beneath it that it reads as a label for the card
+     rather than as its first line. */
+  padding: 0 var(--card-pad) var(--space-3);
 }
 
 /*

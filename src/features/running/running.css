@@ -1,101 +1,23 @@
-/* ── Running overview: rating, pace, attendance ─────────────────────────── */
+/* ── Running overview: the tiles live in components/metrics.css; only the
+   not-started card is styled here ─────────────────────────────────────── */
 
-.running-overview__hero {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
 
-.running-overview__heroBody {
-  min-width: 0;
-}
 
-.running-overview__rank {
-  font-size: var(--type-subhead);
-  color: var(--text-secondary);
-}
 
-.running-overview__rating {
-  font-size: var(--type-large-title);
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.8px;
-  /* Long German labels on a 320px screen: wrap rather than push the badge off. */
-  overflow-wrap: anywhere;
-}
 
 .running-overview__empty {
   font-size: var(--type-subhead);
   color: var(--text-secondary);
 }
 
-.running-overview__line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
 
-.running-overview__lineLabel {
-  font-size: var(--type-subhead);
-  color: var(--text-secondary);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
 
-.running-overview__lineValue {
-  font-size: var(--type-body);
-  font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  overflow-wrap: anywhere;
-}
 
-.running-overview__lineValue--large {
-  font-size: var(--type-title);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.4px;
-}
 
-.running-overview__note {
-  font-size: var(--type-caption);
-  color: var(--text-secondary);
-  padding-top: var(--space-2);
-}
 
-.running-overview__note--strong {
-  color: var(--text-primary);
-}
 
-/*
- * The bar is a named image and never the only carrier of its number: the
- * figure it draws is always printed beside it.
- */
-.running-meter {
-  position: relative;
-  height: var(--meter-height);
-  margin-top: var(--space-3);
-  border-radius: var(--radius-pill);
-  /* Tinted from its own fill, and inset with the content rather than run out
-     to the card edges. See the note on .gym-meter. */
-  background: var(--domain-running-tint);
-  overflow: hidden;
-}
 
-.running-meter__fill {
-  display: block;
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: var(--domain-running-mid);
-  transition: width 240ms ease;
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .running-meter__fill {
-    transition: none;
-  }
-}
 
 /* ── Distance ranges ────────────────────────────────────────────────────── */
 

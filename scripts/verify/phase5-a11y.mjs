@@ -104,7 +104,7 @@ let nodes = await tree();
 check('every control and image on the Running overview has a name',
   unnamed(nodes).length === 0, unnamed(nodes).map((n) => n.role).join(', '));
 
-const meters = await page.locator('.running-meter').all();
+const meters = await page.locator('.metric-bar').all();
 check('every bar is a named image rather than bare decoration',
   meters.length >= 3 &&
     (await Promise.all(meters.map((m) => m.getAttribute('aria-label')))).every((l) => (l ?? '').trim().length > 0),
@@ -119,7 +119,7 @@ check('the endurance bar speaks the weeks it draws',
 check('the attendance bar speaks the runs it draws',
   images.some((n) => /von 2 Läufen/.test(n.name)));
 
-const printed = await page.locator('.running-overview__lineValue, .running-overview__rating').allTextContents();
+const printed = await page.locator('.metric-tile__value').allTextContents();
 check('every bar has its number printed beside it',
   printed.some((t) => /von 1000/.test(t)) &&
     printed.some((t) => /von 4 Wochen/.test(t)) &&
@@ -129,9 +129,9 @@ check('every bar has its number printed beside it',
 check('the locked rank is stated in words, not by a dimmed badge alone',
   await page.getByText('Erster Rang noch gesperrt').isVisible());
 check('the Endurance Phase is not announced as a pace figure',
-  !/Tempo/.test((await page.locator('.running-overview__lineLabel').first().textContent()) ?? ''));
+  !/Tempo/.test((await page.locator('[data-metric="running-endurance"] .metric-tile__line').textContent()) ?? ''));
 
-const order = (await page.locator('.section__label, h2').allTextContents()).map((t) => t.trim()).filter(Boolean);
+const order = (await page.locator('.section__label, h2, h3').allTextContents()).map((t) => t.trim()).filter(Boolean);
 const at = (needle) => order.findIndex((t) => t.includes(needle));
 check('rating comes before year-to-date pace, which comes before attendance',
   at('Lauf-Rating') >= 0 && at('Lauf-Rating') < at('Tempo seit Jahresbeginn') &&

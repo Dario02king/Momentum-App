@@ -207,13 +207,13 @@ async function scrollTo(page, selector) {
  * rating, the Endurance figure, the year-to-date change and attendance all
  * on screen at once, which is the state the device screenshots were taken in.
  */
-async function profile(ctx) {
+async function profile(ctx, { days = 42 } = {}) {
   const page = await ctx.newPage();
   await page.goto(URL_APP, { waitUntil: 'networkidle' });
   await page.waitForTimeout(400);
   await onboard(page, { gym: 3, running: 2, food: true });
-  await seed(page, { days: 42 });
-  await seedTraining(page, { days: 42 });
+  await seed(page, { days });
+  await seedTraining(page, { days });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(1600);
 
@@ -247,11 +247,15 @@ for (const [width, height] of [
   await page.getByRole('button', { name: 'Verlauf' }).click();
   await page.waitForTimeout(1200);
   await audit(page, 'verlauf-gym', width);
-  const running = page.locator('.running-overview__hero, .running-overview__empty');
-  if (await running.first().isVisible().catch(() => false)) {
-    await scrollTo(page, '.running-overview__hero, .running-overview__empty');
-  }
+  await scrollTo(page, '[data-metric="running-rating"]');
   await audit(page, 'verlauf-laufen', width);
+
+  /* ── A detail sheet, opened from a tile ────────────────────────────────── */
+  await page.locator('[data-metric="running-rating"] .metric-tile__open').click();
+  await page.waitForTimeout(500);
+  await audit(page, 'verlauf-sheet', width);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
 
   /* ── Rang, including the Gewichtung card ───────────────────────────────── */
   await page.getByRole('button', { name: 'Rang' }).click();
@@ -266,6 +270,21 @@ for (const [width, height] of [
   await audit(page, 'bereiche', width);
 
   await ctx.close();
+
+  /* ── A younger profile: the Endurance Phase still holds the first rank, so
+        Anwesenheit and Ausdauerphase share a row ───────────────────────── */
+  const young = await browser.newContext({
+    viewport: { width, height },
+    deviceScaleFactor: 3,
+    hasTouch: true,
+  });
+  const page2 = await profile(young, { days: 12 });
+  await page2.getByRole('button', { name: 'Verlauf' }).click();
+  await page2.waitForTimeout(1200);
+  await audit(page2, 'verlauf-gym-locked', width);
+  await scrollTo(page2, '[data-metric="running-rating"]');
+  await audit(page2, 'verlauf-laufen-locked', width);
+  await young.close();
 }
 
 await browser.close();

@@ -1,0 +1,261 @@
+/*
+ * Metric tiles, the board they sit on, and the sheet they open.
+ *
+ * The board is an iOS-style widget grid: two columns, one 12px gap, and the
+ * card radius and padding Stage A settled. A tile carries a title, one
+ * primary value, an optional bar and at most one supporting line. Paragraphs
+ * do not belong here; they belong in the sheet.
+ */
+
+/* ── Board ──────────────────────────────────────────────────────────────── */
+
+.metric-board {
+  display: grid;
+  /* A board is a section's worth of content; what follows it gets the same
+     room a section would. */
+  margin-bottom: var(--space-7);
+  /* `minmax(0, 1fr)`, not `1fr`: a grid track's default minimum is
+     `auto`, and a tile with a long value would widen its column past half
+     the board instead of wrapping inside it. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.metric-tile--full {
+  grid-column: 1 / -1;
+}
+
+/* Below ~360px a half tile has under 140px of content width, which is not a
+   widget any more. Readability wins over keeping the shape. */
+@media (max-width: 359px) {
+  .metric-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── Tile ───────────────────────────────────────────────────────────────── */
+
+.metric-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.metric-tile__title {
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.05px;
+  color: var(--text-secondary);
+  margin: 0;
+  min-width: 0;
+}
+
+/*
+ * The control is the title; its target is the tile.
+ *
+ * The pseudo element stretches the hit area over the whole card, so the
+ * entire tile opens the sheet without the tile itself becoming a button. The
+ * focus ring is drawn on the tile via :focus-within, where it is visible,
+ * rather than around a single line of small text.
+ */
+.metric-tile__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  text-align: left;
+  min-height: var(--touch-min);
+  /* The row is 44px for the target; the text sits where a title would. */
+  margin: calc((var(--touch-min) - 18px) / -2) 0;
+  color: inherit;
+  font: inherit;
+}
+
+.metric-tile__open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.metric-tile__open:focus-visible {
+  outline: none;
+}
+
+.metric-tile:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.metric-tile--openable:active {
+  background: var(--surface-tinted);
+}
+
+.metric-tile__chevron {
+  color: var(--text-tertiary);
+  flex: none;
+}
+
+/* Value: the number large, the scale quiet, in one line of text. */
+.metric-tile__value {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.6px;
+  line-height: 1.15;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.metric-tile__number {
+  font-size: var(--type-large-title);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.metric-tile__scale {
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
+  letter-spacing: -0.1px;
+}
+
+/* A value that is a state rather than a figure — "Noch kein Vergleich
+   möglich" — is a sentence, and a sentence at display size is a shout. */
+.metric-tile__state {
+  font-size: var(--type-title);
+  letter-spacing: -0.3px;
+}
+
+/* A compact tile keeps the same weight of number, a step smaller — the
+   scale beneath it is the caption the brief describes. */
+.metric-tile--half .metric-tile__number {
+  font-size: 28px;
+}
+
+.metric-tile--half .metric-tile__scale {
+  display: block;
+  font-size: var(--type-footnote);
+  margin-top: 2px;
+}
+
+/* The one supporting line. Footnote, secondary, never a paragraph. */
+.metric-tile__line {
+  display: block;
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* A tile that opens nothing states its line in the primary colour when the
+   line *is* the state — a locked rank, a break — so it is not read as help
+   text. Opt in with the modifier. */
+.metric-tile__line--strong {
+  color: var(--text-primary);
+}
+
+/* The hero: badge beside the figures, everything else beneath. */
+.metric-tile__hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.metric-tile__leading {
+  flex: none;
+  display: flex;
+}
+
+.metric-tile__heroBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.metric-tile__kicker {
+  display: block;
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+}
+
+/* ── Bar ────────────────────────────────────────────────────────────────── */
+
+.metric-bar {
+  display: block;
+  position: relative;
+  height: var(--meter-height);
+  margin-top: var(--space-1);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--metric-track);
+}
+
+.metric-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--metric-fill);
+  transition: width var(--duration-base) var(--ease-standard);
+}
+
+/* The ink weight on its own tint: the pair contrast.test.ts holds to 3:1. */
+.metric-bar--gym {
+  --metric-fill: var(--domain-gym-ink);
+  --metric-track: var(--domain-gym-tint);
+}
+
+.metric-bar--running {
+  --metric-fill: var(--domain-running-ink);
+  --metric-track: var(--domain-running-tint);
+}
+
+.metric-bar--accent {
+  --metric-fill: var(--accent);
+  --metric-track: var(--accent-tint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metric-bar__fill {
+    transition: none;
+  }
+}
+
+/* ── Sheet ──────────────────────────────────────────────────────────────── */
+
+.metric-sheet__figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.metric-sheet__figure .metric-tile__number {
+  font-size: 40px;
+  letter-spacing: -1px;
+}
+
+.metric-sheet__figure .metric-tile__scale {
+  font-size: var(--type-body);
+}
+
+.metric-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.metric-sheet__body p {
+  font-size: var(--type-subhead);
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* A secondary note inside the explanation: quieter, never smaller than
+   readable. */
+.metric-sheet__body p.metric-sheet__note {
+  color: var(--text-secondary);
+}

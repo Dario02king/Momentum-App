@@ -7,8 +7,16 @@
  * the calorie figure never reads as the thing being scored.
  */
 
+/*
+ * The user's own aim is a region of its own — a quiet tinted block with its
+ * inner radius — so the question beneath it starts on a clear line rather
+ * than running on from a sentence the user wrote.
+ */
 .food__focus {
-  padding: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-inner);
+  background: var(--surface-secondary);
 }
 
 .food__focusText {
@@ -23,14 +31,16 @@
 }
 
 .food__question {
-  padding: 0 0 var(--space-3);
+  padding: 0 0 var(--space-4);
+  line-height: 1.35;
   font-size: var(--type-body);
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 
+/* The chosen value, with clear air above and below it. */
 .food__rating {
-  padding: var(--space-3) 0 0;
+  padding: var(--space-4) 0 var(--space-1);
   font-size: var(--type-subhead);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;

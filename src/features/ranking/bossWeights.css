@@ -1,7 +1,37 @@
+/* The intro is a region of its own: text on the left, the way in to the
+   rest of the explanation on the right, and a hairline under both. */
+.boss-weights__intro {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-1);
+  border-bottom: 1px solid var(--separator);
+}
+
 .boss-weights__explain {
+  flex: 1;
+  min-width: 0;
   font-size: var(--type-footnote);
+  line-height: 1.4;
   color: var(--text-secondary);
-  padding-bottom: var(--space-2);
+}
+
+/* 44px target, quiet glyph, pulled up so its centre sits on the first line. */
+.boss-weights__info {
+  flex: none;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  margin: -12px -12px -12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text-tertiary);
+}
+
+.boss-weights__info:active {
+  background: var(--surface-secondary);
 }
 
 .boss-weights__row {
@@ -11,6 +41,11 @@
   min-height: var(--touch-min);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--separator);
+}
+
+/* The label column gives way before the share or the steppers do. */
+.boss-weights__row:last-of-type {
+  border-bottom: none;
 }
 
 .boss-weights__body {
@@ -86,15 +121,12 @@
   background: var(--surface-secondary);
 }
 
+/* The footer is the third region: the arithmetic, above its own hairline. */
 .boss-weights__total {
   font-size: var(--type-subhead);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
   padding-top: var(--space-3);
-}
-
-.boss-weights__forward {
-  font-size: var(--type-caption);
-  color: var(--text-secondary);
-  padding-top: 2px;
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--separator);
 }

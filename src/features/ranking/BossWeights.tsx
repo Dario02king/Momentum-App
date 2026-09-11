@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { BOSS } from '../../core/config/constants';
 import type { BossWeights as BossWeightMap } from '../../core/boss';
 import type { DomainType } from '../../core/model';
-import { Card, EmptyState } from '../../components';
-import { MinusIcon, PlusIcon } from '../../components/Icons';
+import { Card, EmptyState, Sheet } from '../../components';
+import { InfoIcon, MinusIcon, PlusIcon } from '../../components/Icons';
 import { useT } from '../../i18n/I18nProvider';
 import type { TranslationKey } from '../../i18n';
 import type { BossWeighting } from '../../storage/services/configurationService';
@@ -40,11 +41,16 @@ const MAX_PARTS = 10;
 export function BossWeights({
   weighting,
   onChange,
+  infoOpen: initialInfoOpen = false,
 }: {
   weighting: BossWeighting[];
   onChange(weights: BossWeightMap): void;
+  /** Start with the explanation open — for a screen that arrives to explain,
+      and for rendering the control with everything it can say in view. */
+  infoOpen?: boolean;
 }) {
   const t = useT();
+  const [infoOpen, setInfoOpen] = useState(initialInfoOpen);
 
   if (weighting.length === 0) {
     return (
@@ -85,7 +91,24 @@ export function BossWeights({
 
   return (
     <Card>
-      <p className="boss-weights__explain">{t('rank.weights.explain')}</p>
+      {/*
+        Three regions, each with its own room: what the control is, the rows,
+        and what the rows add up to. The forward-only rule is true but not
+        needed to use the control, so it sits one tap away with the rest of
+        the explanation rather than under the total.
+      */}
+      <div className="boss-weights__intro">
+        <p className="boss-weights__explain">{t('rank.weights.explain')}</p>
+        <button
+          type="button"
+          className="boss-weights__info"
+          aria-label={t('common.moreInfo')}
+          aria-haspopup="dialog"
+          onClick={() => setInfoOpen(true)}
+        >
+          <InfoIcon size={20} />
+        </button>
+      </div>
 
       {weighting.map((entry, index) => {
         const name = t(DOMAIN_NAMES[entry.domain]);
@@ -138,7 +161,13 @@ export function BossWeights({
         {/* No domain can be squeezed out entirely, however low it is set. */}
         {weighting.length > 1 ? ` · ${Math.round(BOSS.MIN_WEIGHT * 100)} % min` : ''}
       </p>
-      <p className="boss-weights__forward">{t('rank.weights.forward')}</p>
+
+      <Sheet open={infoOpen} title={t('rank.weights')} onClose={() => setInfoOpen(false)}>
+        <div className="metric-sheet__body">
+          <p>{t('rank.weights.explain')}</p>
+          <p>{t('rank.weights.forward')}</p>
+        </div>
+      </Sheet>
     </Card>
   );
 }

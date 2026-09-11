@@ -1,5 +1,6 @@
 import { chromium } from 'playwright-core';
 import { URL_APP, check, summary, phone, onboard, clipped, smallTargets } from './lib.mjs';
+import { inSheet } from './lib.mjs';
 
 /**
  * Phase 5: Running on the screen.
@@ -174,27 +175,34 @@ async function openProgress(page) {
   const { ctx, page } = await ready({}, { metWeeks: 2 });
   await openProgress(page);
 
-  check('the Running rating is the headline', await page.locator('.running-overview__rating').isVisible());
-  const rating = await page.locator('.running-overview__rating').textContent();
+  check('the Running rating is the headline', await page.locator('[data-metric="running-rating"] .metric-tile__value').isVisible());
+  const rating = await page.locator('[data-metric="running-rating"] .metric-tile__value').textContent();
   check('and is stated out of 1000', /von 1000/.test(rating ?? ''), rating?.trim());
 
   check('the Endurance Phase is named', await page.getByText('Ausdauerphase').first().isVisible());
   check('the first rank is said to be locked', await page.getByText('Erster Rang noch gesperrt').isVisible());
   check('it says the rating is calculating anyway',
-    await page.getByText(/Rating wird bereits normal berechnet/).isVisible());
+    await inSheet(page, 'running-endurance', (sheet) =>
+      sheet.getByText(/Rating wird bereits normal berechnet/).isVisible()));
   check('the rank shown is still the first one',
-    /Rookie/.test((await page.locator('.running-overview__rank').textContent()) ?? ''));
+    /Rookie/.test((await page.locator('[data-metric="running-rating"] .metric-tile__kicker').textContent()) ?? ''));
 
   check('year-to-date pace is a visible secondary headline',
     await page.getByText('Tempo seit Jahresbeginn').isVisible());
   check('attendance is visible and separate', await page.getByText('Anwesenheit').first().isVisible());
   check('attendance counts runs against the target',
-    /von 2 Läufen/.test((await page.locator('.running-overview__lineValue').nth(2).textContent()) ?? ''));
+    /von 2 Läufen/.test((await page.locator('[data-metric="running-attendance"] .metric-tile__value').textContent()) ?? ''));
 
-  check('it explains that only similar distances are compared',
-    await page.getByText(/Nur Läufe mit ähnlicher Distanz/).isVisible());
+  const ytdSheet = await inSheet(page, 'running-ytd', async (sheet) => ({
+    comparable: await sheet.getByText(/Nur Läufe mit ähnlicher Distanz/).isVisible(),
+    text: await sheet.locator('.sheet__body').textContent(),
+  }));
+  check('it explains that only similar distances are compared', ytdSheet.comparable);
 
-  const body = await page.locator('.running-overview__note').allTextContents();
+  const body = [
+    ...(await page.locator('[data-metric] .metric-tile__line').allTextContents()),
+    ytdSheet.text ?? '',
+  ];
   check('no grid mechanics leak into the copy',
     !body.some((text) => /Band|Anker|Logarith|ANCHOR|WIDTH/i.test(text)),
     body.find((text) => /Band|Anker|Logarith/i.test(text)) ?? '');
@@ -213,10 +221,11 @@ async function openProgress(page) {
 
   check('the Endurance Phase is gone once complete',
     !(await page.getByText('Erster Rang noch gesperrt').isVisible().catch(() => false)));
-  const rank = await page.locator('.running-overview__rank').textContent();
+  const rank = await page.locator('[data-metric="running-rating"] .metric-tile__kicker').textContent();
   check('the rank has moved off the first one', !/Rookie/.test(rank ?? ''), rank?.trim());
   check('the 40/60 split is explained',
-    await page.getByText(/40 % Anwesenheit und 60 % Tempoentwicklung/).isVisible());
+    await inSheet(page, 'running-rating', (sheet) =>
+      sheet.getByText(/40 % Anwesenheit und 60 % Tempoentwicklung/).isVisible()));
 
   const ranges = await page.locator('.running-range').count();
   check('the two distance ranges are listed separately', ranges === 2, String(ranges));
@@ -224,7 +233,7 @@ async function openProgress(page) {
   check('and are labelled in kilometres, not band numbers',
     labels.every((l) => /km/.test(l)), labels.join(' | '));
 
-  const ytd = await page.locator('.running-overview__lineValue--large').textContent();
+  const ytd = await page.locator('[data-metric="running-ytd"] .metric-tile__value').textContent();
   check('the year-to-date figure is a real percentage', /%|Gehalten/.test(ytd ?? ''), ytd?.trim());
 
   const clip = await clipped(page);
@@ -242,12 +251,14 @@ async function openProgress(page) {
     /\d+ Tage ohne Lauf/.test((await page.getByText(/Tage ohne Lauf/).textContent()) ?? ''));
   check('it says what has been reduced',
     await page.getByText(/deines Rangfortschritts abgebaut/).isVisible());
-  check('it says what has not been touched',
-    await page.getByText(/aufgezeichneten Läufe und deine Tempowerte bleiben unverändert/).isVisible());
-  check('it says the rank floor holds',
-    await page.getByText(/fällst dadurch nicht unter deinen aktuellen Rang/).isVisible());
-  check('it says how to stop it',
-    await page.getByText(/gespeicherter Lauf beendet die Pause sofort/).isVisible());
+  const breakSheet = await inSheet(page, 'running-decay', async (sheet) => ({
+    untouched: await sheet.getByText(/aufgezeichneten Läufe und deine Tempowerte bleiben unverändert/).isVisible(),
+    floor: await sheet.getByText(/fällst dadurch nicht unter deinen aktuellen Rang/).isVisible(),
+    resume: await sheet.getByText(/gespeicherter Lauf beendet die Pause sofort/).isVisible(),
+  }));
+  check('it says what has not been touched', breakSheet.untouched);
+  check('it says the rank floor holds', breakSheet.floor);
+  check('it says how to stop it', breakSheet.resume);
   await ctx.close();
 }
 

@@ -90,6 +90,7 @@ records (answers, sessions, sets, snapshots)
 | `src/core/pause/index.ts` | **The** pause semantics — coverage, validation, standing. One canonical `isPausedOn` |
 | `src/storage/services/pauseService.ts` | Declaring, editing, ending a pause; every rule enforced on the write |
 | `src/features/pause/*` | The Areas section that plans and ends one |
+| `src/components/metrics.tsx` | **Pass 2.** `MetricTile`, `MetricBoard`, `MetricBar`, `MetricDetailSheet` — a tile states, a sheet explains; built on the one `Sheet` primitive |
 | `src/components/BodyRenderer/index.tsx` | Muscle diagram; presentation only |
 | `src/features/gym/*` | Session logging, picker, bodyweight, overview, exercise detail, progress |
 | `src/features/running/*` | The Running overview and its distance ranges |
@@ -428,7 +429,8 @@ in, except where noted.
 
 | | |
 |---|---|
-| Unit tests | **1022 passing, 62 files, exit 0** (`npm run test`) |
+| Card geometry (Pass 2) | `geometry.mjs`: every line of text measured on all four sides against the box that clips it, 12px of clear space required, at 393/430/320 — Today, Verlauf (both domains, an opened sheet, and a locked-Endurance profile), Rang, Bereiche. **90/90.** The earlier suites' `clipped()` measures `child.right − clipper.right` and cannot see a leftward or upward clip, which is how V1 shipped cards whose corners cut their first and last glyphs |
+| Unit tests | **1029 passing, 62 files, exit 0** (`npm run test`) — Pass 2 adds the meter-track contrast pairs |
 | Release smoke (production build) | **82/82** (`release.mjs`) — cold load, the whole journey through all four domains, refresh and persistence, backup export / malformed refusal / restore, five widths including desktop, zero console errors |
 | Pause regression | the same 2709-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, a live four-domain profile through five weeks of silence — is **byte-identical before and after**, same MD5. Only histories that contain a pause differ |
 | D113 numeric equivalence | a 64 KB, 2691-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, and a live four-domain profile through five weeks of silence — is **byte-identical before and after the refactor**, same MD5, zero mismatches |
@@ -476,6 +478,19 @@ and no stored value needs rewriting.
 Do not read Food's existence as the gate having been closed. There is no
 calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
+
+**Pass 2 (card geometry, widget layout, detail sheets) is on
+`claude/momentum-pass-2-geometry-r2qzkd`, awaiting real-device approval.**
+Stage A made the card own its inset on all four sides (`--card-pad`), which
+was the whole cause of the corner-clipped text on the phone. Stage B turned
+Verlauf into a widget board: rating hero, year-to-date full width, attendance
+and the Endurance Phase side by side while the first rank is held, and every
+paragraph of methodology moved into the sheet the tile opens. Nothing in
+scoring, ranking, persistence or the questions was touched; the one colour
+that moved is the Gym bar fill (`-mid` → `-ink`, to clear 3:1 on its tint).
+The `Momentum-preview` repository's `index.html` carries
+`apple-mobile-web-app-status-bar-style: black-translucent`, which this
+repository has never had — worth deciding on deliberately.
 
 **V1 is released.** The release pass closed the last four open items —
 Gate 2 by deciding not to build it (D120), tombstones as post-V1 (D121),

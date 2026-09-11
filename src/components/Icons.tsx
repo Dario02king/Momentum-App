@@ -74,6 +74,15 @@ export function ChevronLeftIcon({ size = 20, className }: IconProps) {
   );
 }
 
+export function InfoIcon({ size = 20, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5M12 8h.01" />
+    </svg>
+  );
+}
+
 export function CloseIcon({ size = 20, className }: IconProps) {
   return (
     <svg {...base(size, className)}>

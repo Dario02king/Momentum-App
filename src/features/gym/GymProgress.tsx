@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MUSCLE_GROUPS, type MuscleGroup } from '../../core/model';
 import { Card, EmptyState, Section } from '../../components';
+import { MetricDetailSheet, MetricTile } from '../../components/metrics';
 import { ChevronRightIcon, ProgressIcon } from '../../components/Icons';
 import {
   BodyRenderer,
@@ -55,6 +56,7 @@ export function GymProgress({ history }: { history: GymHistory }) {
   const t = useT();
   const [selected, setSelected] = useState<MuscleGroup | null>(null);
   const [openExercise, setOpenExercise] = useState<string | null>(null);
+  const [overallOpen, setOverallOpen] = useState(false);
 
   const views: MuscleView[] = useMemo(
     () =>
@@ -110,32 +112,42 @@ export function GymProgress({ history }: { history: GymHistory }) {
 
   return (
     <>
-      <Section label={t('gym.progress.overall')}>
-        <Card>
-          <div className="gym-progress__headline">
-            <span className="gym-progress__value">
-              {overall ?? t('gym.progress.noBaseline')}
-            </span>
-            <span className="gym-progress__counted">
-              {t('gym.progress.groupsCounted', {
-                count: history.overall.measured.length,
-                total: MUSCLE_GROUPS.length,
-              })}
-            </span>
-          </div>
-          <p className="gym-progress__note">{t('gym.progress.explainGroups')}</p>
-          <p className="gym-progress__note">{t('gym.progress.explainMetric')}</p>
-          {/*
-            The one place the two numbers could be confused, said plainly:
-            these are percentages of personal change, and the rank they feed
-            is a statement about development rather than about strength.
-          */}
-          <p className="gym-progress__note gym-progress__note--strong">
-            {t('gym.progress.ratingNote')}
-          </p>
-          <p className="gym-progress__note">{t('gym.tombstone.boundary')}</p>
-        </Card>
-      </Section>
+      {/*
+        The overall development, as one tile: the figure, how many groups it
+        rests on, and a sheet for what the figure is and is not. The one
+        place the two numbers could be confused — this percentage and the
+        rank it feeds — is said plainly there, not paraphrased here.
+      */}
+      <MetricTile
+        id="gym-overall"
+        title={t('gym.progress.overall')}
+        value={
+          overall ?? (
+            <span className="metric-tile__state">{t('gym.progress.noBaseline')}</span>
+          )
+        }
+        line={t('gym.progress.groupsCounted', {
+          count: history.overall.measured.length,
+          total: MUSCLE_GROUPS.length,
+        })}
+        onOpen={() => setOverallOpen(true)}
+        className="gym-progress__overall"
+      />
+      <MetricDetailSheet
+        open={overallOpen}
+        title={t('gym.progress.overall')}
+        value={overall ?? t('gym.progress.noBaseline')}
+        scale={t('gym.progress.groupsCounted', {
+          count: history.overall.measured.length,
+          total: MUSCLE_GROUPS.length,
+        })}
+        onClose={() => setOverallOpen(false)}
+      >
+        <p>{t('gym.progress.explainGroups')}</p>
+        <p>{t('gym.progress.explainMetric')}</p>
+        <p>{t('gym.progress.ratingNote')}</p>
+        <p className="metric-sheet__note">{t('gym.tombstone.boundary')}</p>
+      </MetricDetailSheet>
 
       <Section label={t('gym.progress.muscles')}>
         <Card>

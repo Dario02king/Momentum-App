@@ -238,3 +238,19 @@ export async function seedTraining(page, { days = 40, gymPerWeek = 3, runsPerWee
     return { sessions: sessions.length, sets: sets.length, runs: runs.length, foodDays: foodDays.length };
   }, { days, gymPerWeek, runsPerWeek });
 }
+
+/**
+ * Opens a metric tile's detail sheet, runs `fn` against the sheet, closes it.
+ *
+ * Since pass 2 the methodology copy lives in the sheet a tile opens, not on
+ * the tile. An assertion that the app *says* something therefore opens the
+ * sheet first — the promise is the same, the place has moved.
+ */
+export async function inSheet(page, metric, fn) {
+  await page.locator(`[data-metric="${metric}"] .metric-tile__open`).click();
+  await page.waitForTimeout(450);
+  const result = await fn(page.locator('.sheet'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(350);
+  return result;
+}

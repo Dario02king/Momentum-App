@@ -32,6 +32,7 @@ export const en: Translations = {
   'common.add': 'Add',
   'common.skip': 'Skip',
   'common.close': 'Close',
+  'common.moreInfo': 'More about this',
 
   'scale.poor': 'Poor',
   'scale.fair': 'Weak',
@@ -406,6 +407,9 @@ export const en: Translations = {
     'The Gym rank measures your own development rather than absolute strength: 40 % attendance, 60 % personal performance development.',
 
   'gym.rating.title': 'Gym rating',
+  'gym.rating.summary': '40 % attendance · 60 % performance',
+  'gym.attendance.scale': 'of {target} sessions',
+  'gym.endurance.scale': 'of {required} weeks',
   'gym.rating.value': '{value} of 1000',
   'gym.rating.explain':
     'Made up of 40 % attendance and 60 % personal performance development. The comparison is always against your own history.',
@@ -501,6 +505,9 @@ export const en: Translations = {
   'running.title': 'Running',
 
   'running.rating.title': 'Running rating',
+  'running.rating.summary': '40 % attendance · 60 % pace',
+  'running.attendance.scale': 'of {target} runs',
+  'running.endurance.scale': 'of {required} weeks',
   'running.rating.value': '{value} of 1000',
   'running.rating.explain':
     'Made up of 40 % attendance and 60 % pace development over comparable distances. The comparison is always against your own history.',

@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, phone, onboard } from './lib.mjs';
+import { URL_APP, check, summary, phone, onboard, inSheet } from './lib.mjs';
 
 /**
  * Phase 4.1, through the accessibility tree.
@@ -156,7 +156,7 @@ let nodes = await tree();
 check('every control and image on the Gym overview has a name',
   unnamed(nodes).length === 0, unnamed(nodes).map((n) => `${n.role}`).join(', '));
 
-const meters = await page.locator('.gym-meter').all();
+const meters = await page.locator('.metric-bar').all();
 check('every bar is a named image rather than bare decoration',
   meters.length >= 2 &&
     (await Promise.all(meters.map((m) => m.getAttribute('aria-label')))).every((l) => (l ?? '').trim().length > 0),
@@ -173,7 +173,7 @@ check('the attendance bar speaks the sessions it draws',
   images.some((n) => /von 3 Sessions/.test(n.name)));
 
 /* Colour is never the only carrier: every figure is also printed. */
-const printed = await page.locator('.gym-overview__lineValue, .gym-overview__rating').allTextContents();
+const printed = await page.locator('.metric-tile__value').allTextContents();
 check('every bar has its number printed beside it',
   printed.some((t) => /von 1000/.test(t)) &&
     printed.some((t) => /von 4 Wochen/.test(t)) &&
@@ -183,10 +183,10 @@ check('every bar has its number printed beside it',
 check('the locked rank is stated in words, not by a dimmed badge alone',
   await page.getByText('Erster Rang noch gesperrt').isVisible());
 check('the Endurance Phase is not announced as a performance figure',
-  !/Leistung/.test((await page.locator('.gym-overview__lineLabel').first().textContent()) ?? ''));
+  !/Leistung/.test((await page.locator('[data-metric="gym-endurance"] .metric-tile__line').textContent()) ?? ''));
 
 /* ── Heading order ──────────────────────────────────────────────────────── */
-const sectionLabels = await page.locator('.section__label, h2').allTextContents();
+const sectionLabels = await page.locator('.section__label, h2, h3').allTextContents();
 const order = sectionLabels.map((t) => t.trim()).filter(Boolean);
 const at = (needle) => order.findIndex((t) => t.includes(needle));
 check('the rating comes before the year-to-date figure, which comes before attendance',
@@ -222,16 +222,23 @@ check('the break state names every control too', unnamed(nodes).length === 0,
   unnamed(nodes).map((n) => n.role).join(', '));
 check('the break says in words what it reduced and what it did not',
   (await page.getByText(/deines Rangfortschritts abgebaut/).isVisible()) &&
-    (await page.getByText(/bleiben unverändert/).isVisible()));
+    (await inSheet(page, 'gym-decay', (sheet) => sheet.getByText(/bleiben unverändert/).isVisible())));
 
 /* ── Focus order through the overview ───────────────────────────────────── */
+// A closed sheet hands focus back to the tile that opened it. The trail is
+// about the screen, not about that tile, so it starts from the document.
+await page.evaluate(() => document.activeElement?.blur());
 await page.keyboard.press('Tab');
 const focusTrail = [];
 for (let i = 0; i < 12; i += 1) {
   focusTrail.push(
     await page.evaluate(() => {
+      // Identity, not class: five tiles share one class and are five
+      // different controls. Being stuck means landing on the *same* one.
       const el = document.activeElement;
-      return el ? `${el.tagName.toLowerCase()}.${(el.className || '').split(' ')[0]}` : 'none';
+      return el
+        ? `${el.tagName.toLowerCase()}.${(el.className || '').split(' ')[0]}:${(el.textContent ?? '').trim().slice(0, 12)}`
+        : 'none';
     }),
   );
   await page.keyboard.press('Tab');

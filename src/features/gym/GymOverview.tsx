@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { displayedRankProgress } from '../../core/ranks/progress';
 import { TRAINING_RATING } from '../../core/config/constants';
 import type { Rank } from '../../core/ranks';
 import { Card, Section } from '../../components';
+import { MetricBoard, MetricDetailSheet, MetricTile } from '../../components/metrics';
 import { RankBadge } from '../ranking/RankBadge';
 import { useT } from '../../i18n/I18nProvider';
 import type { GymRatingState } from '../../storage/services/gymRatingService';
@@ -11,9 +13,10 @@ import './gym.css';
  * The top of Gym, in the order the product asks for.
  *
  * ```
- *   1  Gym rating          the headline
- *   2  Performance YTD     the secondary headline
- *   3  Attendance          the explanatory metric
+ *   1  Gym rating          the headline — the hero tile
+ *   2  Performance YTD     the secondary headline — full width
+ *   3  Attendance          the explanatory metric — compact, beside the
+ *                          Endurance Phase while that is still in force
  *   4  everything else     further down, in Progress
  * ```
  *
@@ -23,6 +26,12 @@ import './gym.css';
  * two halves of the rating, they can disagree, and a user who trains
  * faithfully through a plateau should be able to see *which* half moved
  * rather than being handed one number and left to guess.
+ *
+ * **A tile states; a sheet explains.** The overview is a dashboard. Each
+ * tile carries its title, its value, its bar and at most one line; the
+ * methodology behind it — how the 40/60 is made, what a missed Endurance
+ * week costs, why extra sessions buy nothing — lives in the sheet the tile
+ * opens, once, and nowhere else on this screen.
  *
  * **This component computes nothing.** Every figure arrives from
  * `storage/services/gymRatingService`, which arrives from `core/gym/*`. A
@@ -43,17 +52,7 @@ function changeText(
     : t('gym.change.declined', { percent: rounded });
 }
 
-function Meter({ percent, label }: { percent: number; label: string }) {
-  return (
-    <div
-      className="gym-meter"
-      role="img"
-      aria-label={label}
-    >
-      <span className="gym-meter__fill" style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
-    </div>
-  );
-}
+type Detail = 'rating' | 'ytd' | 'attendance' | 'endurance' | 'decay';
 
 export function GymOverview({
   state,
@@ -66,6 +65,8 @@ export function GymOverview({
   started: boolean;
 }) {
   const t = useT();
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const close = () => setDetail(null);
 
   if (!started) {
     return (
@@ -82,129 +83,181 @@ export function GymOverview({
     state.weeklyTarget > 0
       ? Math.min(100, (state.sessionsThisWeek / state.weeklyTarget) * 100)
       : 0;
+  const ratingLabel = t('gym.rating.value', { value: progress.value });
+  const attendanceLabel = t('gym.attendance.value', {
+    sessions: state.sessionsThisWeek,
+    target: state.weeklyTarget,
+  });
+  const enduranceLabel = t('gym.endurance.progress', {
+    progress: state.endurance.progress.toFixed(1),
+    required: state.endurance.required,
+  });
+  const locked = !state.endurance.unlocked;
+  const onBreak =
+    state.abstinence !== null &&
+    state.abstinence.days >= TRAINING_RATING.ABSTINENCE_BLOCK_DAYS;
+  const ytdText = changeText(state.ytdChange, t);
+
+  const ratingBar = { percent: progress.percent, label: ratingLabel, tone: 'gym' as const };
+  const attendanceBar = { percent: attendancePercent, label: attendanceLabel, tone: 'gym' as const };
+  const enduranceBar = {
+    percent: (state.endurance.progress / state.endurance.required) * 100,
+    label: enduranceLabel,
+    tone: 'gym' as const,
+  };
 
   return (
     <>
-      {/* 1 — the rating itself. */}
-      <Section label={t('gym.rating.title')}>
-        <Card>
-          <div className="gym-overview__hero">
-            <RankBadge rankId={rank.id} size={64} mystery={!state.endurance.unlocked} />
-            <div className="gym-overview__heroBody">
-              <p className="gym-overview__rank">{rank.name}</p>
-              <p className="gym-overview__rating">
-                {t('gym.rating.value', { value: progress.value })}
-              </p>
-            </div>
-          </div>
-          <Meter
-            percent={progress.percent}
-            label={t('gym.rating.value', { value: progress.value })}
+      <MetricBoard>
+        {/* 1 — the rating itself. Rank names stay English in every language. */}
+        <MetricTile
+          id="gym-rating"
+          title={t('gym.rating.title')}
+          leading={<RankBadge rankId={rank.id} size={60} mystery={locked} />}
+          kicker={rank.name}
+          value={ratingLabel}
+          bar={ratingBar}
+          line={
+            state.maintenance
+              ? `${t('gym.maintenance.title')} · ${t('gym.rating.summary')}`
+              : t('gym.rating.summary')
+          }
+          onOpen={() => setDetail('rating')}
+        />
+
+        {/* 2 — performance year to date, the visible secondary headline. */}
+        <MetricTile
+          id="gym-ytd"
+          title={t('gym.ytd.title')}
+          value={
+            state.ytdChange === null ? (
+              <span className="metric-tile__state">{ytdText}</span>
+            ) : (
+              ytdText
+            )
+          }
+          line={t('gym.progress.groupsCounted', {
+            count: state.ytd?.measured.length ?? 0,
+            total: 10,
+          })}
+          onOpen={() => setDetail('ytd')}
+        />
+
+        {/*
+          3 — attendance, inspectable on its own. Compact while the Endurance
+          Phase sits beside it; the full width once that tile is gone, because
+          one half tile next to nothing is a hole, not a board.
+        */}
+        <MetricTile
+          id="gym-attendance"
+          title={t('gym.attendance.title')}
+          value={state.sessionsThisWeek}
+          scale={t('gym.attendance.scale', { target: state.weeklyTarget })}
+          bar={attendanceBar}
+          line={t('gym.attendance.thisWeek')}
+          span={locked ? 'half' : 'full'}
+          onOpen={() => setDetail('attendance')}
+        />
+
+        {/* The Endurance Phase, while it is still the reason the rank is held.
+            Never mislabelled as performance: it is attendance over weeks. */}
+        {locked ? (
+          <MetricTile
+            id="gym-endurance"
+            title={t('gym.endurance.title')}
+            value={state.endurance.progress.toFixed(1)}
+            scale={t('gym.endurance.scale', { required: state.endurance.required })}
+            bar={enduranceBar}
+            line={
+              <span className="metric-tile__line--strong">{t('gym.endurance.locked')}</span>
+            }
+            span="half"
+            onOpen={() => setDetail('endurance')}
           />
-          <p className="gym-overview__note">{t('gym.rating.explain')}</p>
-          {state.maintenance ? (
-            <p className="gym-overview__note gym-overview__note--strong">
-              {t('gym.maintenance.body')}
-            </p>
-          ) : null}
-        </Card>
-      </Section>
+        ) : null}
 
-      {/* The Endurance Phase, while it is still the reason the rank is held. */}
-      {!state.endurance.unlocked ? (
-        <Section label={t('gym.endurance.title')}>
-          <Card>
-            <div className="gym-overview__line">
-              <span className="gym-overview__lineLabel">{t('gym.endurance.locked')}</span>
-              <span className="gym-overview__lineValue">
-                {t('gym.endurance.progress', {
-                  progress: state.endurance.progress.toFixed(1),
-                  required: state.endurance.required,
-                })}
-              </span>
-            </div>
-            <Meter
-              percent={(state.endurance.progress / state.endurance.required) * 100}
-              label={t('gym.endurance.progress', {
-                progress: state.endurance.progress.toFixed(1),
-                required: state.endurance.required,
-              })}
-            />
-            <p className="gym-overview__note">{t('gym.endurance.explain')}</p>
-            {/* Never mislabelled as performance: it is attendance over weeks. */}
-            <p className="gym-overview__note">{t('gym.endurance.stillCounts')}</p>
-          </Card>
-        </Section>
-      ) : null}
-
-      {/* 2 — performance year to date, the visible secondary headline. */}
-      <Section label={t('gym.ytd.title')}>
-        <Card>
-          <div className="gym-overview__line">
-            <span className="gym-overview__lineValue gym-overview__lineValue--large">
-              {changeText(state.ytdChange, t)}
-            </span>
-            <span className="gym-overview__lineLabel">
-              {t('gym.progress.groupsCounted', {
-                count: state.ytd?.measured.length ?? 0,
-                total: 10,
-              })}
-            </span>
-          </div>
-          <p className="gym-overview__note">{t('gym.ytd.explain')}</p>
-          {state.performance.score === null ? (
-            <p className="gym-overview__note">{t('gym.performance.needsSecond')}</p>
-          ) : null}
-          {state.performance.components.length === 1 ? (
-            <p className="gym-overview__note">
-              {state.performance.components[0] === 'trend'
-                ? t('gym.performance.onlyTrend')
-                : t('gym.performance.onlyYtd')}
-            </p>
-          ) : null}
-        </Card>
-      </Section>
-
-      {/* 3 — attendance, inspectable on its own. */}
-      <Section label={t('gym.attendance.title')}>
-        <Card>
-          <div className="gym-overview__line">
-            <span className="gym-overview__lineLabel">{t('gym.attendance.thisWeek')}</span>
-            <span className="gym-overview__lineValue">
-              {t('gym.attendance.value', {
-                sessions: state.sessionsThisWeek,
-                target: state.weeklyTarget,
-              })}
-            </span>
-          </div>
-          <Meter
-            percent={attendancePercent}
-            label={t('gym.attendance.value', {
-              sessions: state.sessionsThisWeek,
-              target: state.weeklyTarget,
-            })}
+        {/* Surfaced only while it is actually happening. */}
+        {onBreak && state.abstinence ? (
+          <MetricTile
+            id="gym-decay"
+            title={t('gym.decay.title')}
+            value={t('gym.decay.days', { days: state.abstinence.days })}
+            line={t('gym.decay.lost', { percent: Math.round(state.decayFraction * 100) })}
+            onOpen={() => setDetail('decay')}
           />
-          <p className="gym-overview__note">{t('gym.attendance.explain')}</p>
-        </Card>
-      </Section>
+        ) : null}
+      </MetricBoard>
 
-      {/* Surfaced only while it is actually happening. */}
-      {state.abstinence && state.abstinence.days >= TRAINING_RATING.ABSTINENCE_BLOCK_DAYS ? (
-        <Section label={t('gym.decay.title')}>
-          <Card>
-            <div className="gym-overview__line">
-              <span className="gym-overview__lineLabel">
-                {t('gym.decay.days', { days: state.abstinence.days })}
-              </span>
-              <span className="gym-overview__lineValue">
-                {t('gym.decay.lost', { percent: Math.round(state.decayFraction * 100) })}
-              </span>
-            </div>
-            <p className="gym-overview__note">{t('gym.decay.explain')}</p>
-            <p className="gym-overview__note">{t('gym.decay.floor')}</p>
-            <p className="gym-overview__note">{t('gym.decay.resume')}</p>
-          </Card>
-        </Section>
+      <MetricDetailSheet
+        open={detail === 'rating'}
+        title={t('gym.rating.title')}
+        value={ratingLabel}
+        bar={ratingBar}
+        onClose={close}
+      >
+        <p>{t('gym.rating.explain')}</p>
+        <p>{t('gym.rating.movesGradually')}</p>
+        {state.maintenance ? <p>{t('gym.maintenance.body')}</p> : null}
+      </MetricDetailSheet>
+
+      <MetricDetailSheet
+        open={detail === 'ytd'}
+        title={t('gym.ytd.title')}
+        value={ytdText}
+        scale={t('gym.progress.groupsCounted', {
+          count: state.ytd?.measured.length ?? 0,
+          total: 10,
+        })}
+        onClose={close}
+      >
+        <p>{t('gym.ytd.explain')}</p>
+        {state.performance.score === null ? (
+          <p className="metric-sheet__note">{t('gym.performance.needsSecond')}</p>
+        ) : null}
+        {state.performance.components.length === 1 ? (
+          <p className="metric-sheet__note">
+            {state.performance.components[0] === 'trend'
+              ? t('gym.performance.onlyTrend')
+              : t('gym.performance.onlyYtd')}
+          </p>
+        ) : null}
+      </MetricDetailSheet>
+
+      <MetricDetailSheet
+        open={detail === 'attendance'}
+        title={t('gym.attendance.title')}
+        value={attendanceLabel}
+        scale={t('gym.attendance.thisWeek')}
+        bar={attendanceBar}
+        onClose={close}
+      >
+        <p>{t('gym.attendance.explain')}</p>
+      </MetricDetailSheet>
+
+      <MetricDetailSheet
+        open={detail === 'endurance'}
+        title={t('gym.endurance.title')}
+        value={enduranceLabel}
+        scale={t('gym.endurance.locked')}
+        bar={enduranceBar}
+        onClose={close}
+      >
+        <p>{t('gym.endurance.explain')}</p>
+        <p>{t('gym.endurance.stillCounts')}</p>
+      </MetricDetailSheet>
+
+      {state.abstinence ? (
+        <MetricDetailSheet
+          open={detail === 'decay'}
+          title={t('gym.decay.title')}
+          value={t('gym.decay.days', { days: state.abstinence.days })}
+          scale={t('gym.decay.lost', { percent: Math.round(state.decayFraction * 100) })}
+          onClose={close}
+        >
+          <p>{t('gym.decay.explain')}</p>
+          <p>{t('gym.decay.floor')}</p>
+          <p>{t('gym.decay.resume')}</p>
+        </MetricDetailSheet>
       ) : null}
     </>
   );

@@ -33,6 +33,7 @@ export const de = {
   'common.add': 'Hinzufügen',
   'common.skip': 'Überspringen',
   'common.close': 'Schliessen',
+  'common.moreInfo': 'Mehr dazu',
 
   'scale.poor': 'Schlecht',
   'scale.fair': 'Mässig',
@@ -411,6 +412,9 @@ export const de = {
     'Der Gym-Rang misst deine eigene Entwicklung, nicht absolute Stärke: 40 % Anwesenheit, 60 % persönliche Leistungsentwicklung.',
 
   'gym.rating.title': 'Gym-Rating',
+  'gym.rating.summary': '40 % Anwesenheit · 60 % Leistung',
+  'gym.attendance.scale': 'von {target} Sessions',
+  'gym.endurance.scale': 'von {required} Wochen',
   'gym.rating.value': '{value} von 1000',
   'gym.rating.explain':
     'Setzt sich zusammen aus 40 % Anwesenheit und 60 % persönlicher Leistungsentwicklung. Verglichen wird immer mit deiner eigenen Historie.',
@@ -506,6 +510,9 @@ export const de = {
   'running.title': 'Laufen',
 
   'running.rating.title': 'Lauf-Rating',
+  'running.rating.summary': '40 % Anwesenheit · 60 % Tempo',
+  'running.attendance.scale': 'von {target} Läufen',
+  'running.endurance.scale': 'von {required} Wochen',
   'running.rating.value': '{value} von 1000',
   'running.rating.explain':
     'Setzt sich zusammen aus 40 % Anwesenheit und 60 % Tempoentwicklung auf vergleichbaren Distanzen. Verglichen wird immer mit deiner eigenen Historie.',

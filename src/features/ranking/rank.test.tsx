@@ -136,9 +136,17 @@ describe('the Boss weighting control', () => {
     expect(html).toContain(translate('de', 'rank.weights.total', { percent: 100 }));
   });
 
-  it('says the change is forward only', () => {
-    const html = render(<BossWeights weighting={weighting([1, 1])} onChange={() => undefined} />);
-    expect(html).toContain(translate('de', 'rank.weights.forward'));
+  it('says the change is forward only, one tap away', () => {
+    // The sentence is true but not needed to use the control, so it lives in
+    // the explanation the info control opens — offered on the card, said in
+    // full in the sheet, and nowhere else.
+    const closed = render(<BossWeights weighting={weighting([1, 1])} onChange={() => undefined} />);
+    expect(closed).toContain(translate('de', 'common.moreInfo'));
+    expect(closed).not.toContain(translate('de', 'rank.weights.forward'));
+    const open = render(
+      <BossWeights weighting={weighting([1, 1])} onChange={() => undefined} infoOpen />,
+    );
+    expect(open).toContain(translate('de', 'rank.weights.forward'));
   });
 
   it('names both steppers after the area they move', () => {
@@ -165,10 +173,11 @@ describe('the Boss weighting control', () => {
   it('works in both languages', () => {
     for (const language of ['de', 'en'] as const) {
       const html = render(
-        <BossWeights weighting={weighting([2, 1])} onChange={() => undefined} />,
+        <BossWeights weighting={weighting([2, 1])} onChange={() => undefined} infoOpen />,
         language,
       );
       expect(html).toContain(translate(language, 'rank.weights.forward'));
+      expect(html).toContain(translate(language, 'rank.weights.total', { percent: 100 }));
     }
   });
 });
