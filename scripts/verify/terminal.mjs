@@ -4,10 +4,10 @@ import { URL_APP, check, summary, phone, onboard, seed, seedTraining } from './l
 /**
  * The domain terminal, Stage A.
  *
- * What the architecture promises and this proves: one switch with proper
- * selected semantics, exactly one domain rendered at a time, Home untouched,
- * the global overview still reachable, the domain in the URL so a link can
- * name it, and Back walking the domains the user actually visited.
+ * What the architecture promises and this proves: Heute, Verlauf and Rang
+ * unchanged; Bereiche carrying one switch with proper selected semantics and
+ * exactly one area rendered beneath it; the area in the URL so a link can
+ * name it; Back walking the areas the user actually visited.
  */
 
 const browser = await chromium.launch({
@@ -24,120 +24,136 @@ await seedTraining(page, { days: 42 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
 
-/* ── Home stays global ─────────────────────────────────────────────────── */
-check('Home still opens on Today', (await page.locator('.screen__title').textContent())?.trim() === 'Heute');
-check('Home still carries the Boss standing', await page.locator('.boss-summary').isVisible());
-check('Home still carries the daily check-in', (await page.locator('.check-in').count()) > 0);
-check('Home still carries the Ernährung rating', await page.locator('.food__scale').isVisible());
-check('Home still carries the training actions',
+const title = async (p = page) => (await p.locator('.screen__title').textContent())?.trim();
+const hash = async (p = page) => p.evaluate(() => location.hash);
+const metricsOn = async (p = page) =>
+  p.locator('[data-metric]').evaluateAll((els) => els.map((el) => el.getAttribute('data-metric')));
+
+/* ── Heute stays global ────────────────────────────────────────────────── */
+check('the app opens on Heute, addressed as #/today', (await title()) === 'Heute' && (await hash()) === '#/today');
+check('Heute carries the Boss standing', await page.locator('.boss-summary').isVisible());
+check('Heute carries the daily check-in', (await page.locator('.check-in').count()) > 0);
+check('Heute carries the Ernährung rating', await page.locator('.food__scale').isVisible());
+check('Heute carries the training actions',
   await page.getByRole('button', { name: 'Session eintragen' }).isVisible() &&
   await page.getByRole('button', { name: 'Lauf eintragen' }).isVisible());
-check('Home carries no domain terminal content',
-  (await page.locator('[data-metric]').count()) === 0 && (await page.locator('.domain-switch').count()) === 0);
-check('Home is addressed as #/today', await page.evaluate(() => location.hash) === '#/today');
+check('Heute carries no terminal', (await page.locator('.domain-switch').count()) === 0);
 
-/* ── The switch ────────────────────────────────────────────────────────── */
+/* ── Verlauf stays the overall overview ────────────────────────────────── */
 await page.getByRole('button', { name: 'Verlauf' }).click();
+await page.waitForTimeout(1400);
+check('Verlauf is addressed as #/progress, with no area', (await hash()) === '#/progress');
+check('Verlauf carries no switch', (await page.locator('.domain-switch').count()) === 0);
+check('Verlauf carries the overall trend', await page.locator('.trend').isVisible());
+const rowLabels = (await page.locator('.heatmap__label').allTextContents()).map((s) => s.trim());
+check('Verlauf carries the overall grid with every domain row',
+  ['Gesamt', 'Wellbeing', 'Gym', 'Laufen'].every((label) => rowLabels.includes(label)), rowLabels.join(' | '));
+let metrics = await metricsOn();
+check('the Gym board is no longer on Verlauf', !metrics.some((m) => m.startsWith('gym')), metrics.join(','));
+check('Running\'s board still is', metrics.some((m) => m === 'running-rating'), metrics.join(','));
+
+/* ── Rang is unchanged ─────────────────────────────────────────────────── */
+await page.getByRole('button', { name: 'Rang' }).click();
 await page.waitForTimeout(1200);
+check('Rang is addressed as #/rank', (await hash()) === '#/rank');
+check('Rang carries its hero and standings, and no trend', await page.locator('.rank-hero').isVisible() && (await page.locator('.trend').count()) === 0);
+
+/* ── Bereiche is the terminal ──────────────────────────────────────────── */
+await page.getByRole('button', { name: 'Bereiche' }).click();
+await page.waitForTimeout(1200);
+check('Bereiche is addressed with its area', (await hash()) === '#/areas/mental');
 const group = page.getByRole('radiogroup', { name: 'Bereich wählen' });
 check('the switch is a named radio group', await group.isVisible());
-const radios = await group.getByRole('radio').allTextContents();
-check('it offers the four enabled areas in product order',
-  JSON.stringify(radios.map((s) => s.trim())) === JSON.stringify(['Wellbeing', 'Gym', 'Laufen', 'Ernährung']), radios.join(' | '));
-check('exactly one area is checked',
-  (await group.locator('[aria-checked="true"]').count()) === 1);
-check('it opens on the first area', (await group.locator('[aria-checked="true"]').textContent())?.trim() === 'Wellbeing');
-check('the switch is one tab stop', (await group.locator('[tabindex="0"]').count()) === 1 && (await group.locator('[tabindex="-1"]').count()) === 3);
-const switchBox = await group.boundingBox();
-check('the switch sits on one line at 393px', switchBox !== null && switchBox.height < 60, String(switchBox?.height));
-const labelsClipped = await group.getByRole('radio').evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
-check('no switch label is clipped', labelsClipped === 0, String(labelsClipped));
+const radios = (await group.getByRole('radio').allTextContents()).map((s) => s.trim());
+check('it offers Mental, Gym and Ernährung, and nothing else', JSON.stringify(radios) === JSON.stringify(['Mental', 'Gym', 'Ernährung']), radios.join(' | '));
+check('exactly one area is checked, and it is Mental',
+  (await group.locator('[aria-checked="true"]').count()) === 1 &&
+  (await group.locator('[aria-checked="true"]').textContent())?.trim() === 'Mental');
+check('the switch is one tab stop', (await group.locator('[tabindex="0"]').count()) === 1);
+const box = await group.boundingBox();
+check('the switch sits on one line at 393px', box !== null && box.height < 60, String(box?.height));
+const clipped = await group.getByRole('radio').evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
+check('no switch label is clipped', clipped === 0, String(clipped));
+check('the switch is on screen at entry, above the scroll port',
+  box !== null && box.y < (await page.locator('.areas__scroll').boundingBox())?.y);
 
-/* ── One domain at a time ──────────────────────────────────────────────── */
-const metricsOn = async () => page.locator('[data-metric]').evaluateAll((els) => els.map((el) => el.getAttribute('data-metric')));
-let metrics = await metricsOn();
-check('Wellbeing shows only Wellbeing', metrics.every((m) => m.startsWith('mental')) && metrics.length > 0, metrics.join(','));
-check('the Wellbeing daily row is shown, and no other domain row',
-  await page.locator('.heatmap__label', { hasText: 'Wellbeing' }).first().isVisible() &&
-  (await page.locator('.heatmap__label', { hasText: /^Gym$|^Laufen$|^Ernährung$|^Gesamt$/ }).count()) === 0);
+/* ── One area at a time ────────────────────────────────────────────────── */
+const names = async () => (await page.locator('.areas__domainName').allTextContents()).map((s) => s.trim());
+metrics = await metricsOn();
+check('Mental shows its standing and its card, and no other area\'s',
+  metrics.every((m) => m.startsWith('mental')) && JSON.stringify(await names()) === JSON.stringify(['Wellbeing', 'Laufen']),
+  metrics.join(',') + ' / ' + (await names()).join(','));
+check('the Wellbeing questions are configured here', await page.getByText('Frage hinzufügen').isVisible());
 
 await group.getByRole('radio', { name: 'Gym' }).click();
-await page.waitForTimeout(900);
+await page.waitForTimeout(1400);
 metrics = await metricsOn();
-check('Gym shows only Gym', metrics.length > 0 && metrics.every((m) => m.startsWith('gym')), metrics.join(','));
-check('switching needs no reload and keeps the range', await page.getByRole('button', { name: '30 Tage' }).getAttribute('aria-pressed') === 'true');
-check('the URL names the domain', await page.evaluate(() => location.hash) === '#/progress/gym');
-
-await group.getByRole('radio', { name: 'Laufen' }).click();
-await page.waitForTimeout(900);
-metrics = await metricsOn();
-check('Laufen shows only Laufen', metrics.length > 0 && metrics.every((m) => m.startsWith('running')), metrics.join(','));
+check('Gym shows the Gym workspace and nothing of Mental or Ernährung',
+  metrics.length > 0 && metrics.every((m) => m.startsWith('gym')) && JSON.stringify(await names()) === JSON.stringify(['Gym', 'Laufen']),
+  metrics.join(','));
+check('the Gym workspace carries the rating board and the progress hierarchy',
+  (await page.locator('[data-metric="gym-rating"]').count()) === 1 && (await page.locator('[data-metric="gym-overall"]').count()) === 1);
+check('and the Gym target is configured there', await page.getByText('3 Sessions / Woche').isVisible());
+check('the URL names the area', (await hash()) === '#/areas/gym');
 
 await group.getByRole('radio', { name: 'Ernährung' }).click();
-await page.waitForTimeout(900);
+await page.waitForTimeout(1000);
 metrics = await metricsOn();
-check('Ernährung shows only Ernährung', metrics.length > 0 && metrics.every((m) => m.startsWith('food')), metrics.join(','));
-check('the Ernährung daily row is the domain\'s own',
-  await page.locator('.heatmap__label', { hasText: 'Ernährung' }).first().isVisible());
+check('Ernährung shows its standing and its card only',
+  metrics.every((m) => m.startsWith('food')) && JSON.stringify(await names()) === JSON.stringify(['Ernährung', 'Laufen']),
+  metrics.join(','));
+check('the Vorsatz is configured there', await page.getByText('Dein Vorsatz').first().isVisible());
+check('the rest of Bereiche stays below whichever area is open',
+  await page.getByText('Weitere Bereiche und Einstellungen').isVisible() &&
+  await page.getByText('Backup exportieren').isVisible() &&
+  await page.getByText('Sprache').first().isVisible());
 
 /* ── Keyboard ──────────────────────────────────────────────────────────── */
 await group.locator('[aria-checked="true"]').focus();
 await page.keyboard.press('ArrowLeft');
-await page.waitForTimeout(700);
-check('arrow keys move the selection', (await group.locator('[aria-checked="true"]').textContent())?.trim() === 'Laufen');
+await page.waitForTimeout(900);
+check('arrow keys move the selection', (await group.locator('[aria-checked="true"]').textContent())?.trim() === 'Gym');
 
-/* ── Back walks the domains visited ────────────────────────────────────── */
+/* ── Back walks the areas visited ──────────────────────────────────────── */
 await page.goBack();
-await page.waitForTimeout(800);
-check('Back returns to the previous domain',
-  await page.evaluate(() => location.hash) === '#/progress/food' &&
-  (await group.locator('[aria-checked="true"]').textContent())?.trim() === 'Ernährung');
+await page.waitForTimeout(900);
+check('Back returns to the previous area', (await hash()) === '#/areas/food' && (await group.locator('[aria-checked="true"]').textContent())?.trim() === 'Ernährung');
 await page.goBack();
-await page.waitForTimeout(800);
-check('and again', await page.evaluate(() => location.hash) === '#/progress/running');
+await page.waitForTimeout(900);
+check('and again', (await hash()) === '#/areas/gym');
+await page.goBack();
+await page.waitForTimeout(900);
+check('and to the area the terminal was entered on', (await hash()) === '#/areas/mental');
+await page.goBack();
+await page.waitForTimeout(900);
+check('and out of the terminal to the tab visited before it', (await hash()) === '#/rank' && (await title()) === 'Rang');
 await page.goForward();
-await page.waitForTimeout(800);
-check('Forward re-enters it', await page.evaluate(() => location.hash) === '#/progress/food');
+await page.waitForTimeout(900);
+check('Forward re-enters the terminal on the area it was entered on', (await hash()) === '#/areas/mental');
 
-/* ── A deep link names a domain ────────────────────────────────────────── */
-await page.goto(`${URL_APP}#/progress/gym`, { waitUntil: 'networkidle' });
+/* ── Deep links ────────────────────────────────────────────────────────── */
+await page.goto(`${URL_APP}#/areas/food`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
-check('a link to #/progress/gym opens Verlauf on Gym',
-  (await page.locator('.screen__title').textContent())?.trim() === 'Verlauf' &&
-  (await page.getByRole('radiogroup').locator('[aria-checked="true"]').textContent())?.trim() === 'Gym');
-await page.goto(`${URL_APP}#/rank`, { waitUntil: 'networkidle' });
+check('a link to #/areas/food opens Bereiche on Ernährung',
+  (await title()) === 'Bereiche' && (await page.getByRole('radiogroup').locator('[aria-checked="true"]').textContent())?.trim() === 'Ernährung');
+await page.goto(`${URL_APP}#/progress`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
-check('a link to #/rank opens Rang', (await page.locator('.screen__title').textContent())?.trim() === 'Rang');
-check('the global trend lives on Rang now', await page.getByText('Trend', { exact: true }).first().isVisible());
-check('and the overall daily row with it', await page.locator('.heatmap__label', { hasText: 'Gesamt' }).first().isVisible());
+check('a link to #/progress opens Verlauf', (await title()) === 'Verlauf');
 await page.goto(`${URL_APP}#/nowhere`, { waitUntil: 'networkidle' });
-await page.waitForTimeout(1200);
+await page.waitForTimeout(1000);
 check('an unknown hash reached in-page keeps the screen and corrects the address',
-  (await page.locator('.screen__title').textContent())?.trim() === 'Rang' &&
-  await page.evaluate(() => location.hash) === '#/rank');
+  (await title()) === 'Verlauf' && (await hash()) === '#/progress');
 const fresh = await ctx.newPage();
 await fresh.goto(`${URL_APP}#/nowhere`, { waitUntil: 'networkidle' });
 await fresh.waitForTimeout(1500);
-check('and a fresh load of an unknown hash lands on Today, with the address corrected',
-  (await fresh.locator('.screen__title').textContent())?.trim() === 'Heute' &&
-  await fresh.evaluate(() => location.hash) === '#/today');
+check('a fresh load of an unknown hash lands on Heute, address corrected',
+  (await title(fresh)) === 'Heute' && (await hash(fresh)) === '#/today');
 await fresh.close();
-
-/* ── A domain switched off ─────────────────────────────────────────────── */
-await page.goto(`${URL_APP}#/areas`, { waitUntil: 'networkidle' });
-await page.waitForTimeout(1200);
-await page.locator('.areas__domainHeader', { hasText: 'Laufen' }).getByRole('switch').click();
-await page.waitForTimeout(900);
-await page.goto(`${URL_APP}#/progress/running`, { waitUntil: 'networkidle' });
-await page.waitForTimeout(1500);
-check('a link to a switched-off domain is corrected to the first enabled one',
-  await page.evaluate(() => location.hash) === '#/progress/mental' &&
-  (await page.getByRole('radiogroup').getByRole('radio').count()) === 3);
 
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 const reduced = await ctx.newPage();
 await reduced.emulateMedia({ reducedMotion: 'reduce' });
-await reduced.goto(`${URL_APP}#/progress/gym`, { waitUntil: 'networkidle' });
+await reduced.goto(`${URL_APP}#/areas/gym`, { waitUntil: 'networkidle' });
 await reduced.waitForTimeout(1500);
 const motion = await reduced.evaluate(() => {
   let keyframed = 0, perceptible = 0;

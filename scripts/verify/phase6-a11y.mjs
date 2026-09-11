@@ -170,6 +170,8 @@ const unnamed = (nodes) =>
 {
   await page.locator('.tab-bar__tab', { hasText: 'Bereiche' }).click();
   await page.waitForTimeout(600);
+  await page.getByRole('radio', { name: 'Ernährung' }).click();
+  await page.waitForTimeout(700);
   const nodes = await tree();
   const field = nodes.find((n) => n.role === 'textbox' && /Vorsatz/.test(n.name));
   check('the setup field is labelled with what it is for', Boolean(field), field?.name ?? '');

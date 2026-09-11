@@ -78,9 +78,9 @@ await page.locator('.gym-set').first().locator('input').nth(1).blur();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'Fertig' }).click();
 await page.waitForTimeout(700);
-await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
+await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
 await page.waitForTimeout(1200);
-// The terminal opens on the first enabled domain; this suite's is Gym.
+// The Gym workspace is the Gym area of the domain terminal under Bereiche.
 await page.getByRole('radio', { name: 'Gym' }).click();
 await page.waitForTimeout(900);
 

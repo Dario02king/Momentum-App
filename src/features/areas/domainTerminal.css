@@ -40,8 +40,11 @@
   padding-bottom: var(--space-4);
 }
 
-/* A domain the user has switched off: said once, with the way back. */
-.domain-terminal__off {
-  font-size: var(--type-subhead);
-  color: var(--text-secondary);
+/* The rest of Bereiche — Laufen, pauses, the retired domain, backup, the
+   language — sits below whichever area is open, under its own label, and
+   does not change when the area does. */
+.areas__general {
+  margin-top: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--separator);
 }

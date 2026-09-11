@@ -1,11 +1,11 @@
-import type { DomainType } from '../../core/model';
+import type { DomainTerminal } from '../../app/route';
 import { useRadioKeys } from '../../domains/mental/AnswerControls';
 import { useT } from '../../i18n/I18nProvider';
 import type { TranslationKey } from '../../i18n';
 import './domainTerminal.css';
 
 /**
- * The domain selector at the top of the terminal.
+ * The area selector at the top of the domain terminal: Mental · Gym · Food.
  *
  * A segmented control in the iOS shape the app already uses, exposed as a
  * radio group: the assistive-technology reading is "which of these areas is
@@ -13,14 +13,13 @@ import './domainTerminal.css';
  * move the selection, and the selected segment is announced as checked
  * rather than merely styled.
  *
- * It is a domain selector, not a navigation bar — compact, one line, and it
- * shows only the areas the user has switched on, in the product's order.
+ * It is an area selector, not a navigation bar — compact, one line, always
+ * the same three, because the terminal is also where an area is switched on.
  */
 
-const LABELS: Record<DomainType, TranslationKey> = {
-  mental: 'domain.wellbeing',
+const LABELS: Record<DomainTerminal, TranslationKey> = {
+  mental: 'areas.terminal.mental',
   gym: 'domain.gym',
-  running: 'domain.running',
   food: 'domain.food',
 };
 
@@ -30,16 +29,16 @@ export function DomainSwitch({
   onSelect,
 }: {
   /** The areas on offer, in order. */
-  domains: readonly DomainType[];
-  active: DomainType;
-  onSelect(domain: DomainType): void;
+  domains: readonly DomainTerminal[];
+  active: DomainTerminal;
+  onSelect(domain: DomainTerminal): void;
 }) {
   const t = useT();
   const onKeyDown = useRadioKeys(domains.length, (index) => onSelect(domains[index]!));
   const activeIndex = domains.indexOf(active);
 
   return (
-    <div className="segmented domain-switch" role="radiogroup" aria-label={t('progress.domainSwitch')}>
+    <div className="segmented domain-switch" role="radiogroup" aria-label={t('areas.terminalSwitch')}>
       {domains.map((domain, index) => (
         <button
           key={domain}

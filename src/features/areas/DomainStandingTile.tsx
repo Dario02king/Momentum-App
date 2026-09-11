@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { DomainType } from '../../../core/model';
-import { displayedRankProgress } from '../../../core/ranks/progress';
-import { MetricDetailSheet, MetricTile } from '../../../components/metrics';
-import { useT } from '../../../i18n/I18nProvider';
-import { RankBadge } from '../../ranking/RankBadge';
-import { useDomainStanding } from '../useDomainStanding';
+import type { DomainType } from '../../core/model';
+import { displayedRankProgress } from '../../core/ranks/progress';
+import { MetricDetailSheet, MetricTile } from '../../components/metrics';
+import { useT } from '../../i18n/I18nProvider';
+import { RankBadge } from '../ranking/RankBadge';
+import { useDomainStanding } from './useDomainStanding';
 
 /**
  * A domain's standing, as the hero of its terminal.
@@ -21,14 +21,14 @@ export function DomainStandingTile({ domain, id }: { domain: DomainType; id: str
   if (!standing) return null;
 
   const progress = displayedRankProgress(standing.momentum, standing.rank);
-  const label = t('progress.standing.value', { value: progress.value });
+  const label = t('areas.standing.value', { value: progress.value });
   const bar = { percent: progress.percent, label, tone: 'accent' as const };
 
   if (!standing.started) {
     return (
       <MetricTile
         id={id}
-        title={t('progress.standing')}
+        title={t('areas.standing')}
         leading={<RankBadge rankId={standing.rank.id} size={60} mystery />}
         kicker={standing.rank.name}
         value={<span className="metric-tile__state">{t('rank.domain.notStarted')}</span>}
@@ -40,17 +40,17 @@ export function DomainStandingTile({ domain, id }: { domain: DomainType; id: str
     <>
       <MetricTile
         id={id}
-        title={t('progress.standing')}
+        title={t('areas.standing')}
         leading={<RankBadge rankId={standing.rank.id} size={60} />}
         kicker={standing.rank.name}
         value={label}
         bar={bar}
-        line={t('progress.standing.summary')}
+        line={t('areas.standing.summary')}
         onOpen={() => setOpen(true)}
       />
       <MetricDetailSheet
         open={open}
-        title={t('progress.standing')}
+        title={t('areas.standing')}
         value={label}
         scale={standing.rank.name}
         bar={bar}

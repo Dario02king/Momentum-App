@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { DomainType } from '../core/model';
 import type { TabId } from './TabBar';
 
+/** The three areas the domain terminal switches between. */
+export type DomainTerminal = 'mental' | 'gym' | 'food';
+
 /**
- * Where the user is: one tab, and — on the domain terminal — one domain.
+ * Where the user is: one tab, and — on the domain terminal — one area.
  *
  * This is the **one authoritative source** of navigation state. The tab bar,
  * the domain switch and the rendered screen all derive from it, and the URL
@@ -15,34 +17,34 @@ import type { TabId } from './TabBar';
  * Nothing else touches either. Sheets, edit windows and onboarding are not
  * places and never enter the URL.
  *
- * The domain is kept in the state even while another tab is open, so coming
- * back to the terminal restores the domain that was being looked at; the
- * hash carries it only where it applies.
+ * The area is kept in the state even while another tab is open, so coming
+ * back to the terminal restores the area that was being looked at; the hash
+ * carries it only where it applies.
  */
 export interface Route {
   tab: TabId;
-  domain: DomainType;
+  terminal: DomainTerminal;
 }
 
 const TABS: readonly TabId[] = ['today', 'progress', 'rank', 'areas'];
-const DOMAINS: readonly DomainType[] = ['mental', 'gym', 'running', 'food'];
+export const TERMINALS: readonly DomainTerminal[] = ['mental', 'gym', 'food'];
 
 const isTab = (value: string): value is TabId => (TABS as readonly string[]).includes(value);
-const isDomain = (value: string): value is DomainType =>
-  (DOMAINS as readonly string[]).includes(value);
+const isTerminal = (value: string): value is DomainTerminal =>
+  (TERMINALS as readonly string[]).includes(value);
 
-/** `#/progress/gym` → `{ tab: 'progress', domain: 'gym' }`; anything else → `null`. */
+/** `#/areas/gym` → `{ tab: 'areas', terminal: 'gym' }`; anything else → `null`. */
 export function parseRoute(hash: string): Partial<Route> | null {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
-  const [tab, domain] = parts;
+  const [tab, terminal] = parts;
   if (!tab || !isTab(tab)) return null;
-  if (tab === 'progress' && domain && isDomain(domain)) return { tab, domain };
+  if (tab === 'areas' && terminal && isTerminal(terminal)) return { tab, terminal };
   return { tab };
 }
 
-/** The hash for a route. The domain appears only where it means something. */
+/** The hash for a route. The area appears only where it means something. */
 export function formatRoute(route: Route): string {
-  return route.tab === 'progress' ? `#/${route.tab}/${route.domain}` : `#/${route.tab}`;
+  return route.tab === 'areas' ? `#/${route.tab}/${route.terminal}` : `#/${route.tab}`;
 }
 
 const hasWindow = typeof window !== 'undefined' && typeof window.history !== 'undefined';
@@ -57,9 +59,8 @@ function fromLocation(fallback: Route): Route {
  * The route and the one way to change it.
  *
  * `replace` rewrites the current history entry instead of adding one — for a
- * correction the user did not make, such as a domain that is no longer
- * enabled being swapped for one that is. A user's own tap always pushes, so
- * Back always goes where they came from.
+ * correction the user did not make. A user's own tap always pushes, so Back
+ * always goes where they came from.
  */
 export function useRoute(initial: Route): {
   route: Route;

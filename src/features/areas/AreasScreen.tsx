@@ -1,5 +1,4 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { DOMAIN_TYPES } from '../../core/domains';
 import type {
   DomainRecord,
   DomainType,
@@ -44,8 +43,15 @@ import {
   type AppConfiguration,
 } from '../../storage/services/configurationService';
 import { PauseSection } from '../pause/PauseSection';
+import { MetricBoard } from '../../components/metrics';
+import { TERMINALS, type DomainTerminal } from '../../app/route';
+import { DomainStandingTile } from './DomainStandingTile';
+import { DomainSwitch } from './DomainSwitch';
+import { GymTerminal } from './GymTerminal';
 import '../food/food.css';
+import '../progress/progress.css';
 import './areas.css';
+import './domainTerminal.css';
 
 /**
  * Asking a migrated user, once, what their RC2 Sport sessions were.
@@ -237,22 +243,38 @@ const TARGET_VALUE_KEYS: Partial<Record<DomainType, TranslationKey>> = {
 };
 
 /**
- * The configuration surface for everything the app tracks.
+ * Bereiche: the domain terminal.
  *
- * It reads as a list of life areas rather than a settings panel: each domain
- * is one card carrying its own switch and its own configuration, so enabling
- * Gym and choosing its target are the same gesture in the same place.
+ * One switch — Mental · Gym · Ernährung — and beneath it one area's whole
+ * workspace: what the area shows about itself, and the card that switches
+ * it on and configures it. Exactly one area is rendered at a time; when Gym
+ * is open nothing of Mental or Ernährung is on the page. The active area is
+ * part of the route (`#/areas/<area>`), so the switch derives from it and
+ * writes to it, and Back walks the areas visited.
  *
- * RC2's generic Sport appears here only when a migrated device still carries
- * it, and only with a switch that turns it **off**. There is no path in this
- * screen — or anywhere else in the product — that turns it back on.
+ * Today answers "how am I doing today and overall", Verlauf "how has the
+ * whole record developed"; this screen answers "show me this area in
+ * detail". Each domain card still reads as a life area rather than a
+ * settings panel: enabling Gym and choosing its target are one gesture in
+ * one place.
+ *
+ * Below the area, unchanged by the switch, sits what is not one of the three:
+ * Laufen — a full domain whose place in this terminal is an open product
+ * decision, so it keeps its card and its board on Verlauf until that is
+ * made — the pause, RC2's retired Sport (shown only where a migrated device
+ * still carries it, with a switch that only turns it **off**), the backup
+ * and the language.
  */
 export function AreasScreen({
   configuration,
   actions,
+  terminal,
+  onSelectTerminal,
 }: {
   configuration: AppConfiguration;
   actions: AreasActions;
+  terminal: DomainTerminal;
+  onSelectTerminal(terminal: DomainTerminal): void;
 }) {
   const t = useT();
   const { language } = useI18n();
@@ -428,20 +450,50 @@ export function AreasScreen({
 
   return (
     <div className="screen">
-      <header className="screen__header">
+      <header className="screen__header screen__header--terminal">
         <h1 className="screen__title">{t('nav.areas')}</h1>
         <p className="screen__subtitle">{t('areas.subtitle')}</p>
+        <DomainSwitch domains={TERMINALS} active={terminal} onSelect={onSelectTerminal} />
       </header>
 
-      <div className="areas__scroll">
-        {DOMAIN_TYPES.map((type) => domainCard(type, domains[type]))}
+      <div className="areas__scroll" data-terminal={terminal}>
+        {/* One area at a time: its standing or board, then its own card. */}
+        {terminal === 'mental' ? (
+          <>
+            <MetricBoard>
+              <DomainStandingTile domain="mental" id="mental-standing" />
+            </MetricBoard>
+            {domainCard('mental', domains.mental)}
+          </>
+        ) : null}
+        {terminal === 'gym' ? (
+          <>
+            <GymTerminal />
+            {domainCard('gym', domains.gym)}
+          </>
+        ) : null}
+        {terminal === 'food' ? (
+          <>
+            <MetricBoard>
+              <DomainStandingTile domain="food" id="food-standing" />
+            </MetricBoard>
+            {domainCard('food', domains.food)}
+          </>
+        ) : null}
 
-        {/*
-          Pause sits below the areas rather than inside one: it is about a
-          stretch of time across everything the user tracks, not a setting
-          belonging to any single domain.
-        */}
-        <PauseSection />
+        <div className="areas__general">
+          <h2 className="section__label">{t('areas.general')}</h2>
+
+          {/* Laufen keeps its card here, unchanged, until its place in the
+              terminal is decided. */}
+          {domainCard('running', domains.running)}
+
+          {/*
+            Pause sits below the areas rather than inside one: it is about a
+            stretch of time across everything the user tracks, not a setting
+            belonging to any single domain.
+          */}
+          <PauseSection />
 
         {/*
           The retired domain. It is shown only where it exists, only so a user
@@ -483,23 +535,24 @@ export function AreasScreen({
           </Section>
         ) : null}
 
-        <BackupSection onRestored={actions.reload} />
+          <BackupSection onRestored={actions.reload} />
 
-        {/* Settings ---------------------------------------------------- */}
-        <Section label={t('common.settings')}>
-          <Card>
-            <span className="field-label">{t('common.language')}</span>
-            <Segmented<Language>
-              label={t('common.language')}
-              value={language}
-              onChange={actions.setLanguage}
-              options={LANGUAGES.map((option) => ({
-                value: option,
-                label: option === 'de' ? 'Deutsch' : 'English',
-              }))}
-            />
-          </Card>
-        </Section>
+          {/* Settings -------------------------------------------------- */}
+          <Section label={t('common.settings')}>
+            <Card>
+              <span className="field-label">{t('common.language')}</span>
+              <Segmented<Language>
+                label={t('common.language')}
+                value={language}
+                onChange={actions.setLanguage}
+                options={LANGUAGES.map((option) => ({
+                  value: option,
+                  label: option === 'de' ? 'Deutsch' : 'English',
+                }))}
+              />
+            </Card>
+          </Section>
+        </div>
       </div>
 
       <QuestionSheet

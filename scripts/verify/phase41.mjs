@@ -132,9 +132,9 @@ async function ready(opts = {}, seedOpts = null) {
 }
 
 async function openProgress(page) {
-  await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
+  await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
   await page.waitForTimeout(1400);
-  // The terminal opens on the first enabled domain; this suite's is Gym.
+  // The Gym workspace is the Gym area of the domain terminal under Bereiche.
   await page.getByRole('radio', { name: 'Gym' }).click();
   await page.waitForTimeout(900);
 }

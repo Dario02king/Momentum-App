@@ -146,6 +146,8 @@ const scaleValue = (page, value) =>
   const { ctx, page } = await ready();
   await page.locator('.tab-bar__tab', { hasText: 'Bereiche' }).click();
   await page.waitForTimeout(400);
+  await page.getByRole('radio', { name: 'Ernährung' }).click();
+  await page.waitForTimeout(700);
 
   check('Food setup asks for the user’s own aim',
     await page.getByText('Dein Vorsatz').first().isVisible());

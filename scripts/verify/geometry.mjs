@@ -243,21 +243,12 @@ for (const [width, height] of [
   await scrollTo(page, '.food__scale');
   await audit(page, 'today-ernaehrung', width);
 
-  /* ── Verlauf: the terminal, one domain at a time ───────────────────────── */
+  /* ── Verlauf: the overall overview, Running's board on it ──────────────── */
   await page.getByRole('button', { name: 'Verlauf' }).click();
   await page.waitForTimeout(1200);
-  await audit(page, 'verlauf-mental', width);
-  await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(900);
-  await audit(page, 'verlauf-gym', width);
-  await page.getByRole('radio', { name: 'Laufen' }).click();
-  await page.waitForTimeout(900);
+  await audit(page, 'verlauf', width);
+  await scrollTo(page, '[data-metric="running-rating"]');
   await audit(page, 'verlauf-laufen', width);
-  await page.getByRole('radio', { name: 'Ernährung' }).click();
-  await page.waitForTimeout(900);
-  await audit(page, 'verlauf-food', width);
-  await page.getByRole('radio', { name: 'Laufen' }).click();
-  await page.waitForTimeout(700);
 
   /* ── A detail sheet, opened from a tile ────────────────────────────────── */
   await page.locator('[data-metric="running-rating"] .metric-tile__open').click();
@@ -273,10 +264,16 @@ for (const [width, height] of [
   await scrollTo(page, '.boss-weights__explain');
   await audit(page, 'rang-gewichtung', width);
 
-  /* ── Bereiche, which carries the same cards ────────────────────────────── */
+  /* ── Bereiche: the domain terminal, one area at a time ─────────────────── */
   await page.getByRole('button', { name: 'Bereiche' }).click();
+  await page.waitForTimeout(1200);
+  await audit(page, 'bereiche-mental', width);
+  await page.getByRole('radio', { name: 'Gym' }).click();
+  await page.waitForTimeout(1200);
+  await audit(page, 'bereiche-gym', width);
+  await page.getByRole('radio', { name: 'Ernährung' }).click();
   await page.waitForTimeout(900);
-  await audit(page, 'bereiche', width);
+  await audit(page, 'bereiche-food', width);
 
   await ctx.close();
 
@@ -288,13 +285,14 @@ for (const [width, height] of [
     hasTouch: true,
   });
   const page2 = await profile(young, { days: 12 });
-  await page2.getByRole('button', { name: 'Verlauf' }).click();
+  await page2.getByRole('button', { name: 'Bereiche' }).click();
   await page2.waitForTimeout(1200);
   await page2.getByRole('radio', { name: 'Gym' }).click();
-  await page2.waitForTimeout(900);
-  await audit(page2, 'verlauf-gym-locked', width);
-  await page2.getByRole('radio', { name: 'Laufen' }).click();
-  await page2.waitForTimeout(900);
+  await page2.waitForTimeout(1200);
+  await audit(page2, 'bereiche-gym-locked', width);
+  await page2.getByRole('button', { name: 'Verlauf' }).click();
+  await page2.waitForTimeout(1200);
+  await scrollTo(page2, '[data-metric="running-rating"]');
   await audit(page2, 'verlauf-laufen-locked', width);
   await young.close();
 }

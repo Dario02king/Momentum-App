@@ -172,7 +172,7 @@ const pick = (page, label) =>
   await page.getByText('Sag unter Bereiche, was diese Trainings waren.').click();
   await page.waitForTimeout(700);
   check('tapping it lands on Areas',
-    await page.getByRole('heading', { name: 'Bereiche' }).isVisible());
+    await page.getByRole('heading', { name: 'Bereiche', exact: true }).isVisible());
 
   check('the question is asked inside the card that explains the retired log',
     (await page.locator('.areas__domainName', { hasText: 'Sport (bisher)' }).count()) === 1 &&
