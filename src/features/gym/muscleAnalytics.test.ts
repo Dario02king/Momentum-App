@@ -26,7 +26,7 @@ function historyOf(inputs: ExerciseDayInput[], names: Record<string, string> = {
   };
 }
 
-const set = (reps: number, kg: number, order = 0) => ({ reps, weightGrams: kg * 1000, order });
+const set = (reps: number, kg: number, order = 0) => ({ id: `set_${reps}x${kg}_${order}`, reps, weightGrams: kg * 1000, order });
 const day = (
   date: string, exerciseId: string, muscles: MuscleGroup[], primary: MuscleGroup[], sets: ReturnType<typeof set>[],
 ): ExerciseDayInput => ({ date, exerciseId, muscles, primaryMuscles: primary, sets });
