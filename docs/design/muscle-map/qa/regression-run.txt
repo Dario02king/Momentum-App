@@ -1,0 +1,21 @@
+# Regression run — 5e554aa — 2026-09-11T21:31Z
+
+$ npm run validate:body
+  ✓ muscle mapping 10/10 · contract satisfied
+  exit=0
+
+$ npm run typecheck
+  > tsc -b
+  exit=0
+
+$ npm run test
+  fingerprint: the real RC2 export: 5304a99c5f0ddd8f5b105be381613cf1 over 479 values
+  gym fingerprint: the real RC2 export: 61cc417e7c536cc66684c51e5bf011ce over 125 values
+  fingerprint: the synthetic RC2 history: 6ef514a426a3b702aa9fe3b8414dcb98 over 12764 values
+  gym fingerprint: the synthetic RC2 history: 61cc417e7c536cc66684c51e5bf011ce over 125 values
+  fingerprint: a four-domain profile under the current models: 2afc67e32c71ac6083c57255cbcce65e over 11993 values
+  gym fingerprint: a four-domain profile under the current models: 58662df205f6d7bb5af3075d040bb0c6 over 4212 values
+   Test Files  69 passed (69)
+        Tests  1070 passed (1070)
+  exit=0
+

@@ -1,0 +1,102 @@
+# Browser suites — 5e554aa — production preview on :4173 (body.mjs: dev server on :5173)
+
+$ node scripts/verify/body.mjs
+  FAIL  all ten regions are reachable by a tap, front and back  — back,calves,chest,forearms,hamstringsGlutes,quadriceps,shoulders,triceps
+  38/39 checks passed
+  FAILED:
+  exit=1
+
+$ node scripts/verify/gym-muscles.mjs
+  71/71 checks passed
+  exit=0
+
+$ node scripts/verify/terminal.mjs
+  42/42 checks passed
+  exit=0
+
+$ node scripts/verify/geometry.mjs
+  117/117 checks passed
+  exit=0
+
+$ node scripts/verify/release.mjs
+  82/82 checks passed
+  exit=0
+
+$ node scripts/verify/phase2.mjs
+  64/64 checks passed
+  exit=0
+
+$ node scripts/verify/phase2-a11y.mjs
+  17/17 checks passed
+  exit=0
+
+$ node scripts/verify/phase2-legacy.mjs
+  5/5 checks passed
+  exit=0
+
+$ node scripts/verify/phase3.mjs
+  44/44 checks passed
+  exit=0
+
+$ node scripts/verify/phase3-a11y.mjs
+  9/9 checks passed
+  exit=0
+
+$ node scripts/verify/phase4.mjs
+  52/52 checks passed
+  exit=0
+
+$ node scripts/verify/phase4-a11y.mjs
+  15/15 checks passed
+  exit=0
+
+$ node scripts/verify/phase41.mjs
+  FAIL  a missed week costs half a week rather than the balance  — 1.0 von 4 Wochen
+  51/52 checks passed
+  FAILED:
+  exit=1
+
+$ node scripts/verify/phase41-a11y.mjs
+  14/14 checks passed
+  exit=0
+
+$ node scripts/verify/phase5.mjs
+  46/46 checks passed
+  exit=0
+
+$ node scripts/verify/phase5-a11y.mjs
+  15/15 checks passed
+  exit=0
+
+$ node scripts/verify/phase6.mjs
+  47/47 checks passed
+  exit=0
+
+$ node scripts/verify/phase6-a11y.mjs
+  20/20 checks passed
+  exit=0
+
+$ node scripts/verify/phase7.mjs
+  57/57 checks passed
+  exit=0
+
+$ node scripts/verify/phase7-a11y.mjs
+  18/18 checks passed
+  exit=0
+
+$ node scripts/verify/phase8.mjs
+  56/56 checks passed
+  exit=0
+
+$ node scripts/verify/phase8-a11y.mjs
+  23/23 checks passed
+  exit=0
+
+DONE
+
+## body.mjs, re-run alone (the first run above overlapped the 8px hit probes on the same software renderer)
+$ node scripts/verify/body.mjs
+  FAIL  all ten regions are reachable by a tap, front and back  — back,biceps,calves,chest,core,forearms,hamstringsGlutes,quadriceps,shoulders
+  38/39 checks passed
+  FAILED:
+  exit=1

@@ -1,0 +1,7 @@
+--- 393px, canvas 325×332, 8px grid: 10/10 · Quadrizeps 20 · Unterarme 14 · Beinbeuger und Gesäss 14 · Rücken 9 · Rumpf 6 · Schultern 5 · Bizeps 5 · Trizeps 5 · Waden 2 · Brust 1
+--- 430px, canvas 362×360, 8px grid: 10/10 · Quadrizeps 22 · Unterarme 16 · Beinbeuger und Gesäss 15 · Rumpf 13 · Bizeps 11 · Schultern 9 · Brust 5 · Trizeps 5 · Rücken 3 · Waden 2
+PASS  393: every region is reachable by a direct tap  — 10/10
+PASS  430: every region is reachable by a direct tap  — 10/10
+
+--- summary ---
+2/2 checks passed

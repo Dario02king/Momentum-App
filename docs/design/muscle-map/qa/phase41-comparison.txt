@@ -1,0 +1,9 @@
+phase41 on head 5e554aa:
+FAIL  a missed week costs half a week rather than the balance  — 1.0 von 4 Wochen
+51/52 checks passed
+FAILED:
+
+phase41 on base fc2ffff (its own script, its own build):
+FAIL  a missed week costs half a week rather than the balance  — 1.0 von 4 Wochen
+51/52 checks passed
+FAILED:
