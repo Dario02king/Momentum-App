@@ -373,6 +373,11 @@ export const de = {
   'muscle.state.improved': 'Verbessert',
   'muscle.state.unchanged': 'Gehalten',
   'muscle.state.declined': 'Zurückgegangen',
+  // The 3D body's view shortcuts.
+  'body.view': 'Ansicht',
+  'body.view.front': 'Vorne',
+  'body.view.side': 'Seite',
+  'body.view.back': 'Hinten',
 
   'gym.title': 'Gym',
   'gym.session': 'Session',

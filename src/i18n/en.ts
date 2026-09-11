@@ -368,6 +368,10 @@ export const en: Translations = {
   'muscle.state.improved': 'Improved',
   'muscle.state.unchanged': 'Held',
   'muscle.state.declined': 'Declined',
+  'body.view': 'View',
+  'body.view.front': 'Front',
+  'body.view.side': 'Side',
+  'body.view.back': 'Back',
 
   'gym.title': 'Gym',
   'gym.session': 'Session',
