@@ -99,17 +99,31 @@ const SILHOUETTE =
   'q-3 0 -5 12 q-2 16 -4 34 q-1 8 -7 8 q-7 0 -8 -8 q-3 -18 -4 -38 q-2 -18 1 -38 ' +
   'q-4 -10 -6 -22 q-3 -12 -2 -26 q1 -16 8 -24 q8 -9 22 -12 q-5 -4 -5 -12 q0 -11 10 -11 Z';
 
+/**
+ * Which halves to draw.
+ *
+ * `all` is what every existing caller gets and what this component has
+ * always done: the two figures and the readable legend under them. The Gym
+ * muscle module asks for one half at a time — the figure alone when it
+ * stands in for the 3D body, the legend alone while its own rows are not
+ * there yet — because two bodies or two lists of the same ten groups on one
+ * screen say the same thing twice.
+ */
+export type BodyRendererParts = 'all' | 'figure' | 'legend';
+
 export function BodyRenderer({
   muscles,
   selected = null,
   onSelect,
   size = 132,
+  parts = 'all',
 }: {
   muscles: readonly MuscleView[];
   selected?: MuscleGroup | null;
   /** Omit to render a picture rather than a control. */
   onSelect?: (muscle: MuscleGroup) => void;
   size?: number;
+  parts?: BodyRendererParts;
 }) {
   const t = useT();
   const uid = useId().replace(/:/g, '');
@@ -147,16 +161,19 @@ export function BodyRenderer({
 
   return (
     <div className="body-renderer">
-      <div className="body-renderer__figures">
-        {figure('front')}
-        {figure('back')}
-      </div>
+      {parts === 'legend' ? null : (
+        <div className="body-renderer__figures">
+          {figure('front')}
+          {figure('back')}
+        </div>
+      )}
 
       {/*
         The readable half. Every group, its state in words, and the value where
         there is one — so the answer to "which muscles are improving" never
         depends on telling two fills apart.
       */}
+      {parts === 'figure' ? null : (
       <ul className="body-renderer__legend">
         {MUSCLE_GROUPS.map((muscle) => {
           const entry = byMuscle.get(muscle);
@@ -197,6 +214,7 @@ export function BodyRenderer({
           );
         })}
       </ul>
+      )}
     </div>
   );
 }

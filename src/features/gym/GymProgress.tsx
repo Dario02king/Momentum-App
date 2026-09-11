@@ -3,15 +3,12 @@ import { MUSCLE_GROUPS, type MuscleGroup } from '../../core/model';
 import { Card, EmptyState, Section } from '../../components';
 import { MetricDetailSheet, MetricTile } from '../../components/metrics';
 import { ChevronRightIcon, ProgressIcon } from '../../components/Icons';
-import {
-  BodyRenderer,
-  MUSCLE_LABEL_KEYS,
-  type MuscleView,
-} from '../../components/BodyRenderer';
+import { MUSCLE_LABEL_KEYS, type MuscleView } from '../../components/BodyRenderer';
 import { percentChange } from '../../core/gym/performance';
 import { useT } from '../../i18n/I18nProvider';
 import { exerciseHistory, type GymHistory } from '../../storage/services/gymService';
 import { ExerciseDetail } from './ExerciseDetail';
+import { MuscleModule } from './MuscleModule';
 import { muscleStateOf } from './muscleState';
 import './gym.css';
 
@@ -147,8 +144,9 @@ export function GymProgress({ history }: { history: GymHistory }) {
 
       <Section label={t('gym.progress.muscles')}>
         <Card>
-          <BodyRenderer
-            muscles={views}
+          <MuscleModule
+            muscles={history.overall.muscles}
+            views={views}
             selected={selected}
             onSelect={(muscle) => setSelected((current) => (current === muscle ? null : muscle))}
           />
