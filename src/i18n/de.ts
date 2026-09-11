@@ -14,6 +14,11 @@ export const de = {
   'nav.progress': 'Verlauf',
   'nav.rank': 'Rang',
   'nav.areas': 'Bereiche',
+  'progress.standing': 'Rang in diesem Bereich',
+  'progress.standing.value': '{value} von 1000',
+  'progress.standing.summary': 'Gemessen an deiner eigenen Historie',
+  'progress.domainSwitch': 'Bereich wählen',
+  'progress.domainOff': 'Dieser Bereich ist ausgeschaltet. Du kannst ihn unter Bereiche wieder einschalten.',
 
   'domain.mental': 'Mental Wellbeing',
   'domain.sports': 'Sport',

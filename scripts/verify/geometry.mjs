@@ -243,12 +243,21 @@ for (const [width, height] of [
   await scrollTo(page, '.food__scale');
   await audit(page, 'today-ernaehrung', width);
 
-  /* ── Verlauf: the Gym half, then the Laufen half ───────────────────────── */
+  /* ── Verlauf: the terminal, one domain at a time ───────────────────────── */
   await page.getByRole('button', { name: 'Verlauf' }).click();
   await page.waitForTimeout(1200);
+  await audit(page, 'verlauf-mental', width);
+  await page.getByRole('radio', { name: 'Gym' }).click();
+  await page.waitForTimeout(900);
   await audit(page, 'verlauf-gym', width);
-  await scrollTo(page, '[data-metric="running-rating"]');
+  await page.getByRole('radio', { name: 'Laufen' }).click();
+  await page.waitForTimeout(900);
   await audit(page, 'verlauf-laufen', width);
+  await page.getByRole('radio', { name: 'Ernährung' }).click();
+  await page.waitForTimeout(900);
+  await audit(page, 'verlauf-food', width);
+  await page.getByRole('radio', { name: 'Laufen' }).click();
+  await page.waitForTimeout(700);
 
   /* ── A detail sheet, opened from a tile ────────────────────────────────── */
   await page.locator('[data-metric="running-rating"] .metric-tile__open').click();
@@ -281,8 +290,11 @@ for (const [width, height] of [
   const page2 = await profile(young, { days: 12 });
   await page2.getByRole('button', { name: 'Verlauf' }).click();
   await page2.waitForTimeout(1200);
+  await page2.getByRole('radio', { name: 'Gym' }).click();
+  await page2.waitForTimeout(900);
   await audit(page2, 'verlauf-gym-locked', width);
-  await scrollTo(page2, '[data-metric="running-rating"]');
+  await page2.getByRole('radio', { name: 'Laufen' }).click();
+  await page2.waitForTimeout(900);
   await audit(page2, 'verlauf-laufen-locked', width);
   await young.close();
 }

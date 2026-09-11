@@ -99,6 +99,9 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
 await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
 await page.waitForTimeout(1600);
+// The terminal opens on the first enabled domain; this suite's is Laufen.
+await page.getByRole('radio', { name: 'Laufen' }).click();
+await page.waitForTimeout(900);
 
 let nodes = await tree();
 check('every control and image on the Running overview has a name',
@@ -144,6 +147,9 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
 await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
 await page.waitForTimeout(1600);
+// The terminal opens on the first enabled domain; this suite's is Laufen.
+await page.getByRole('radio', { name: 'Laufen' }).click();
+await page.waitForTimeout(900);
 
 nodes = await tree();
 check('the mature state names every control too', unnamed(nodes).length === 0,
@@ -180,6 +186,9 @@ await reduced.goto(URL_APP, { waitUntil: 'networkidle' });
 await reduced.waitForTimeout(1200);
 await reduced.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
 await reduced.waitForTimeout(1500);
+// The terminal opens on the first enabled domain; this suite's is Laufen.
+await reduced.getByRole('radio', { name: 'Laufen' }).click();
+await reduced.waitForTimeout(900);
 /*
  * `global.css` collapses motion to 0.001ms rather than to zero — the standard
  * idiom, which keeps `transitionend` firing. So assert that nothing runs a

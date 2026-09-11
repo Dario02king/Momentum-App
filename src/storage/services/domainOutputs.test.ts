@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { setClock } from '../../core/clock';
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION } from '../../core/backup/format';
 import {

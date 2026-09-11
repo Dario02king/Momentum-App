@@ -13,6 +13,11 @@ export const en: Translations = {
   'nav.progress': 'Progress',
   'nav.rank': 'Rank',
   'nav.areas': 'Areas',
+  'progress.standing': 'Rank in this area',
+  'progress.standing.value': '{value} of 1000',
+  'progress.standing.summary': 'Measured against your own history',
+  'progress.domainSwitch': 'Choose an area',
+  'progress.domainOff': 'This area is switched off. You can switch it back on under Areas.',
 
   'domain.mental': 'Mental Wellbeing',
   'domain.sports': 'Sports',

@@ -151,6 +151,9 @@ async function fillSet(page, index, reps, weight) {
 
   await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
   await page.waitForTimeout(1200);
+  // The terminal opens on the first enabled domain; this suite's is Gym.
+  await page.getByRole('radio', { name: 'Gym' }).click();
+  await page.waitForTimeout(900);
 
   check('Progress shows the Gym hierarchy', await page.locator('[data-metric="gym-overall"]').isVisible());
   const counted = await page.locator('[data-metric="gym-overall"] .metric-tile__line').textContent();

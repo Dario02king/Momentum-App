@@ -134,6 +134,9 @@ async function ready(opts = {}, seedOpts = null) {
 async function openProgress(page) {
   await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
   await page.waitForTimeout(1400);
+  // The terminal opens on the first enabled domain; this suite's is Gym.
+  await page.getByRole('radio', { name: 'Gym' }).click();
+  await page.waitForTimeout(900);
 }
 
 /* ── The Endurance Phase, with the first rank still locked ──────────────── */

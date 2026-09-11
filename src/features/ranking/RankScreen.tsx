@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { RATING } from '../../core/config/constants';
+import { RATING, TREND_RANGES } from '../../core/config/constants';
+import { buildTrend } from '../../core/trends';
 import type { BossWeights as BossWeightMap } from '../../core/boss';
 import { rankById } from '../../core/ranks';
 import { displayedRankProgress, rankLadder, type RankProgress } from '../../core/ranks/progress';
 import type { DomainType } from '../../core/model';
-import { Card, EmptyState, LoadFailure, Section, StaleNotice } from '../../components';
+import { Card, EmptyState, LoadFailure, Section, Segmented, StaleNotice } from '../../components';
 import { RankIcon } from '../../components/Icons';
 import { formatDayAndMonth, formatNumber } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
@@ -16,6 +17,8 @@ import {
   type AppConfiguration,
 } from '../../storage/services/configurationService';
 import { useLoadable } from '../../app/useLoadable';
+import { Heatmap } from '../progress/Heatmap';
+import { TrendCurve } from '../progress/TrendCurve';
 import { BossWeights } from './BossWeights';
 import { RankBadge } from './RankBadge';
 import './rank.css';
@@ -111,6 +114,9 @@ export function RankScreen({
   const promoted = state.status === 'ready' && state.value.promoted;
   const [revealSpent, setRevealSpent] = useState(false);
   const reveal = promoted && !revealSpent;
+  // The global development block, moved here from Verlauf when Verlauf
+  // became the domain terminal: the one place the combined state is shown.
+  const [range, setRange] = useState<number>(TREND_RANGES[TREND_RANGES.length - 1]!);
 
   useEffect(() => {
     if (!reveal) return;
@@ -141,6 +147,27 @@ export function RankScreen({
   const calibrating = legacy.points[legacy.points.length - 1]?.calibrating ?? false;
   const weighting = bossWeightingOf(configuration);
   const ladder = rankLadder(boss.peakRank);
+
+  /*
+   * The overall trend and the overall daily row: the last `range` days of
+   * the legacy progression, exactly as Verlauf drew them. The curve plots the
+   * rating itself, which is already an exponentially weighted average, so the
+   * window is one day; days before the first scored one carry no rating.
+   */
+  const start = Math.max(0, legacy.history.days.length - range);
+  const windowDays = legacy.history.days.slice(start);
+  const trend = buildTrend(
+    legacy.points.slice(start).map((point, index) => ({
+      date: point.date,
+      value:
+        legacy.firstScoredDate !== null && point.date >= legacy.firstScoredDate
+          ? point.rating
+          : null,
+      inactive: !legacy.history.activity[start + index],
+    })),
+    { window: 1 },
+  );
+  const overallRow = legacy.history.overall.slice(start);
 
   const streakLabel = (count: number, unit: 'days' | 'weeks') => {
     if (count === 0) return t('rank.noStreak');
@@ -213,6 +240,90 @@ export function RankScreen({
               <span className="standing__value">{formatNumber(language, boss.lifetimeXp)}</span>
             </div>
           </Card>
+        </Section>
+
+        {/* The combined development: the trend curve and the overall daily
+            row. Global, so it lives on the global screen; the domains' own
+            rows live in their terminals. */}
+        <Section label={t('progress.trendTitle')}>
+          <div className="progress__ranges">
+            <Segmented<string>
+              label={t('progress.trendTitle')}
+              value={String(range)}
+              onChange={(next) => setRange(Number(next))}
+              options={TREND_RANGES.map((days) => ({
+                value: String(days),
+                label: t('progress.rangeDays', { count: days }),
+              }))}
+            />
+          </div>
+          <Card>
+            {trend.hasTrend ? (
+              <div className="trend">
+                <div className="trend__header">
+                  <span className="trend__range">{t('progress.rangeDays', { count: range })}</span>
+                  <span className={`trend__direction trend__direction--${trend.direction}`}>
+                    <span aria-hidden="true">
+                      {trend.direction === 'rising' ? '↗' : trend.direction === 'falling' ? '↘' : '→'}
+                    </span>
+                    {t(
+                      trend.direction === 'rising'
+                        ? 'progress.rising'
+                        : trend.direction === 'falling'
+                          ? 'progress.falling'
+                          : 'progress.steady',
+                    )}
+                  </span>
+                </div>
+
+                <TrendCurve trend={trend} rangeDays={range} />
+
+                <div className="trend__figures">
+                  <div className="trend__figure">
+                    <span className="trend__figureLabel">{t('progress.current')}</span>
+                    <span className="trend__figureValue">
+                      {trend.current === null ? '–' : `${Math.round(trend.current)} / ${RATING.MAX}`}
+                    </span>
+                  </div>
+                  <div className="trend__figure trend__figure--muted">
+                    <span className="trend__figureLabel">
+                      {t('progress.previous', { count: range })}
+                    </span>
+                    <span className="trend__figureValue">
+                      {trend.previous === null ? '–' : Math.round(trend.previous)}
+                    </span>
+                  </div>
+                </div>
+
+                {trend.annotations.length > 0 ? (
+                  <div className="trend__notes">
+                    {trend.annotations.slice(0, 2).map((annotation, index) => (
+                      <p key={index} className="trend__note">
+                        <span className="trend__noteDot" aria-hidden="true" />
+                        {annotation.kind === 'peak'
+                          ? `${t('progress.annotationPeak')} · ${formatDayAndMonth(language, annotation.date)}`
+                          : t('progress.annotationGap', { count: annotation.days ?? 0 })}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<RankIcon size={24} />}
+                title={t('progress.noTrendTitle')}
+                body={t('progress.noTrendBody')}
+              />
+            )}
+          </Card>
+          {overallRow.some((value) => value !== null) ? (
+            <Card className="rank__overallRow">
+              <Heatmap
+                rows={[{ key: 'overall', label: t('progress.overall'), values: overallRow }]}
+                days={windowDays.map((day) => day.date)}
+              />
+            </Card>
+          ) : null}
         </Section>
 
         {/* Domain ranks: same family, subordinate size, one line each. */}

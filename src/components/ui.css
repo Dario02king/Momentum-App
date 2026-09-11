@@ -334,7 +334,10 @@
   inset: -2px 0;
 }
 
-.segmented__option[aria-pressed='true'] {
+/* Selected: `aria-pressed` for a toggle set, `aria-checked` where the
+   control is exposed as a radio group. Same pill either way. */
+.segmented__option[aria-pressed='true'],
+.segmented__option[aria-checked='true'] {
   background: var(--surface-elevated);
   font-weight: var(--weight-semibold);
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 0 0 0.5px rgba(16, 24, 40, 0.04);

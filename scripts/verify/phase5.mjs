@@ -120,6 +120,9 @@ async function ready(opts = {}, seed = null) {
 async function openProgress(page) {
   await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
   await page.waitForTimeout(1500);
+  // The terminal opens on the first enabled domain; this suite's is Laufen.
+  await page.getByRole('radio', { name: 'Laufen' }).click();
+  await page.waitForTimeout(900);
 }
 
 /* ── Logging stays one tap, distance is optional ────────────────────────── */
