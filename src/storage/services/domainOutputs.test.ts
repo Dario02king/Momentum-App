@@ -14,6 +14,9 @@ import { addDays, weekKeyOf, type DateKey } from '../../core/dates';
 import { closeDatabase, deleteDatabase } from '../db';
 import { importBackup } from './backupService';
 import { loadBossProgression, type BossProgression } from './bossService';
+import { loadGymHistory, type GymHistory } from './gymService';
+import { percentChange } from '../../core/gym/performance';
+import { muscleStateOf } from '../../features/gym/GymProgress';
 
 /**
  * The regression boundary for presentation work.
@@ -213,10 +216,51 @@ async function fingerprint(): Promise<{ md5: string; values: number }> {
   return { md5: createHash('md5').update(json).digest('hex'), values: (json.match(/-?\d/g) ?? []).length };
 }
 
-const PROFILES: { name: string; load(): string; clock: string; md5: string }[] = [
-  { name: 'the real RC2 export', load: () => fixture('rc2-export.json'), clock: '2026-09-07', md5: '5304a99c5f0ddd8f5b105be381613cf1' },
-  { name: 'the synthetic RC2 history', load: () => fixture('rc2-synthetic.json'), clock: '2026-08-31', md5: '6ef514a426a3b702aa9fe3b8414dcb98' },
-  { name: 'a four-domain profile under the current models', load: currentProfile, clock: LAST, md5: '2afc67e32c71ac6083c57255cbcce65e' },
+/**
+ * Everything the Gym workspace draws below the rating: the exercise-days,
+ * the latest comparison per exercise, and both performance windows down to
+ * every muscle group's status, ratio, counts and latest score — plus the two
+ * presentation reductions the body map consumes, `muscleStateOf()` and
+ * `percentChange()`, so the five-state mapping is inside the hash too.
+ */
+function gymOutputsOf(history: GymHistory) {
+  const round = (value: number | null) => (value === null ? null : Math.round(value * 1e9) / 1e9);
+  const performance = (p: GymHistory['overall']) => ({
+    ratio: round(p.ratio),
+    muscles: p.muscles.map((m) => [
+      m.muscle, m.status, round(m.ratio), m.exercises, m.compared, round(m.latestScore),
+      muscleStateOf(m), round(percentChange(m.ratio)),
+    ]),
+    measured: p.measured, awaitingBaseline: p.awaitingBaseline, untrained: p.untrained,
+  });
+  return {
+    days: history.days.map((d) => [d.date, d.exerciseId, d.muscles, d.primaryMuscles ?? null, round(d.best.score), d.best.set]),
+    comparisons: [...history.comparisons.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, c]) => [id, c.date, c.kind, round(c.current), round(c.previous), c.previousDate, round(c.ratio), round(c.delta)]),
+    recent: performance(history.recent),
+    overall: performance(history.overall),
+    names: [...history.names.entries()].sort(([a], [b]) => a.localeCompare(b)),
+    awaitingBodyweight: history.awaitingBodyweight,
+  };
+}
+
+/** The windows the workspace offers, plus the whole synthetic span. */
+const GYM_RANGES = [7, 30, 90] as const;
+
+async function gymFingerprint(clock: DateKey): Promise<{ md5: string; values: number }> {
+  const outputs: Record<number, unknown> = {};
+  for (const range of GYM_RANGES) {
+    outputs[range] = gymOutputsOf(await loadGymHistory(addDays(clock, -(range - 1)), clock));
+  }
+  const json = JSON.stringify(outputs);
+  return { md5: createHash('md5').update(json).digest('hex'), values: (json.match(/-?\d/g) ?? []).length };
+}
+
+const PROFILES: { name: string; load(): string; clock: string; md5: string; gym: { md5: string; values: number } }[] = [
+  { name: 'the real RC2 export', load: () => fixture('rc2-export.json'), clock: '2026-09-07', md5: '5304a99c5f0ddd8f5b105be381613cf1', gym: { md5: '61cc417e7c536cc66684c51e5bf011ce', values: 125 } },
+  { name: 'the synthetic RC2 history', load: () => fixture('rc2-synthetic.json'), clock: '2026-08-31', md5: '6ef514a426a3b702aa9fe3b8414dcb98', gym: { md5: '61cc417e7c536cc66684c51e5bf011ce', values: 125 } },
+  { name: 'a four-domain profile under the current models', load: currentProfile, clock: LAST, md5: '2afc67e32c71ac6083c57255cbcce65e', gym: { md5: '58662df205f6d7bb5af3075d040bb0c6', values: 4212 } },
 ];
 
 describe('domain outputs are the same before and after presentation work', () => {
@@ -236,6 +280,24 @@ describe('domain outputs are the same before and after presentation work', () =>
       console.log(`fingerprint: ${profile.name}: ${md5} over ${values} values`);
       expect(values).toBeGreaterThan(100);
       expect(md5).toBe(profile.md5);
+    });
+
+    /*
+     * The Gym history is loaded by the workspace separately from the Boss
+     * replay, so it is pinned separately. The RC2 profiles carry no gym
+     * sets and pin the empty shape — that is the export-compatibility
+     * check — and the four-domain profile is the one with every muscle
+     * status, ratio and state inside the hash.
+     */
+    it(`${profile.name}: the Gym history replays to the pinned fingerprint`, async () => {
+      await deleteDatabase();
+      setClock({ now: () => at(profile.clock) });
+      const result = await importBackup(profile.load());
+      if (!result.ok) throw new Error(result.details.join('; '));
+      const { md5, values } = await gymFingerprint(profile.clock as DateKey);
+      console.log(`gym fingerprint: ${profile.name}: ${md5} over ${values} values`);
+      expect(values).toBe(profile.gym.values);
+      expect(md5).toBe(profile.gym.md5);
     });
   }
 });
