@@ -12,11 +12,18 @@ import { readFileSync } from 'node:fs';
  * possibility.
  */
 function serviceWorkerPlugin(): Plugin {
+  // The resolved base, so the same list is right for the production site
+  // (/Momentum-App/) and for a preview build passed a different --base.
+  // Hardcoding it here once precached the production paths into a preview
+  // build's worker.
+  let base = '/';
   return {
     name: 'momentum-service-worker',
     apply: 'build',
+    configResolved(config) {
+      base = config.base;
+    },
     generateBundle(_options, bundle) {
-      const base = '/Momentum-App/';
       const assets = Object.keys(bundle)
         .filter((name) => !name.endsWith('.map'))
         .map((name) => `${base}${name}`);
@@ -29,6 +36,10 @@ function serviceWorkerPlugin(): Plugin {
           `${base}icon-192.png`,
           `${base}icon-512.png`,
           `${base}apple-touch-icon.png`,
+          // The body model is fetched by URL, not bundled, so it is listed
+          // here by hand like the icons. Without it the Gym muscle map would
+          // be the one thing in the app that needs a network.
+          `${base}models/momentum-body.glb`,
           ...assets,
         ]),
       );
