@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<!-- An app surface, not a document: no rubber-band, no double-tap zoom. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#eceaf3">
+<title>Momentum · Muskelgruppen</title>
+<link rel="stylesheet" href="./styles.css">
+<!--
+  three.js r160 is resolved through this import map. The package pins the
+  version; point both entries at your own copy (node_modules/three/...) for a
+  fully offline run — nothing else in the package fetches from the network.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<main class="workspace">
+  <section class="card">
+    <h2 class="card__title">Muskelgruppen</h2>
+    <!--
+      INPUT  · data-visuals   JSON: { [MuscleGroup]: { tint, intensity } }
+             · data-selected  MuscleGroup | ''
+             · data-view      front | side | back      (shortcut, optional)
+             · data-tint      on | off                 (optional)
+             · data-model-url path to the GLB          (optional)
+      OUTPUT · muscle-select  { id }
+             · body-rotate    { angle, deg, view }
+             · body-ready     { regions, triangles }
+             · body-fallback  { message }
+    -->
+    <body-viewer id="viewer" data-view="front" data-tint="on"></body-viewer>
+    <div class="readout">
+      <span id="angle">0°</span>
+      <span id="status">Modell wird geladen …</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="rows" id="rows"></div>
+  </section>
+</main>
+
+<script type="module" src="./body-viewer.js"></script>
+<script type="module" src="./demo.js"></script>
+</body>
+</html>
