@@ -9,7 +9,8 @@ either — it says where things stand.
 
 | | |
 |---|---|
-| Branch | `claude/momentum-pwa-spec-j82dhm` — the default branch, which is the only one Pages deploys from. Pass 2 was developed on `claude/momentum-pass-2-geometry-r2qzkd` and fast-forwarded here |
+| Branch | `claude/momentum-pwa-spec-j82dhm` — the default branch, which is the only one Pages deploys from. Pass 2, the domain terminal and the muscle map were developed on `claude/momentum-pass-2-geometry-r2qzkd`; the muscle-map release candidate `bc57ec6` was merged here with a merge commit (`90bf328`) because the default branch carried a later upload. The release is tagged **`muscle-map-v1`** |
+| Muscle map | **Released.** The 3D body in Bereiche → Gym, the ten analytics rows with their mini sparklines, Laufen inside the Gym workspace, the credits entry. App source `5e554aa`; QA record `docs/design/muscle-map/INTEGRATION-QA.md`; handoff deviations `docs/design/muscle-map/HANDOFF-DEVIATIONS.md` |
 | Working tree | clean at the commit this file was committed in |
 | `SCHEMA_VERSION` | **5** (`src/core/model/index.ts`) — v5 adds the `foodDays` store |
 | `BACKUP_FORMAT_VERSION` | **3** (`src/core/backup/format.ts`) — v3 adds the `foodDays` collection; a v1 or v2 file still imports, every later collection reading as empty when absent |
@@ -91,6 +92,11 @@ records (answers, sessions, sets, snapshots)
 | `src/storage/services/pauseService.ts` | Declaring, editing, ending a pause; every rule enforced on the write |
 | `src/features/pause/*` | The Areas section that plans and ends one |
 | `src/components/metrics.tsx` | **Pass 2.** `MetricTile`, `MetricBoard`, `MetricBar`, `MetricDetailSheet` — a tile states, a sheet explains; built on the one `Sheet` primitive |
+| `src/app/route.ts` | **Domain terminal.** The one navigation state, mirrored to the hash (`#/areas/<area>`); Back walks the areas visited |
+| `src/features/areas/DomainSwitch.tsx`, `GymTerminal.tsx`, `RunningTerminal.tsx`, `CreditsSection.tsx` | **Bereiche is the terminal**: Mental · Gym · Ernährung, one area at a time. Gym carries its board, the muscle module, and Laufen as a separate section; Einstellungen carries the CC BY credit for the body model |
+| `src/features/body/` | **The 3D body.** `BodyViewer` (R3F canvas, camera rig, tap-vs-drag, the approved material treatment with the neutral selection cue), `useGLTF`, `BodyBoundary`, `bodyVisuals.ts` (the adapter from `MusclePerformance` to tint and intensity), `muscleMeshMap.ts` (the id ↔ GLB contract), `tokens.ts` (identity and state colours, the single colour source). `index.ts` is the **lazy boundary**: three.js and the renderer live in their own chunk and are fetched only when the Gym module renders |
+| `src/features/gym/MuscleModule.tsx`, `MuscleRows.tsx`, `Sparkline.tsx`, `muscleAnalytics.ts` | **Muskelgruppen.** The body above, the ten rows below, one selected group held by `GymProgress`. `toMuscleAnalytics()` derives each row read-only from the loaded history: state, delta, last trained day, and the trend — the group's over-span change since the range began, as of each training day, via `gymPerformanceOverSpan()` on the history prefix, so the last point *is* the row's delta. The chart is the handoff's `spark80`: per-row min/max, flat when equal, a dot for one observation, nothing for none |
+| `public/models/momentum-body.glb`, `tools/validate-body-glb.mjs` | The model (CC BY 4.0, patmateee, modified; 40 000 triangles, one primitive per muscle id plus `none`) and the contract validator that runs first in `npm run build` |
 | `src/components/BodyRenderer/index.tsx` | Muscle diagram; presentation only |
 | `src/features/gym/*` | Session logging, picker, bodyweight, overview, exercise detail, progress |
 | `src/features/running/*` | The Running overview and its distance ranges |
@@ -429,9 +435,12 @@ in, except where noted.
 
 | | |
 |---|---|
+| Real device (muscle map) | iPhone, from the `Momentum-preview` build `5db6fc4` of the release candidate `bc57ec6`: the 3D body, touch rotation, muscle selection, shared row/body selection, mini sparklines, recency/status layout, Running placement and the credits sheet all approved. Screenshots: `docs/design/muscle-map/qa/device/IMG_0648–0650.png` |
+| Muscle map QA | `docs/design/muscle-map/INTEGRATION-QA.md`: 50 items — 47 PASS, 1 FAIL (two harness checks, neither product), 2 NOT VERIFIED (preview serving, real-device Safari). Evidence under `docs/design/muscle-map/qa/` |
+| Muscle map suites | `gym-muscles.mjs` 71/71 · `terminal.mjs` 42/42 · `geometry.mjs` 117/117 · `release-proof.mjs` 21/21 · `body.mjs` 38/39 (its dev-page tap grid is coarser than an upper arm; the 8px production probe reaches 10/10) · `body-reach.mjs` 393 10/10, 430 9/10 at 12px and 10/10 at 8px, 320 9/10 at 12px as accepted |
 | Real device (Pass 2) | iPhone 15 class, from the preview build: the five conditions above, all clean. Recorded here because nothing in `scripts/verify/` can stand in for it |
 | Card geometry (Pass 2) | `geometry.mjs`: every line of text measured on all four sides against the box that clips it, 12px of clear space required, at 393/430/320 — Today, Verlauf (both domains, an opened sheet, and a locked-Endurance profile), Rang, Bereiche. **90/90.** The earlier suites' `clipped()` measures `child.right − clipper.right` and cannot see a leftward or upward clip, which is how V1 shipped cards whose corners cut their first and last glyphs |
-| Unit tests | **1029 passing, 62 files, exit 0** (`npm run test`) — Pass 2 adds the meter-track contrast pairs |
+| Unit tests | **1070 passing, 69 files, exit 0** (`npm run test`) — the muscle map adds the adapter, sparkline, highlight, recency and token-contract tests, and `domainOutputs.test.ts` pins six fingerprints (Boss and Gym history over three profiles) that are unchanged from before any of this work |
 | Release smoke (production build) | **82/82** (`release.mjs`) — cold load, the whole journey through all four domains, refresh and persistence, backup export / malformed refusal / restore, five widths including desktop, zero console errors |
 | Pause regression | the same 2709-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, a live four-domain profile through five weeks of silence — is **byte-identical before and after**, same MD5. Only histories that contain a pause differ |
 | D113 numeric equivalence | a 64 KB, 2691-value fingerprint — five pure folds, both RC2 fixtures replayed to full Boss and per-domain ledgers, and a live four-domain profile through five weeks of silence — is **byte-identical before and after the refactor**, same MD5, zero mismatches |
@@ -480,22 +489,37 @@ Do not read Food's existence as the gate having been closed. There is no
 calorie target, no macro split, no BMR or TDEE estimate and no weight-goal
 model anywhere in the build.
 
-**The domain terminal, Stage A (revised), is on
-`claude/momentum-pass-2-geometry-r2qzkd` awaiting review.** Bereiche is the
-terminal: one switch — Mental · Gym · Ernährung — and beneath it one area's
-workspace (its standing or board, then the card that switches it on and
-configures it), with the area in the route (`src/app/route.ts`, mirrored to
-`#/areas/<area>`; Back walks the areas visited). Heute, Verlauf and Rang are
-unchanged in role: Verlauf stays the overall, historical overview. Gym's
-board moved from Verlauf into the Gym area; Running keeps its board on
-Verlauf and its card under "Weitere Bereiche und Einstellungen" because it
-has no terminal of its own and where it belongs is an open product decision.
-Nothing in scoring, ranking, persistence or the questions was touched, and
-`src/storage/services/domainOutputs.test.ts` proves it: three fingerprints
-pinned before the terminal existed, unchanged after. The QA record is
-`docs/design/DOMAIN-TERMINAL-QA.md`. Stages B–E (BodyMap3D, charts, Mental
-and Food detail, global QA) wait on the *Muscle Groups Redesign* design files
-being seeded into the workspace; no BodyMap3D or Three.js exists here.
+**The domain terminal and the muscle map are merged and released
+(`muscle-map-v1`).** Bereiche is the terminal: one switch — Mental · Gym ·
+Ernährung — and beneath it one area's workspace, with the area in the route
+(`src/app/route.ts`, `#/areas/<area>`; Back walks the areas visited). Heute,
+Verlauf and Rang are unchanged in role: Verlauf stays the overall, historical
+overview and keeps every domain's daily row. Gym carries its board, then
+Muskelgruppen — the 3D body above ten analytics rows, each with its identity
+dot, name, last-trained day, an 80 × 24 sparkline in the group's identity
+colour and the percentage or state in the state colour — then Übungen, then
+Laufen as its own section with its board and target card. The body, the rows
+and the exercise list share one selected group; a body tap selects and never
+clears, a row tap toggles. Three.js arrives in a lazy chunk (235 kB gzip)
+with the model (345 kB gzip) on first entry to Gym and never on any other
+screen; without WebGL, on a fetch failure or on a throw, the SVG figure stands
+in with the rows intact. Nothing in scoring, ranking, persistence or the
+questions was touched: `domainOutputs.test.ts` pins six fingerprints from
+before any of this work, unchanged after all of it. What differs from the
+handoff and why is `docs/design/muscle-map/HANDOFF-DEVIATIONS.md` (28 rows);
+the release record is `docs/design/muscle-map/INTEGRATION-QA.md`.
+
+Two harness items are known and are not product defects: `phase41` fails one
+date-dependent assertion ("a missed week costs half a week rather than the
+balance") identically on the pre-integration base `fc2ffff`, and `body.mjs`'s
+dev-page tap grid misses one region of about its own pitch while the finer
+production probe reaches all ten. Neither test was edited for the release.
+
+**Next for the muscle map, none of it blocking:** a finer pitch for the
+`body.mjs` probe; the "several exercises" line for a group whose latest day
+had more than one (the ids are on the view model, the copy is not decided);
+the `Muskelgruppen` module's rows are the accessible selection path at 320px,
+where the triceps is about two 8px cells wide on the body.
 
 **Pass 2 (card geometry, widget layout, detail sheets) is merged and
 deployed.** Both stages were approved on a real iPhone 15-class device from

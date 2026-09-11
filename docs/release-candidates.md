@@ -6,11 +6,76 @@ happened; RC1 is not rewritten to pretend its defect never existed.
 
 | | Application commit | Status |
 |---|---|---|
-| **RC2** | **`c3e8b7f`** | **Current. This is the build to test.** |
+| **muscle-map-v1** | app source **`5e554aa`**, tag on the post-cleanup default-branch head | **Released** — see below |
+| V1 | the release pass after RC2 | Released |
+| RC2 | `c3e8b7f` | Superseded by V1 |
 | RC1 | `ae8b479` | Superseded — never deployed, never tested on a device |
 
-Neither is a release. Nothing here should be read as a statement that
-Momentum has shipped.
+---
+
+## muscle-map-v1
+
+The 3D muscle map inside the Gym workspace of the domain terminal, released
+after real-device approval of the candidate `bc57ec6`.
+
+### What it adds
+
+- **Bereiche is the domain terminal**: Mental · Gym · Ernährung, one area at a
+  time, the area in the hash (`#/areas/<area>`), Back walking the areas
+  visited. Verlauf stays the overall overview.
+- **The 3D body** (`src/features/body/`): the approved handoff's React +
+  three.js viewer, free 360° rotation with the angle as the state, front /
+  side / back shortcuts, raycast selection, the approved material treatment,
+  reduced motion, host-sized framing, paused while hidden or off screen.
+- **Muscle analytics rows** with **mini sparklines**: per group its identity
+  dot, name, last-trained day, an 80 × 24 chart in the identity colour, and
+  the percentage or state in the state colour. The trend is the group's
+  over-span change since the range began, evaluated at each training day
+  through the existing `gymPerformanceOverSpan()`, so its last point equals
+  the row's delta. No history, no baseline and a single observation draw
+  nothing false.
+- **One shared selection** between body, rows and the Übungen list; body
+  taps select, rows toggle; an untrained selected group shows a neutral cue.
+- **Laufen inside the Gym workspace**, board and target card; its daily row
+  stays in Verlauf.
+- **Lazy loading**: three.js, the renderer and the viewer in their own chunk
+  (860.92 kB, 235.23 kB gzip), plus the model (478 008 B, 344 867 B gzip),
+  fetched on first entry to Gym and on no other route; the main bundle grew
+  by 4.26 kB gzip against Stage 2. The SVG figure stands in without WebGL, on
+  a fetch failure and on a throw, with the rows intact.
+- **The model contract**: `public/models/momentum-body.glb`, 40 000
+  triangles, one primitive per muscle id plus `none`; `npm run validate:body`
+  enforces it first in every build. CC BY 4.0 (patmateee, modified) — credit
+  in Bereiche → Einstellungen, `THIRD-PARTY-NOTICES.md`, `asset.copyright`.
+- **Verification**: `terminal.mjs`, `body.mjs`, `gym-muscles.mjs`,
+  `body-reach.mjs`, `release-proof.mjs`, `qa-shots.mjs`; six domain-output
+  fingerprints in `domainOutputs.test.ts` pinned before the work and unchanged
+  after it.
+
+### Record
+
+`docs/design/muscle-map/INTEGRATION-QA.md` — 50 items, 47 PASS, 1 FAIL (two
+harness checks, neither a product defect), 2 NOT VERIFIED (preview serving
+from the build environment; real-device Safari, since performed by the
+product owner and approved). Evidence and screenshots under
+`docs/design/muscle-map/qa/`, the device-review screenshots under
+`docs/design/muscle-map/qa/device/`. Every difference from the handoff:
+`docs/design/muscle-map/HANDOFF-DEVIATIONS.md`.
+
+### Known, not product
+
+- `phase41`: one date-dependent assertion fails identically on the
+  pre-integration base `fc2ffff` (`qa/phase41-comparison.txt`).
+- `body.mjs`: its dev-page tap grid (11–14px pitch) misses one region of
+  about that width; `body-reach.mjs` at 8px reaches 10/10 at every width.
+
+### How it was merged
+
+`bc57ec6` (reviewed candidate) → merge commit `90bf328` into the default
+branch, which carried a later upload → housekeeping `6ba7935` moving the
+device screenshots under the QA evidence and removing a byte-identical copy
+of the design canvas → the documentation commit tagged `muscle-map-v1`. No
+application source changed after `5e554aa`.
 
 ---
 
