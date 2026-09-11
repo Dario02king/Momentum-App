@@ -6,13 +6,13 @@ import { ChevronRightIcon, ProgressIcon } from '../../components/Icons';
 import {
   BodyRenderer,
   MUSCLE_LABEL_KEYS,
-  type MuscleState,
   type MuscleView,
 } from '../../components/BodyRenderer';
-import { percentChange, type MusclePerformance } from '../../core/gym/performance';
+import { percentChange } from '../../core/gym/performance';
 import { useT } from '../../i18n/I18nProvider';
 import { exerciseHistory, type GymHistory } from '../../storage/services/gymService';
 import { ExerciseDetail } from './ExerciseDetail';
+import { muscleStateOf } from './muscleState';
 import './gym.css';
 
 /**
@@ -31,13 +31,9 @@ import './gym.css';
  * none of them is.
  */
 
-/** The five states the body renderer draws, from one group's performance. */
-export function muscleStateOf(entry: MusclePerformance): MuscleState {
-  if (entry.status === 'noData') return 'noData';
-  if (entry.status === 'insufficientBaseline') return 'awaitingBaseline';
-  const ratio = entry.ratio ?? 1;
-  return ratio > 1 ? 'improved' : ratio < 1 ? 'declined' : 'unchanged';
-}
+// The state mapping lives in its own module so the adapters can share it
+// without importing a screen; re-exported here for the callers that had it.
+export { muscleStateOf };
 
 const changeText = (
   ratio: number | null,
