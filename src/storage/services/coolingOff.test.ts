@@ -180,8 +180,6 @@ describe('what cooling-off can never take away', () => {
     for (const domain of ['mental', 'food', 'gym'] as const) {
       const ledger = ledgerOf(boss, domain);
       expect(ledger.peakMomentum).toBeGreaterThanOrEqual(ledger.momentum);
-      expect(ledger.peakRank.index).toBeGreaterThanOrEqual(ledger.rank.index);
-      expect(ledger.lifetimeXp).toBeGreaterThan(0);
     }
 
     // And the lifetime total is monotone across the silence: it is a count of

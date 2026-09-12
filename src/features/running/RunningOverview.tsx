@@ -1,11 +1,8 @@
 import { useState } from 'react';
-import { TRAINING_RATING } from '../../core/config/constants';
+import { RATING, TRAINING_RATING } from '../../core/config/constants';
 import { bandRange } from '../../core/running/performance';
-import type { Rank } from '../../core/ranks';
-import { displayedRankProgress } from '../../core/ranks/progress';
 import { Card, Section } from '../../components';
 import { MetricBoard, MetricDetailSheet, MetricTile } from '../../components/metrics';
-import { RankBadge } from '../ranking/RankBadge';
 import { useT } from '../../i18n/I18nProvider';
 import type { RunningRatingState } from '../../storage/services/runningRatingService';
 import './running.css';
@@ -45,11 +42,9 @@ type Detail = 'rating' | 'ytd' | 'attendance' | 'endurance' | 'decay';
 
 export function RunningOverview({
   state,
-  rank,
   started,
 }: {
   state: RunningRatingState;
-  rank: Rank;
   started: boolean;
 }) {
   const t = useT();
@@ -66,12 +61,13 @@ export function RunningOverview({
     );
   }
 
-  const progress = displayedRankProgress(state.rating, rank);
+  // The rating on its own 0–1000 scale; Running has no rank of its own.
+  const ratingValue = Math.round(state.rating);
   const attendancePercent =
     state.weeklyTarget > 0
       ? Math.min(100, (state.sessionsThisWeek / state.weeklyTarget) * 100)
       : 0;
-  const ratingLabel = t('running.rating.value', { value: progress.value });
+  const ratingLabel = t('running.rating.value', { value: ratingValue });
   const attendanceLabel = t('running.attendance.value', {
     sessions: state.sessionsThisWeek,
     target: state.weeklyTarget,
@@ -87,7 +83,11 @@ export function RunningOverview({
   const ytdText = changeText(state.ytdChange, t);
   const counted = t('running.performance.counted', { count: state.ytd?.measured.length ?? 0 });
 
-  const ratingBar = { percent: progress.percent, label: ratingLabel, tone: 'running' as const };
+  const ratingBar = {
+    percent: Math.round((ratingValue / RATING.MAX) * 100),
+    label: ratingLabel,
+    tone: 'running' as const,
+  };
   const attendanceBar = {
     percent: attendancePercent,
     label: attendanceLabel,
@@ -106,8 +106,6 @@ export function RunningOverview({
         <MetricTile
           id="running-rating"
           title={t('running.rating.title')}
-          leading={<RankBadge rankId={rank.id} size={60} mystery={locked} />}
-          kicker={rank.name}
           value={ratingLabel}
           bar={ratingBar}
           line={

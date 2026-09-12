@@ -43,13 +43,14 @@ const PROFILES: { name: string; file: string; load(): string; clock: DateKey }[]
 ];
 
 /**
- * What the replay produces, in two parts.
+ * What the replay produces: everything Stage 2 promises to keep
+ * byte-identical.
  *
- * `continuity` is everything Stage 2 promises to keep byte-identical.
- * `domainRanks` is the user-facing domain rank state — the rank, peak rank,
- * rank changes and per-domain XP — recorded here so the baseline says what
- * the removed system used to compute, and compared only while the ledger
- * still carries it.
+ * The fixture files also carry a `domainRanks` section — the rank, peak
+ * rank, rank changes and per-domain XP the removed domain-rank system used
+ * to compute, captured in commit 1 as a record of what it said. Since commit
+ * 3 the ledger no longer carries any of it, so that section is not compared;
+ * it stays in the files as the historical answer.
  */
 export function baselineOf(boss: BossProgression) {
   const { history, legacy, gym, running, domains } = boss;
@@ -82,14 +83,11 @@ export function baselineOf(boss: BossProgression) {
       history,
       legacy: { ...legacyRest, rank: legacy.rank.id, peakRank: legacy.peakRank.id },
     },
-    domainRanks: domains.map((domain) => ({
-      domain: domain.domain,
-      rank: domain.rank.id,
-      peakRank: domain.peakRank.id,
-      changes: domain.changes,
-      lifetimeXp: domain.lifetimeXp,
-    })),
   };
+}
+
+interface Frozen extends ReturnType<typeof baselineOf> {
+  domainRanks?: unknown;
 }
 
 async function replay(load: () => string, clock: DateKey): Promise<ReturnType<typeof baselineOf>> {
@@ -100,10 +98,10 @@ async function replay(load: () => string, clock: DateKey): Promise<ReturnType<ty
   return baselineOf(await loadBossProgression());
 }
 
-function readBaseline(file: string): ReturnType<typeof baselineOf> {
+function readBaseline(file: string): Frozen {
   const path = fileURLToPath(new URL(file, fixtureDir));
   if (!existsSync(path)) throw new Error(`No Stage 2 baseline at ${path}; capture it from the unmodified engine first`);
-  return JSON.parse(readFileSync(path, 'utf8')) as ReturnType<typeof baselineOf>;
+  return JSON.parse(readFileSync(path, 'utf8')) as Frozen;
 }
 
 describe('the Stage 2 golden baseline', () => {
@@ -128,9 +126,11 @@ describe('the Stage 2 golden baseline', () => {
       expect(actual.continuity.running).toEqual(expected.continuity.running);
       expect(actual.continuity.history).toEqual(expected.continuity.history);
       expect(actual.continuity.legacy).toEqual(expected.continuity.legacy);
-      expect(actual.domainRanks).toEqual(expected.domainRanks);
       // And the whole text, so nothing added later can slip past the sections.
-      expect(canonicalJson(actual)).toBe(canonicalJson(expected));
+      expect(canonicalJson(actual.continuity)).toBe(canonicalJson(expected.continuity));
+      // The removed system's answer is still on file, and is not recomputed.
+      expect(expected.domainRanks).toBeDefined();
+      expect(Object.keys(actual)).toEqual(['continuity']);
     });
 
     it(`${profile.name} survives its own export and re-import unchanged`, async () => {

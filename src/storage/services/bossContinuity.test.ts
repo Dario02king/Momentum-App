@@ -198,8 +198,6 @@ describe('after the upgrade', () => {
     expect(food.started).toBe(false);
     expect(running.active.some(Boolean)).toBe(false);
     expect(food.active.some(Boolean)).toBe(false);
-    expect(running.lifetimeXp).toBe(0);
-    expect(food.lifetimeXp).toBe(0);
 
     const gym = boss.domains.find((domain) => domain.domain === 'gym')!;
     const firstGymDay = gym.active.findIndex(Boolean);

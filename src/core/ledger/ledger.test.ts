@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DateKey } from '../dates';
 import type { DayState } from '../rating';
+import { ratingToProgress } from '../boss';
 import { buildLedger, ledgerInvariants } from './index';
 
 function scoredDay(date: DateKey, score: number): DayState {
@@ -35,25 +36,24 @@ const dates = (count: number, from = 1): DateKey[] =>
     return `2026-01-${day}` as DateKey;
   });
 
-describe('the three quantities', () => {
-  it('answers three different questions, so they move independently', () => {
+describe('the domain ledger', () => {
+  it('keeps momentum and its peak apart, because they answer different questions', () => {
     const good = dates(40).map((date) => scoredDay(date, 95));
     const then = dates(40, 41).map(silentDay);
-    const ledger = buildLedger({
-      domain: 'mental',
-      days: [...good, ...then],
-      xpDays: good.map(() => ({ answeredItems: 1, complete: true, counts: true })),
-      xpWeeks: [],
-    });
+    const ledger = buildLedger({ domain: 'mental', days: [...good, ...then] });
 
     // Momentum fell: forty silent days is the question it answers.
     expect(ledger.momentum).toBeLessThan(ledger.peakMomentum);
     // The peak did not: it records that the user got there.
     expect(ledger.peakMomentum).toBeGreaterThan(500);
-    // XP did not move at all: it counts what was done, and nothing was undone.
-    expect(ledger.lifetimeXp).toBeGreaterThan(0);
-    // And the rank reached is not taken away by the absence.
-    expect(ledger.peakRank.index).toBeGreaterThanOrEqual(ledger.rank.index);
+  });
+
+  it('carries no rank, peak rank, rank history or XP of its own', () => {
+    // Those are the Boss's. A domain contributes a rating and nothing else.
+    const ledger = buildLedger({ domain: 'gym', days: dates(20).map((date) => scoredDay(date, 90)) });
+    expect(Object.keys(ledger).sort()).toEqual(
+      ['domain', 'momentum', 'peakMomentum', 'points', 'progress', 'started'],
+    );
   });
 
   it('holds its invariants for every shape of history', () => {
@@ -65,12 +65,8 @@ describe('the three quantities', () => {
       dates(60).map((date, index) => (index % 3 === 0 ? silentDay(date) : scoredDay(date, 70))),
     ];
     for (const days of shapes) {
-      const ledger = buildLedger({ domain: 'gym', days, xpDays: [], xpWeeks: [] });
-      expect(ledgerInvariants(ledger)).toEqual({
-        peakNeverBelowCurrent: true,
-        peakRankNeverBelowCurrent: true,
-        xpNeverNegative: true,
-      });
+      const ledger = buildLedger({ domain: 'gym', days });
+      expect(ledgerInvariants(ledger)).toEqual({ peakNeverBelowCurrent: true });
     }
   });
 
@@ -89,28 +85,26 @@ describe('the three quantities', () => {
         recorded: false,
         complete: false,
       })),
-      xpDays: [],
-      xpWeeks: [],
     });
     expect(ledger.started).toBe(false);
     expect(ledger.momentum).toBe(250);
   });
 
-  it('lands its ladder position on the rank it reports', () => {
+  it('reports its ladder position from its own rating, and nothing else', () => {
     const ledger = buildLedger({
       domain: 'running',
       days: dates(60).map((date) => scoredDay(date, 88)),
-      xpDays: [],
-      xpWeeks: [],
     });
-    expect(Math.floor(ledger.progress)).toBe(ledger.rank.index);
+    expect(ledger.progress).toBe(ratingToProgress(ledger.momentum));
+    expect(ledger.progress).toBeGreaterThan(0);
+    expect(ledger.progress).toBeLessThanOrEqual(8);
   });
 
   it('is a pure function of its input — replaying twice cannot differ', () => {
     const days = dates(45).map((date, index) =>
       index % 4 === 0 ? silentDay(date) : scoredDay(date, 60 + (index % 30)),
     );
-    const input = { domain: 'mental' as const, days, xpDays: [], xpWeeks: [] };
+    const input = { domain: 'mental' as const, days };
     expect(buildLedger(input).momentum).toBe(buildLedger(input).momentum);
   });
 });

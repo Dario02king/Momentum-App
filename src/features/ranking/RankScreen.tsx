@@ -3,12 +3,10 @@ import { RATING } from '../../core/config/constants';
 import type { BossWeights as BossWeightMap } from '../../core/boss';
 import { rankById } from '../../core/ranks';
 import { displayedRankProgress, rankLadder, type RankProgress } from '../../core/ranks/progress';
-import type { DomainType } from '../../core/model';
 import { Card, EmptyState, LoadFailure, Section, StaleNotice } from '../../components';
 import { RankIcon } from '../../components/Icons';
 import { formatDayAndMonth, formatNumber } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
-import type { TranslationKey } from '../../i18n';
 import { settingsRepository } from '../../storage/repositories';
 import { loadBossProgression } from '../../storage/services/bossService';
 import {
@@ -24,21 +22,14 @@ import './rank.css';
  * The Rank screen.
  *
  * The Boss is the screen's subject: one rank for everything the user does,
- * weighted the way they set it. The four domain ranks sit under it and are
- * visibly subordinate — same badge family, a third of the size, one line each.
- * There is no second emblem family and there never will be.
+ * weighted the way they set it — and the only rank there is. A domain has a
+ * rating and a share of the Boss, never a rank, a badge or a ladder of its
+ * own. There is one emblem family and there never will be a second.
  *
  * Every bar and every sentence beside it comes from `rankProgress`, which is
  * the whole reason that function exists: fill and copy describing different
  * things is the defect this screen used to have.
  */
-
-const DOMAIN_NAMES: Record<DomainType, TranslationKey> = {
-  mental: 'domain.wellbeing',
-  gym: 'domain.gym',
-  running: 'domain.running',
-  food: 'domain.food',
-};
 
 /**
  * One bar, and the sentence that describes it.
@@ -212,39 +203,6 @@ export function RankScreen({
               </span>
               <span className="standing__value">{formatNumber(language, boss.lifetimeXp)}</span>
             </div>
-          </Card>
-        </Section>
-
-        {/* Domain ranks: same family, subordinate size, one line each. */}
-        <Section label={t('rank.domains')}>
-          <Card>
-            <p className="rank-section__explain">{t('rank.domains.explain')}</p>
-            {boss.domains
-              .filter((domain) => configuration.domains[domain.domain]?.enabled)
-              .map((domain) => {
-                const domainProgress = displayedRankProgress(domain.momentum, domain.rank);
-                return (
-                  <div key={domain.domain} className="domain-rank">
-                    <RankBadge
-                      rankId={domain.rank.id}
-                      size={34}
-                      mystery={!domain.started}
-                    />
-                    <span className="domain-rank__body">
-                      <span className="domain-rank__name">{t(DOMAIN_NAMES[domain.domain])}</span>
-                      <span className="domain-rank__rank">
-                        {domain.started ? domain.rank.name : t('rank.domain.notStarted')}
-                      </span>
-                    </span>
-                    {domain.started ? (
-                      <RankProgressBar
-                        progress={domainProgress}
-                        className="rank-progress--compact"
-                      />
-                    ) : null}
-                  </div>
-                );
-              })}
           </Card>
         </Section>
 

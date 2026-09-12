@@ -18,7 +18,7 @@ export function RunningTerminal() {
   if (!rating?.started) return null;
   return (
     <Section label={t('running.progress.title')}>
-      <RunningOverview state={rating.state} rank={rating.rank} started={rating.started} />
+      <RunningOverview state={rating.state} started={rating.started} />
     </Section>
   );
 }

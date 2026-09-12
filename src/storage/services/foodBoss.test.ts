@@ -253,8 +253,6 @@ describe('adding Food changes nothing about Gym or Running', () => {
     for (const key of ['gym', 'running'] as const) {
       expect(withFood[key].momentum).toBeCloseTo(without[key].momentum, 10);
       expect(withFood[key].peakMomentum).toBeCloseTo(without[key].peakMomentum, 10);
-      expect(withFood[key].rank.id).toBe(without[key].rank.id);
-      expect(withFood[key].peakRank.id).toBe(without[key].peakRank.id);
       expect(withFood[key].series).toEqual(without[key].series);
     }
     // Deliberately a *poor* run of food days above: if Food leaked into the

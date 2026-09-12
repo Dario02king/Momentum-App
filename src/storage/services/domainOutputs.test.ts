@@ -24,6 +24,12 @@ import { LAST, at, currentProfile } from './fixtures/profiles';
  * moves one of them has changed a domain output, and is a regression unless
  * approved on its own.
  *
+ * Re-pinned once, in Stage 2 of the Overall-rank update (commit 3), when the
+ * domain rank, peak rank, rank changes and per-domain XP left the ledger and
+ * therefore this serialisation. Every value that remained was proved
+ * unchanged by the value-level baseline in `stage2Baseline.test.ts` before
+ * the hashes below were updated.
+ *
  * Three profiles, because each covers what the others cannot: the real RC2
  * export (one day, real shapes), the synthetic RC2 history (120 legacy days
  * through the era transition), and a four-domain profile under the current
@@ -49,9 +55,7 @@ function outputsOf(boss: BossProgression) {
     changes: boss.changes.map((c) => [c.date, c.kind, c.to]),
     domains: boss.domains.map((d) => ({
       domain: d.domain, momentum: round(d.momentum), peakMomentum: round(d.peakMomentum),
-      rank: d.rank.id, peakRank: d.peakRank.id, lifetimeXp: d.lifetimeXp, progress: round(d.progress),
-      started: d.started, series: d.series.map(round), active: d.active,
-      changes: d.changes.map((c) => [c.date, c.kind, c.to]),
+      progress: round(d.progress), started: d.started, series: d.series.map(round), active: d.active,
     })),
     gym: {
       rating: round(boss.gym.rating), sessionsThisWeek: boss.gym.sessionsThisWeek, weeklyTarget: boss.gym.weeklyTarget,
@@ -128,9 +132,9 @@ async function gymFingerprint(clock: DateKey): Promise<{ md5: string; values: nu
 }
 
 const PROFILES: { name: string; load(): string; clock: string; md5: string; gym: { md5: string; values: number } }[] = [
-  { name: 'the real RC2 export', load: () => fixture('rc2-export.json'), clock: '2026-09-07', md5: '5304a99c5f0ddd8f5b105be381613cf1', gym: { md5: '61cc417e7c536cc66684c51e5bf011ce', values: 125 } },
-  { name: 'the synthetic RC2 history', load: () => fixture('rc2-synthetic.json'), clock: '2026-08-31', md5: '6ef514a426a3b702aa9fe3b8414dcb98', gym: { md5: '61cc417e7c536cc66684c51e5bf011ce', values: 125 } },
-  { name: 'a four-domain profile under the current models', load: currentProfile, clock: LAST, md5: '2afc67e32c71ac6083c57255cbcce65e', gym: { md5: '58662df205f6d7bb5af3075d040bb0c6', values: 4212 } },
+  { name: 'the real RC2 export', load: () => fixture('rc2-export.json'), clock: '2026-09-07', md5: '341b51f699f456012e841b5c9fd12506', gym: { md5: '61cc417e7c536cc66684c51e5bf011ce', values: 125 } },
+  { name: 'the synthetic RC2 history', load: () => fixture('rc2-synthetic.json'), clock: '2026-08-31', md5: '31b13585fc3363808b315dc612eca9cf', gym: { md5: '61cc417e7c536cc66684c51e5bf011ce', values: 125 } },
+  { name: 'a four-domain profile under the current models', load: currentProfile, clock: LAST, md5: '4a3145503723d3fec9761ec62ca8669a', gym: { md5: '58662df205f6d7bb5af3075d040bb0c6', values: 4212 } },
 ];
 
 describe('domain outputs are the same before and after presentation work', () => {

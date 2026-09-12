@@ -234,24 +234,25 @@ describe('distance identities, through the real replay', () => {
 /* ── The Endurance Phase ────────────────────────────────────────────────── */
 
 describe('the Endurance Phase for Running', () => {
-  it('calculates a rating before the gate opens and holds the rank shut', async () => {
+  it('calculates a rating before the gate opens and keeps the gate shut', async () => {
     await runWeek(START, 5000, 5.5);
     await runWeek(addDays(START, 7), 5000, 5.2);
     const { state, ledger } = await stateAt(addDays(START, 13));
     expect(state.endurance.unlocked).toBe(false);
     expect(state.rating).toBeGreaterThan(RATING.START);
-    expect(ledger.rank.id).toBe('rookie');
-    expect(ledger.changes).toEqual([]);
+    expect(state.promotionUnlocked.some(Boolean)).toBe(false);
+    expect(ledger.progress).toBeGreaterThan(0);
   });
 
-  it('unlocks after four met weeks and then promotes normally', async () => {
+  it('unlocks after four met weeks', async () => {
     for (let week = 0; week < 5; week += 1) {
       await runWeek(addDays(START, week * 7), 5000, 5.5 - week * 0.1);
     }
     const { state, ledger } = await stateAt(addDays(START, 35));
     expect(state.endurance.progress).toBeGreaterThanOrEqual(4);
     expect(state.endurance.unlocked).toBe(true);
-    expect(ledger.rank.index).toBeGreaterThan(0);
+    expect(state.promotionUnlocked[state.promotionUnlocked.length - 1]).toBe(true);
+    expect(ledger.progress).toBeGreaterThan(1);
   });
 
   it('costs half a week for a missed week rather than resetting', async () => {

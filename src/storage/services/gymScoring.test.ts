@@ -149,28 +149,30 @@ describe('the 40/60 target', () => {
 /* ── The Endurance Phase ────────────────────────────────────────────────── */
 
 describe('the Endurance Phase, end to end', () => {
-  it('calculates a rating before the gate opens, and holds the rank shut', async () => {
+  it('calculates a rating before the gate opens, and keeps the gate shut', async () => {
     await trainWeek(START, 100);
     await trainWeek(addDays(START, 7), 110);
     const { state, ledger } = await gymOf(addDays(START, 13));
 
     expect(state.endurance.unlocked).toBe(false);
     expect(state.rating).toBeGreaterThan(RATING.START);
-    // The rating is well past Challenger's threshold, and the rank is not.
+    // The rating is well past the first ladder threshold, and the gate still
+    // reads shut on every day: Endurance gates nothing but the gate itself.
     expect(state.rating).toBeGreaterThan(120);
-    expect(ledger.rank.id).toBe('rookie');
-    expect(ledger.peakRank.id).toBe('rookie');
-    expect(ledger.changes).toEqual([]);
+    expect(state.promotionUnlocked.some(Boolean)).toBe(false);
+    // And the Boss contribution follows the rating regardless.
+    expect(ledger.progress).toBeGreaterThan(1);
   });
 
-  it('unlocks after four met weeks and then promotes normally', async () => {
+  it('unlocks after four met weeks, from the day after the fourth', async () => {
     for (let week = 0; week < 5; week += 1) {
       await trainWeek(addDays(START, week * 7), 100 + week * 5);
     }
     const { state, ledger } = await gymOf(addDays(START, 34));
     expect(state.endurance.progress).toBeGreaterThanOrEqual(4);
     expect(state.endurance.unlocked).toBe(true);
-    expect(ledger.rank.index).toBeGreaterThan(0);
+    expect(state.promotionUnlocked[state.promotionUnlocked.length - 1]).toBe(true);
+    expect(ledger.progress).toBeGreaterThan(1);
   });
 
   it('awards no rating at the unlock itself', async () => {
@@ -194,9 +196,9 @@ describe('the Endurance Phase, end to end', () => {
       // One session a week against a target of three.
       await train(addDays(START, week * 7), 100);
     }
-    const { state, ledger } = await gymOf(addDays(START, 28));
+    const { state } = await gymOf(addDays(START, 28));
     expect(state.endurance.unlocked).toBe(false);
-    expect(ledger.rank.id).toBe('rookie');
+    expect(state.promotionUnlocked.some(Boolean)).toBe(false);
   });
 });
 
@@ -576,34 +578,33 @@ describe('a profile that predates the Gym scoring model', () => {
   });
 });
 
-/* ── Hysteresis, unchanged ──────────────────────────────────────────────── */
+/* ── What a long absence can and cannot take ────────────────────────────── */
 
-describe('the rank rules Gym inherits rather than replaces', () => {
-  it('still needs sustained days below the buffer before a demotion', async () => {
+describe('the peak Gym keeps', () => {
+  it('never lets the peak rating fall, whatever the rating did afterwards', async () => {
     // Train hard past a threshold, then stop for a long time.
     for (let week = 0; week < 8; week += 1) {
       await trainWeek(addDays(START, week * 7), 100 + week * 8);
     }
     const climbed = await gymOf(addDays(START, 55));
-    expect(climbed.ledger.rank.index).toBeGreaterThan(0);
-    const peak = climbed.ledger.peakRank;
+    expect(climbed.ledger.progress).toBeGreaterThan(1);
+    const peak = climbed.ledger.peakMomentum;
 
     const later = await gymOf(addDays(START, 200));
-    // Peak rank never falls, whatever the rating did afterwards.
-    expect(later.ledger.peakRank.index).toBeGreaterThanOrEqual(peak.index);
-    expect(later.ledger.rank.index).toBeLessThanOrEqual(later.ledger.peakRank.index);
+    expect(later.ledger.peakMomentum).toBeGreaterThanOrEqual(peak);
+    expect(later.ledger.momentum).toBeLessThanOrEqual(later.ledger.peakMomentum);
   });
 
-  it('keeps every promotion in the log once the gate is open', async () => {
+  it('opens the Endurance gate from the day after the week it was met in, and never before', async () => {
     for (let week = 0; week < 8; week += 1) {
       await trainWeek(addDays(START, week * 7), 100 + week * 8);
     }
-    const { state, ledger } = await gymOf(addDays(START, 55));
+    const { state, boss } = await gymOf(addDays(START, 55));
     expect(state.endurance.unlocked).toBe(true);
-    expect(ledger.changes.filter((change) => change.kind === 'promotion').length).toBeGreaterThan(0);
-    // And none of them was logged before the gate opened.
     const opened = addDays(START, 28);
-    for (const change of ledger.changes) expect(change.date >= opened).toBe(true);
+    boss.history.days.forEach((day, index) => {
+      expect(state.promotionUnlocked[index]).toBe(day.date >= opened);
+    });
   });
 });
 

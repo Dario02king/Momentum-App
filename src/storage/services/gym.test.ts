@@ -296,7 +296,7 @@ describe('what Gym does and does not do to the ranking', () => {
     const boss = await loadBossProgression();
     const gym = boss.domains.find((domain) => domain.domain === 'gym')!;
     expect(gym.started).toBe(false);
-    expect(gym.lifetimeXp).toBe(0);
+    expect(gym.active.some(Boolean)).toBe(false);
   });
 
   it('starts the Gym ledger once a session is logged', async () => {
@@ -307,7 +307,7 @@ describe('what Gym does and does not do to the ranking', () => {
     const boss = await loadBossProgression();
     const gym = boss.domains.find((domain) => domain.domain === 'gym')!;
     expect(gym.started).toBe(true);
-    expect(gym.rank.id).toBeTruthy();
+    expect(gym.active[gym.active.length - 1]).toBe(true);
   });
 
   it('scores the Gym day on attendance, exactly as it did before phase 4', async () => {
@@ -336,7 +336,6 @@ describe('what Gym does and does not do to the ranking', () => {
     const boss = await loadBossProgression();
     const food = boss.domains.find((domain) => domain.domain === 'food')!;
     expect(food.started).toBe(false);
-    expect(food.lifetimeXp).toBe(0);
     // And it is not in the Boss at all, rather than in it as a zero.
     const last = boss.points[boss.points.length - 1];
     expect(last?.contributions.some((entry) => entry.domain === 'food')).toBe(false);

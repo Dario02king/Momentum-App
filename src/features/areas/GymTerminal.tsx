@@ -26,7 +26,7 @@ export function GymTerminal() {
   return (
     <>
       {gymRating ? (
-        <GymOverview state={gymRating.state} rank={gymRating.rank} started={gymRating.started} />
+        <GymOverview state={gymRating.state} started={gymRating.started} />
       ) : null}
       {gym && gym.days.length > 0 ? (
         <>

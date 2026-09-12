@@ -262,7 +262,8 @@ describe('a pause and the general model', () => {
     const point = ledger(boss, 'food').points.find((entry) => entry.date === inside)!;
     // A recorded day moves the rating; it is not frozen by the pause.
     expect(point.decay).toBe(0);
-    expect(ledger(boss, 'food').lifetimeXp).toBeGreaterThan(0);
+    // And the day earned its XP like any other: the Boss total counts it.
+    expect(boss.lifetimeXp).toBeGreaterThan(0);
   });
 });
 
@@ -473,7 +474,6 @@ describe('what a pause deliberately does not do', () => {
     for (const domain of ['mental', 'food', 'gym'] as const) {
       const entry = ledger(boss, domain);
       expect(entry.peakMomentum).toBeGreaterThanOrEqual(entry.momentum);
-      expect(entry.peakRank.index).toBeGreaterThanOrEqual(entry.rank.index);
     }
   });
 

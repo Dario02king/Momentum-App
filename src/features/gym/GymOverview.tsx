@@ -1,10 +1,7 @@
 import { useState } from 'react';
-import { displayedRankProgress } from '../../core/ranks/progress';
-import { TRAINING_RATING } from '../../core/config/constants';
-import type { Rank } from '../../core/ranks';
+import { RATING, TRAINING_RATING } from '../../core/config/constants';
 import { Card, Section } from '../../components';
 import { MetricBoard, MetricDetailSheet, MetricTile } from '../../components/metrics';
-import { RankBadge } from '../ranking/RankBadge';
 import { useT } from '../../i18n/I18nProvider';
 import type { GymRatingState } from '../../storage/services/gymRatingService';
 import './gym.css';
@@ -56,11 +53,9 @@ type Detail = 'rating' | 'ytd' | 'attendance' | 'endurance' | 'decay';
 
 export function GymOverview({
   state,
-  rank,
   started,
 }: {
   state: GymRatingState;
-  rank: Rank;
   /** False until a session has actually been logged. */
   started: boolean;
 }) {
@@ -78,12 +73,14 @@ export function GymOverview({
     );
   }
 
-  const progress = displayedRankProgress(state.rating, rank);
+  // The rating on its own 0–1000 scale. Gym has no rank of its own to
+  // measure against; the Boss is the only rank.
+  const ratingValue = Math.round(state.rating);
   const attendancePercent =
     state.weeklyTarget > 0
       ? Math.min(100, (state.sessionsThisWeek / state.weeklyTarget) * 100)
       : 0;
-  const ratingLabel = t('gym.rating.value', { value: progress.value });
+  const ratingLabel = t('gym.rating.value', { value: ratingValue });
   const attendanceLabel = t('gym.attendance.value', {
     sessions: state.sessionsThisWeek,
     target: state.weeklyTarget,
@@ -98,7 +95,11 @@ export function GymOverview({
     state.abstinence.days >= TRAINING_RATING.ABSTINENCE_BLOCK_DAYS;
   const ytdText = changeText(state.ytdChange, t);
 
-  const ratingBar = { percent: progress.percent, label: ratingLabel, tone: 'gym' as const };
+  const ratingBar = {
+    percent: Math.round((ratingValue / RATING.MAX) * 100),
+    label: ratingLabel,
+    tone: 'gym' as const,
+  };
   const attendanceBar = { percent: attendancePercent, label: attendanceLabel, tone: 'gym' as const };
   const enduranceBar = {
     percent: (state.endurance.progress / state.endurance.required) * 100,
@@ -109,12 +110,10 @@ export function GymOverview({
   return (
     <>
       <MetricBoard>
-        {/* 1 — the rating itself. Rank names stay English in every language. */}
+        {/* 1 — the rating itself. */}
         <MetricTile
           id="gym-rating"
           title={t('gym.rating.title')}
-          leading={<RankBadge rankId={rank.id} size={60} mystery={locked} />}
-          kicker={rank.name}
           value={ratingLabel}
           bar={ratingBar}
           line={

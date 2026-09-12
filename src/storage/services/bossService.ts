@@ -16,7 +16,6 @@ import type { ConfigSnapshotRecord, DomainType } from '../../core/model';
 import { compareDateKeys } from '../../core/dates';
 import type { DayState } from '../../core/rating';
 import { rankHistory, rankForRating, type Rank, type RankChange } from '../../core/ranks';
-import type { XpDay, XpWeek } from '../../core/scoring/xp';
 import { configSnapshotsRepository, gymSessionsRepository, runsRepository } from '../repositories';
 import { buildGymRating, type GymRatingState } from './gymRatingService';
 import { loadExerciseDays } from './gymService';
@@ -29,7 +28,11 @@ import type { History } from './historyService';
 import { loadProgression, progressionOrigin, type Progression } from './ratingService';
 
 /**
- * Per-domain progression and the Boss Rank above it.
+ * Per-domain progression and the Boss Rank above it — **the only rank**.
+ *
+ * A domain here is a rating series and the ladder position the Boss reads
+ * from it; the rank, peak rank, rank history and lifetime XP below are the
+ * Boss's and nobody else's (Stage 2 of the Overall-rank update).
  *
  * Replayed, never stored — the same rule as everything else derived. Adding
  * this service does not change what RC2 already computes: `loadProgression`
@@ -193,28 +196,6 @@ function startedByDay(days: readonly DayState[]): boolean[] {
   });
 }
 
-function domainXp(history: History, domain: DomainType): { days: XpDay[]; weeks: XpWeek[] } {
-  const days: XpDay[] = history.days.map((day) => {
-    const entry = day.domains.find((candidate) => candidate.domain === domain);
-    return {
-      answeredItems: entry && domain === 'mental' ? entry.itemsAnswered : 0,
-      complete: entry ? entry.itemsDue > 0 && entry.itemsAnswered >= entry.itemsDue : false,
-      counts: day.status === 'scored' && entry !== undefined,
-    };
-  });
-
-  const weeks: XpWeek[] = history.weeks.map((week) => {
-    const entry = week.domains.find((candidate) => candidate.domain === domain);
-    return {
-      sessions: entry?.sessions ?? 0,
-      met: entry?.met ?? false,
-      inProgress: week.inProgress,
-    };
-  });
-
-  return { days, weeks };
-}
-
 export async function loadBossProgression(
   reference: DateKey = today(),
 ): Promise<BossProgression> {
@@ -266,14 +247,11 @@ export async function loadBossProgression(
   };
 
   const domains: DomainProgression[] = DOMAIN_TYPES.map((domain) => {
-    const xp = domainXp(history, domain);
     const own = supplied[domain];
     const days = own ? own.days : domainDayStates(history, domain);
     const ledger = buildLedger({
       domain,
       days,
-      xpDays: xp.days,
-      xpWeeks: xp.weeks,
       ...(own
         ? {
             rating: {
@@ -283,7 +261,6 @@ export async function loadBossProgression(
               currentStreak: 0,
               bestStreak: 0,
             },
-            promotionUnlocked: own.state.promotionUnlocked,
           }
         : {}),
     });
