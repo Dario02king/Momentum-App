@@ -112,72 +112,60 @@ describe('white on a filled control', () => {
   );
 });
 
-describe('history grid bands', () => {
-  it.each(['--band-low', '--band-fair', '--band-good', '--band-high'])(
-    '%s separates from the empty cell track',
-    (name) => {
-      // A filled bar is a graphical object: 3:1 against what surrounds it.
-      expect(contrast(hex(name), hex('--band-track'))).toBeGreaterThanOrEqual(LARGE);
-    },
-  );
-
-  it('leaves the no-data track lighter than every band', () => {
-    // An empty cell must never be mistaken for a low score.
-    const bands = ['--band-low', '--band-fair', '--band-good', '--band-high'].map((name) =>
-      luminance(hex(name)),
-    );
-    expect(Math.min(...bands)).toBeLessThan(luminance(hex('--band-none')));
-  });
-});
-
 /**
- * The fixed 1–10 mapping.
+ * The status palette (D123).
  *
- * Red, orange, yellow, green, dark green is a product decision about *hue*.
- * Everything below is the accessibility half of it, which the decision does
- * not settle and which cannot be checked by eye.
+ * Weak, mixed, good and strong are a product decision about *hue*, bright
+ * by design. Everything below is the accessibility half of it, which the
+ * decision does not settle and which cannot be checked by eye: the fills
+ * carry no text of their own, so each status has a darker ink for text and
+ * outlines, an `-on` colour for the label inside a filled control, and a
+ * tint for badges. Text is darkened; the bar never is.
  */
-describe('the 1-10 semantic bands', () => {
-  const BANDS = ['poor', 'fair', 'okay', 'good', 'veryGood'];
+describe('the status palette', () => {
+  const STATUSES = ['weak', 'mixed', 'good', 'strong'];
 
-  it.each(BANDS)('--scale-%s-ink is safe for text on white', (band) => {
-    expect(contrast(hex(`--scale-${band}-ink`), WHITE)).toBeGreaterThanOrEqual(BODY);
+  it.each(STATUSES)('--status-%s-ink is safe for text on white', (status) => {
+    expect(contrast(hex(`--status-${status}-ink`), WHITE)).toBeGreaterThanOrEqual(BODY);
   });
 
-  it.each(BANDS)('--scale-%s-ink reads on its own tint', (band) => {
+  it.each(STATUSES)('--status-%s-ink reads on its own tint', (status) => {
     expect(
-      contrast(hex(`--scale-${band}-ink`), hex(`--scale-${band}-tint`)),
+      contrast(hex(`--status-${status}-ink`), hex(`--status-${status}-tint`)),
     ).toBeGreaterThanOrEqual(BODY);
   });
 
-  it.each(BANDS)('--scale-%s-on reads on the band fill', (band) => {
+  it.each(STATUSES)('--status-%s-on reads on the fill', (status) => {
     // The number inside a selected bubble is the value itself. If it does not
     // read, the control has no content.
     expect(
-      contrast(hex(`--scale-${band}-on`), hex(`--scale-${band}-fill`)),
+      contrast(hex(`--status-${status}-on`), hex(`--status-${status}`)),
     ).toBeGreaterThanOrEqual(BODY);
   });
 
-  it.each(BANDS)('--scale-%s-ink outlines the fill against a card', (band) => {
-    // A yellow fill cannot clear 3:1 on white, so the outline is what makes
-    // the control a graphical object. It has to clear it on every band.
-    expect(contrast(hex(`--scale-${band}-ink`), WHITE)).toBeGreaterThanOrEqual(LARGE);
-  });
-
-  it('separates green from dark green by luminance, not only by hue', () => {
-    // 8 and 9 are one step apart on the scale and one hue apart in the
-    // palette. Without a luminance gap they are the same colour to a
-    // deuteranope, and the ramp would lose its top half.
-    expect(
-      contrast(hex('--scale-good-fill'), hex('--scale-veryGood-fill')),
-    ).toBeGreaterThanOrEqual(1.5);
-  });
-
-  it('darkens as the band improves, so the ramp has a direction', () => {
-    const dark = ['--scale-good-fill', '--scale-veryGood-fill'].map((name) =>
-      luminance(hex(name)),
+  it.each(STATUSES)('--status-%s-ink outlines the fill against a card and a track', (status) => {
+    // A yellow or a bright green fill cannot clear 3:1 on a light ground,
+    // so the outline is what makes a swatch, a region or a selected control
+    // a graphical object. It has to clear it on every status.
+    expect(contrast(hex(`--status-${status}-ink`), WHITE)).toBeGreaterThanOrEqual(LARGE);
+    expect(contrast(hex(`--status-${status}-ink`), hex('--status-track'))).toBeGreaterThanOrEqual(
+      LARGE,
     );
-    expect(dark[1]!).toBeLessThan(dark[0]!);
+  });
+
+  it('keeps the empty ink readable, because "no data" is spelled out too', () => {
+    expect(contrast(hex('--status-empty-ink'), WHITE)).toBeGreaterThanOrEqual(BODY);
+  });
+
+  it('leaves the no-data cell lighter than every status fill', () => {
+    // An empty cell must never be mistaken for a recorded day. The history
+    // bars carry the value as height; this is the one promise colour makes.
+    const fills = STATUSES.map((status) => luminance(hex(`--status-${status}`)));
+    expect(Math.max(...fills)).toBeLessThan(luminance(hex('--status-empty')));
+  });
+
+  it('uses four distinct fills', () => {
+    expect(new Set(STATUSES.map((status) => hex(`--status-${status}`))).size).toBe(4);
   });
 });
 

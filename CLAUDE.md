@@ -196,6 +196,12 @@ Never conflate them.
 
 - Design tokens only (`src/styles/tokens.css`). `contrast.test.ts` parses that
   file and will fail a colour that does not clear its promise.
+- **Status colours have one definition** (D123): `--status-{weak,mixed,good,
+  strong,empty}` in `tokens.css`. CSS uses `var()`; TypeScript and WebGL read
+  the same file through `src/styles/statusPalette.ts`. Never write one of
+  those hex values anywhere else — `statusPalette.test.ts` scans for it. The
+  1–10 answer and the 0–100 scores both resolve to the same four statuses and
+  the same `status.*` labels; text is darkened to read, the bar never is.
 - Touch targets 44px effective. A control may reach it with a negatively
   inset `::before`.
 - No horizontal clipping at 320/360/393/430px.

@@ -128,17 +128,17 @@ describe('the layer a screen reader consumes', () => {
 
 describe('the 1-10 palette, where a 1-10 value appears', () => {
   it('bands every value by the fixed mapping', () => {
-    // 1–4 red, 5 orange, 6 yellow, 7–8 green, 9–10 dark green. The class is
-    // the band, so the colour cannot disagree with the number.
+    // 1–4 weak, 5–6 mixed, 7–8 good, 9–10 strong (D123). The class is the
+    // band, so the colour cannot disagree with the number.
     const cases: [number, string][] = [
-      [10, 'poor'],
-      [40, 'poor'],
-      [50, 'fair'],
-      [60, 'okay'],
+      [10, 'weak'],
+      [40, 'weak'],
+      [50, 'mixed'],
+      [60, 'mixed'],
       [70, 'good'],
       [80, 'good'],
-      [90, 'veryGood'],
-      [100, 'veryGood'],
+      [90, 'strong'],
+      [100, 'strong'],
     ];
     for (const [percent, band] of cases) {
       const html = render({ question: row({ scores: [percent] }), days: [days[0]!], onClose: noop });

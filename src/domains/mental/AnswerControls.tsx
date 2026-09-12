@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import { SCALE_VALUES, SCALE_BAND_LABEL_KEYS, scaleBandOf } from '../../core/scoring/scale';
+import { SCALE_VALUES, STATUS_LABEL_KEYS, scaleBandOf } from '../../core/scoring/scale';
 import type { AnswerValue } from '../../core/model';
 import { useT } from '../../i18n/I18nProvider';
 import './answerControls.css';
@@ -129,7 +129,7 @@ export function ScaleAnswer({
               className={`answer-scale__value answer-scale__value--${optionBand}`}
               aria-label={t('answer.scaleValue', {
                 value: option,
-                band: t(SCALE_BAND_LABEL_KEYS[optionBand]),
+                band: t(STATUS_LABEL_KEYS[optionBand]),
               })}
               disabled={disabled}
               onClick={() => onChange(option)}
@@ -142,7 +142,7 @@ export function ScaleAnswer({
       </div>
       {band ? (
         <p className={`answer-scale__band answer-scale__band--${band}`} aria-live="polite">
-          {t(SCALE_BAND_LABEL_KEYS[band])}
+          {t(STATUS_LABEL_KEYS[band])}
         </p>
       ) : null}
     </div>

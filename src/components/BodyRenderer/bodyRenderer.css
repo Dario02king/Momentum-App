@@ -25,17 +25,17 @@
 }
 
 /*
- * State is carried by fill *and* by the words in the legend. The fills are
- * also separated by lightness rather than hue alone, so the figure still
- * reads as a gradient of activity to someone who cannot separate red from
- * green.
+ * State is carried by fill *and* by the words in the legend. Each status
+ * region is also outlined in its own ink: the status fills are bright by
+ * design and yellow or green alone would not separate from the silhouette,
+ * so the outline is what keeps a region a shape rather than a wash.
  */
 .body-renderer__muscle {
   transition: fill var(--duration-base) var(--ease-standard);
 }
 
 .body-renderer__muscle--noData {
-  fill: var(--band-none);
+  fill: var(--status-empty);
 }
 
 .body-renderer__muscle--awaitingBaseline {
@@ -44,15 +44,21 @@
 }
 
 .body-renderer__muscle--improved {
-  fill: var(--scale-good-fill);
+  fill: var(--status-strong);
+  stroke: var(--status-strong-ink);
+  stroke-width: 1;
 }
 
 .body-renderer__muscle--unchanged {
-  fill: var(--scale-okay-fill);
+  fill: var(--status-mixed);
+  stroke: var(--status-mixed-ink);
+  stroke-width: 1;
 }
 
 .body-renderer__muscle--declined {
-  fill: var(--scale-poor-fill);
+  fill: var(--status-weak);
+  stroke: var(--status-weak-ink);
+  stroke-width: 1;
 }
 
 .body-renderer__muscle--selected {
@@ -95,19 +101,22 @@
 }
 
 .body-renderer__swatch--noData {
-  background: var(--band-none);
+  background: var(--status-empty);
 }
 .body-renderer__swatch--awaitingBaseline {
   background: var(--sky-fill);
 }
 .body-renderer__swatch--improved {
-  background: var(--scale-good-fill);
+  background: var(--status-strong);
+  box-shadow: inset 0 0 0 1px var(--status-strong-ink);
 }
 .body-renderer__swatch--unchanged {
-  background: var(--scale-okay-fill);
+  background: var(--status-mixed);
+  box-shadow: inset 0 0 0 1px var(--status-mixed-ink);
 }
 .body-renderer__swatch--declined {
-  background: var(--scale-poor-fill);
+  background: var(--status-weak);
+  box-shadow: inset 0 0 0 1px var(--status-weak-ink);
 }
 
 .body-renderer__name {
@@ -125,13 +134,13 @@
 }
 
 .body-renderer__state--improved {
-  color: var(--scale-good-ink);
+  color: var(--status-strong-ink);
 }
 .body-renderer__state--declined {
-  color: var(--scale-poor-ink);
+  color: var(--status-weak-ink);
 }
 .body-renderer__state--unchanged {
-  color: var(--scale-okay-ink);
+  color: var(--status-mixed-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -53,16 +53,10 @@ export const de = {
   'common.close': 'Schliessen',
   'common.moreInfo': 'Mehr dazu',
 
-  'scale.poor': 'Schlecht',
-  'scale.fair': 'Mässig',
-  'scale.okay': 'Okay',
-  'scale.good': 'Gut',
-  'scale.veryGood': 'Sehr gut',
-
-  'score.low': 'Schwach',
-  'score.fair': 'Wechselhaft',
-  'score.good': 'Gut',
-  'score.high': 'Stark',
+  'status.weak': 'Schwach',
+  'status.mixed': 'Wechselhaft',
+  'status.good': 'Gut',
+  'status.strong': 'Stark',
   'score.none': 'Keine Daten',
 
   'day.open': 'Noch offen',

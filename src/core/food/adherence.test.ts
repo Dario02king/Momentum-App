@@ -29,9 +29,9 @@ describe('the adherence scale', () => {
   });
 
   it('reads a value back with the words that go with it', () => {
-    expect(adherenceBandOf(2)).toBe('poor');
+    expect(adherenceBandOf(2)).toBe('weak');
     expect(adherenceBandOf(8)).toBe('good');
-    expect(adherenceBandOf(10)).toBe('veryGood');
+    expect(adherenceBandOf(10)).toBe('strong');
   });
 
   it('accepts only a whole number inside the scale', () => {

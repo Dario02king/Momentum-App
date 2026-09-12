@@ -1,4 +1,10 @@
-import { SCALE_BANDS, SCALE_MAX, SCALE_MIN, type ScaleBandId } from '../config/constants';
+import {
+  SCALE_BANDS,
+  SCALE_MAX,
+  SCALE_MIN,
+  type ScaleBandId,
+  type StatusId,
+} from '../config/constants';
 
 /**
  * Scale answers (1–10) and their qualitative reading.
@@ -31,13 +37,16 @@ export function scaleValueToPercent(value: number): number {
   return clampScaleValue(value) * 10;
 }
 
-export const SCALE_BAND_LABEL_KEYS = {
-  poor: 'scale.poor',
-  fair: 'scale.fair',
-  okay: 'scale.okay',
-  good: 'scale.good',
-  veryGood: 'scale.veryGood',
-} as const satisfies Record<ScaleBandId, string>;
+/**
+ * The words for each status, one key per band, shared by the 1–10 scale and
+ * the 0–100 scores: the vocabulary is the same because the meaning is.
+ */
+export const STATUS_LABEL_KEYS = {
+  weak: 'status.weak',
+  mixed: 'status.mixed',
+  good: 'status.good',
+  strong: 'status.strong',
+} as const satisfies Record<StatusId, string>;
 
 /** Every value the picker offers, low to high. */
 export const SCALE_VALUES: number[] = Array.from(

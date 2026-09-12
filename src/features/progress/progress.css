@@ -208,7 +208,7 @@
   flex: 1;
   height: 100%;
   min-width: 0;
-  background: var(--band-track);
+  background: var(--status-track);
   border-radius: 3px;
   display: flex;
   align-items: flex-end;
@@ -221,17 +221,17 @@
   transition: height var(--duration-base) var(--ease-standard);
 }
 
-.heatmap__bar--low {
-  background: var(--band-low);
+.heatmap__bar--weak {
+  background: var(--status-weak);
 }
-.heatmap__bar--fair {
-  background: var(--band-fair);
+.heatmap__bar--mixed {
+  background: var(--status-mixed);
 }
 .heatmap__bar--good {
-  background: var(--band-good);
+  background: var(--status-good);
 }
-.heatmap__bar--high {
-  background: var(--band-high);
+.heatmap__bar--strong {
+  background: var(--status-strong);
 }
 
 /* A day with no data is an unfilled track, never another colour. */
@@ -240,8 +240,8 @@
   height: 100%;
   background: repeating-linear-gradient(
     135deg,
-    var(--band-none),
-    var(--band-none) 2px,
+    var(--status-empty),
+    var(--status-empty) 2px,
     transparent 2px,
     transparent 4px
   );
@@ -278,18 +278,25 @@
   flex-shrink: 0;
 }
 
-.heatmap__swatch--low {
-  background: var(--band-low);
+/* A swatch is outlined in its ink: yellow and green cannot clear 3:1 on a
+   white card by themselves, and the words next to it are what carry the
+   meaning either way. */
+.heatmap__swatch--weak {
+  background: var(--status-weak);
+  box-shadow: inset 0 0 0 1px var(--status-weak-ink);
 }
-.heatmap__swatch--fair {
-  background: var(--band-fair);
+.heatmap__swatch--mixed {
+  background: var(--status-mixed);
+  box-shadow: inset 0 0 0 1px var(--status-mixed-ink);
 }
 .heatmap__swatch--good {
-  background: var(--band-good);
+  background: var(--status-good);
+  box-shadow: inset 0 0 0 1px var(--status-good-ink);
 }
-.heatmap__swatch--high {
-  background: var(--band-high);
+.heatmap__swatch--strong {
+  background: var(--status-strong);
+  box-shadow: inset 0 0 0 1px var(--status-strong-ink);
 }
 .heatmap__swatch--none {
-  background: var(--band-none);
+  background: var(--status-empty);
 }

@@ -80,7 +80,7 @@ const scaleValue = (page, value) =>
   const after = await storedRatings(page);
   check('re-rating the day replaces the rating', after.length === 1 && after[0]?.adherence === 3);
   check('and the screen follows it down',
-    /3 von 10 · Schlecht/.test((await page.getByText(/von 10 ·/).first().textContent()) ?? ''));
+    /3 von 10 · Schwach/.test((await page.getByText(/von 10 ·/).first().textContent()) ?? ''));
 
   await page.getByRole('button', { name: 'Bewertung entfernen' }).click();
   await page.waitForTimeout(500);

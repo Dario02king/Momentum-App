@@ -87,12 +87,12 @@ describe('the values a reader hears', () => {
 describe('the bands the bar heights are coloured by', () => {
   it('puts every score in exactly one band', () => {
     for (let value = 0; value <= 100; value += 1) {
-      expect(bandOf(value)).toMatch(/^(low|fair|good|high)$/);
+      expect(bandOf(value)).toMatch(/^(weak|mixed|good|strong)$/);
     }
   });
 
   it('rises with the score, so colour never contradicts height', () => {
-    const order = ['low', 'fair', 'good', 'high'];
+    const order = ['weak', 'mixed', 'good', 'strong'];
     let seen = 0;
     for (let value = 0; value <= 100; value += 1) {
       const index = order.indexOf(bandOf(value));

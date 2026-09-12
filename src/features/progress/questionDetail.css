@@ -88,26 +88,22 @@
   color: var(--text-secondary);
 }
 
-/* The 1–10 mapping, on the value that is literally a 1–10 answer. */
-.question-detail__figureValue--poor,
-.question-detail__rowValue--poor {
-  color: var(--scale-poor-ink);
+/* The status of the value that is literally a 1–10 answer. */
+.question-detail__figureValue--weak,
+.question-detail__rowValue--weak {
+  color: var(--status-weak-ink);
 }
-.question-detail__figureValue--fair,
-.question-detail__rowValue--fair {
-  color: var(--scale-fair-ink);
-}
-.question-detail__figureValue--okay,
-.question-detail__rowValue--okay {
-  color: var(--scale-okay-ink);
+.question-detail__figureValue--mixed,
+.question-detail__rowValue--mixed {
+  color: var(--status-mixed-ink);
 }
 .question-detail__figureValue--good,
 .question-detail__rowValue--good {
-  color: var(--scale-good-ink);
+  color: var(--status-good-ink);
 }
-.question-detail__figureValue--veryGood,
-.question-detail__rowValue--veryGood {
-  color: var(--scale-veryGood-ink);
+.question-detail__figureValue--strong,
+.question-detail__rowValue--strong {
+  color: var(--status-strong-ink);
 }
 
 .question-detail__meta {
@@ -133,7 +129,7 @@
   height: 100%;
   display: flex;
   align-items: flex-end;
-  background: var(--band-track);
+  background: var(--status-track);
   border-radius: 3px;
   overflow: hidden;
   min-width: 3px;
@@ -142,7 +138,7 @@
 .question-detail__empty {
   width: 100%;
   height: 100%;
-  background: var(--band-none);
+  background: var(--status-empty);
 }
 
 .question-detail__bar {
@@ -150,20 +146,17 @@
   border-radius: 3px;
 }
 
-.question-detail__bar--poor {
-  background: var(--scale-poor-fill);
+.question-detail__bar--weak {
+  background: var(--status-weak);
 }
-.question-detail__bar--fair {
-  background: var(--scale-fair-fill);
-}
-.question-detail__bar--okay {
-  background: var(--scale-okay-fill);
+.question-detail__bar--mixed {
+  background: var(--status-mixed);
 }
 .question-detail__bar--good {
-  background: var(--scale-good-fill);
+  background: var(--status-good);
 }
-.question-detail__bar--veryGood {
-  background: var(--scale-veryGood-fill);
+.question-detail__bar--strong {
+  background: var(--status-strong);
 }
 
 .question-detail__row {

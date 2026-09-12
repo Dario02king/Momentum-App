@@ -51,16 +51,10 @@ export const en: Translations = {
   'common.close': 'Close',
   'common.moreInfo': 'More about this',
 
-  'scale.poor': 'Poor',
-  'scale.fair': 'Weak',
-  'scale.okay': 'Okay',
-  'scale.good': 'Good',
-  'scale.veryGood': 'Very good',
-
-  'score.low': 'Weak',
-  'score.fair': 'Mixed',
-  'score.good': 'Good',
-  'score.high': 'Strong',
+  'status.weak': 'Weak',
+  'status.mixed': 'Mixed',
+  'status.good': 'Good',
+  'status.strong': 'Strong',
   'score.none': 'No data',
 
   'day.open': 'Still open',

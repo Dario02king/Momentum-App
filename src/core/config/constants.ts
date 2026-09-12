@@ -15,14 +15,33 @@ export const SCALE_MIN = 1;
 export const SCALE_MAX = 10;
 
 /**
- * The fixed 1–10 mapping (D13 of iteration 2), and the only one there is.
+ * The four statuses every "how is it going" reading resolves to (D123).
+ *
+ * One vocabulary for the 1–10 answer, the 0–100 scores, the history grid
+ * and the muscle map: `weak`, `mixed`, `good`, `strong`. The colour for each
+ * is defined once, in `src/styles/tokens.css` as `--status-*`, and the label
+ * once, in the string layer as `status.*`. Absence is not a status: a day
+ * with no data is `empty`, kept apart from all four and never a fifth band.
+ */
+export const STATUS_IDS = ['weak', 'mixed', 'good', 'strong'] as const;
+
+export type StatusId = (typeof STATUS_IDS)[number];
+
+interface StatusBand {
+  readonly id: StatusId;
+  readonly from: number;
+  readonly to: number;
+}
+
+/**
+ * The fixed 1–10 mapping (D13 of iteration 2, re-banded by D123), and the
+ * only one there is.
  *
  * ```
- *   1 2 3 4   red
- *   5         orange
- *   6         yellow
- *   7 8       green
- *   9 10      dark green
+ *   1 2 3 4   weak
+ *   5 6       mixed
+ *   7 8       good
+ *   9 10      strong
  * ```
  *
  * `from` is inclusive and `to` exclusive, so the boundaries are unambiguous
@@ -30,14 +49,16 @@ export const SCALE_MAX = 10;
  * label and summary text everywhere a 1–10 value appears, so the three can
  * never disagree — and colour is never the only carrier: the band is spelled
  * out in words wherever it is shown.
+ *
+ * This is presentation only. The answer itself, its percentage (value × 10)
+ * and everything scored from it are untouched by the banding.
  */
 export const SCALE_BANDS = [
-  { id: 'poor', from: 1.0, to: 5.0 },
-  { id: 'fair', from: 5.0, to: 6.0 },
-  { id: 'okay', from: 6.0, to: 7.0 },
+  { id: 'weak', from: 1.0, to: 5.0 },
+  { id: 'mixed', from: 5.0, to: 7.0 },
   { id: 'good', from: 7.0, to: 9.0 },
-  { id: 'veryGood', from: 9.0, to: 10.0001 },
-] as const;
+  { id: 'strong', from: 9.0, to: 10.0001 },
+] as const satisfies readonly StatusBand[];
 
 export type ScaleBandId = (typeof SCALE_BANDS)[number]['id'];
 
@@ -45,13 +66,14 @@ export type ScaleBandId = (typeof SCALE_BANDS)[number]['id'];
  * Performance bands for day and domain scores (percentages, 0–100).
  * Used by the heatmap and the trend annotations. Colour is never the only
  * carrier of meaning, so each band also has a label key in the string layer.
+ * The thresholds are RC2's and unchanged; D123 only named them.
  */
 export const SCORE_BANDS = [
-  { id: 'low', from: 0, to: 40 },
-  { id: 'fair', from: 40, to: 65 },
+  { id: 'weak', from: 0, to: 40 },
+  { id: 'mixed', from: 40, to: 65 },
   { id: 'good', from: 65, to: 85 },
-  { id: 'high', from: 85, to: 100.0001 },
-] as const;
+  { id: 'strong', from: 85, to: 100.0001 },
+] as const satisfies readonly StatusBand[];
 
 export type ScoreBandId = (typeof SCORE_BANDS)[number]['id'];
 

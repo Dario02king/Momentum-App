@@ -96,20 +96,17 @@
 
 /* The unselected ramp: a soft tint per band, so the direction of the scale
    is visible before anything is chosen. */
-.answer-scale__value--poor {
-  background: var(--scale-poor-tint);
+.answer-scale__value--weak {
+  background: var(--status-weak-tint);
 }
-.answer-scale__value--fair {
-  background: var(--scale-fair-tint);
-}
-.answer-scale__value--okay {
-  background: var(--scale-okay-tint);
+.answer-scale__value--mixed {
+  background: var(--status-mixed-tint);
 }
 .answer-scale__value--good {
-  background: var(--scale-good-tint);
+  background: var(--status-good-tint);
 }
-.answer-scale__value--veryGood {
-  background: var(--scale-veryGood-tint);
+.answer-scale__value--strong {
+  background: var(--status-strong-tint);
 }
 
 /*
@@ -123,30 +120,25 @@
 .answer-scale__value[aria-checked='true'] {
   border-color: currentcolor;
 }
-.answer-scale__value--poor[aria-checked='true'] {
-  background: var(--scale-poor-fill);
-  border-color: var(--scale-poor-ink);
-  color: var(--scale-poor-on);
+.answer-scale__value--weak[aria-checked='true'] {
+  background: var(--status-weak);
+  border-color: var(--status-weak-ink);
+  color: var(--status-weak-on);
 }
-.answer-scale__value--fair[aria-checked='true'] {
-  background: var(--scale-fair-fill);
-  border-color: var(--scale-fair-ink);
-  color: var(--scale-fair-on);
-}
-.answer-scale__value--okay[aria-checked='true'] {
-  background: var(--scale-okay-fill);
-  border-color: var(--scale-okay-ink);
-  color: var(--scale-okay-on);
+.answer-scale__value--mixed[aria-checked='true'] {
+  background: var(--status-mixed);
+  border-color: var(--status-mixed-ink);
+  color: var(--status-mixed-on);
 }
 .answer-scale__value--good[aria-checked='true'] {
-  background: var(--scale-good-fill);
-  border-color: var(--scale-good-ink);
-  color: var(--scale-good-on);
+  background: var(--status-good);
+  border-color: var(--status-good-ink);
+  color: var(--status-good-on);
 }
-.answer-scale__value--veryGood[aria-checked='true'] {
-  background: var(--scale-veryGood-fill);
-  border-color: var(--scale-veryGood-ink);
-  color: var(--scale-veryGood-on);
+.answer-scale__value--strong[aria-checked='true'] {
+  background: var(--status-strong);
+  border-color: var(--status-strong-ink);
+  color: var(--status-strong-on);
 }
 
 /* The qualitative reading. Colour is never the only carrier of meaning, so
@@ -157,18 +149,15 @@
   letter-spacing: -0.2px;
 }
 
-.answer-scale__band--poor {
-  color: var(--scale-poor-ink);
+.answer-scale__band--weak {
+  color: var(--status-weak-ink);
 }
-.answer-scale__band--fair {
-  color: var(--scale-fair-ink);
-}
-.answer-scale__band--okay {
-  color: var(--scale-okay-ink);
+.answer-scale__band--mixed {
+  color: var(--status-mixed-ink);
 }
 .answer-scale__band--good {
-  color: var(--scale-good-ink);
+  color: var(--status-good-ink);
 }
-.answer-scale__band--veryGood {
-  color: var(--scale-veryGood-ink);
+.answer-scale__band--strong {
+  color: var(--status-strong-ink);
 }

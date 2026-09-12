@@ -1,10 +1,10 @@
 import { useId, useState } from 'react';
 import { SCORE_BANDS, type ScoreBandId } from '../../core/config/constants';
+import { STATUS_LABEL_KEYS } from '../../core/scoring/scale';
 import type { DateKey } from '../../core/dates';
 import { ChevronDownIcon, ChevronRightIcon } from '../../components/Icons';
 import { formatDayAndMonth } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
-import type { TranslationKey } from '../../i18n';
 
 export interface HeatmapRow {
   key: string;
@@ -16,18 +16,11 @@ export interface HeatmapRow {
   onOpen?: () => void;
 }
 
-const BAND_LABEL_KEYS: Record<ScoreBandId, TranslationKey> = {
-  low: 'score.low',
-  fair: 'score.fair',
-  good: 'score.good',
-  high: 'score.high',
-};
-
 export function bandOf(value: number): ScoreBandId {
   for (const band of SCORE_BANDS) {
     if (value >= band.from && value < band.to) return band.id;
   }
-  return 'high';
+  return 'strong';
 }
 
 export function summarise(values: (number | null)[]) {
@@ -268,7 +261,7 @@ export function Heatmap({ rows, days }: { rows: HeatmapRow[]; days: DateKey[] })
         {SCORE_BANDS.map((band) => (
           <li key={band.id} className="heatmap__legendItem">
             <span className={`heatmap__swatch heatmap__swatch--${band.id}`} aria-hidden="true" />
-            {t(BAND_LABEL_KEYS[band.id])}
+            {t(STATUS_LABEL_KEYS[band.id])}
           </li>
         ))}
         <li className="heatmap__legendItem">

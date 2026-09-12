@@ -275,13 +275,13 @@
 }
 
 .gym-progress__change--improved {
-  color: var(--scale-good-ink);
+  color: var(--status-strong-ink);
 }
 .gym-progress__change--declined {
-  color: var(--scale-poor-ink);
+  color: var(--status-weak-ink);
 }
 .gym-progress__change--unchanged {
-  color: var(--scale-okay-ink);
+  color: var(--status-mixed-ink);
 }
 .gym-progress__change--noBaseline {
   color: var(--text-secondary);
@@ -330,13 +330,13 @@
 }
 
 .gym-detail__value--improved {
-  color: var(--scale-good-ink);
+  color: var(--status-strong-ink);
 }
 .gym-detail__value--declined {
-  color: var(--scale-poor-ink);
+  color: var(--status-weak-ink);
 }
 .gym-detail__value--unchanged {
-  color: var(--scale-okay-ink);
+  color: var(--status-mixed-ink);
 }
 .gym-detail__value--noBaseline {
   color: var(--text-secondary);
@@ -363,7 +363,7 @@
   height: 100%;
   display: flex;
   align-items: flex-end;
-  background: var(--band-track);
+  background: var(--status-track);
   border-radius: 3px;
   overflow: hidden;
 }

@@ -92,5 +92,10 @@ export default defineConfig({
   // vitest.workspace.ts — date logic is proved in more than one zone.
   test: {
     environment: 'node',
+    // Vitest replaces every CSS module with an empty string unless told
+    // otherwise — including a `?raw` import, which is how the status palette
+    // reaches TypeScript (src/styles/statusPalette.ts). The token file is the
+    // one CSS module a test must read as written.
+    css: { include: [/tokens\.css(\?raw)?$/] },
   },
 });

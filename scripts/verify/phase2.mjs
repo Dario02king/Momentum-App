@@ -128,14 +128,14 @@ async function fresh(opts = {}) {
   await six.click();
   await page.waitForTimeout(400);
   const bg = await six.evaluate((el) => getComputedStyle(el).backgroundColor);
-  check('a 6 fills yellow', bg === 'rgb(242, 195, 0)', bg);
+  check('a 6 fills yellow (--status-mixed)', bg === 'rgb(255, 214, 0)', bg);
   const ten = page.getByRole('radio', { name: /^10 von 10/ }).first();
   await ten.click();
   await page.waitForTimeout(300);
   const bg10 = await ten.evaluate((el) => getComputedStyle(el).backgroundColor);
-  check('a 10 fills dark green', bg10 === 'rgb(7, 69, 42)', bg10);
+  check('a 10 fills green (--status-strong)', bg10 === 'rgb(0, 184, 91)', bg10);
   check('the band is spelled out next to the number',
-    await page.getByText('Sehr gut', { exact: true }).first().isVisible());
+    await page.getByText('Stark', { exact: true }).first().isVisible());
 
   await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
   await page.waitForTimeout(400);

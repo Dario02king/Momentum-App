@@ -37,7 +37,7 @@ function visualsOf(fixture: Record<MuscleGroup, Fixture>): Partial<Record<Muscle
   const out: Partial<Record<MuscleGroup, MuscleVisual>> = {};
   for (const id of MUSCLE_GROUPS) {
     const { state, delta } = fixture[id];
-    out[id] = { tint: STATE_COLOR[state].ink, intensity: stateIntensity(state, delta) };
+    out[id] = { tint: STATE_COLOR[state].model, intensity: stateIntensity(state, delta) };
   }
   return out;
 }

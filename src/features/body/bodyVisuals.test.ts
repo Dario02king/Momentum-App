@@ -39,9 +39,9 @@ describe('toBodyVisuals', () => {
     }
   });
 
-  it('tint is the state ink and intensity the approved curve, from tokens.ts', () => {
+  it('tint is the state model colour and intensity the approved curve, from tokens.ts', () => {
     for (const visual of toBodyVisuals(SAMPLE)) {
-      expect(visual.tint).toBe(STATE_COLOR[visual.state].ink);
+      expect(visual.tint).toBe(STATE_COLOR[visual.state].model);
       expect(visual.intensity).toBe(stateIntensity(visual.state, visual.delta ?? 0));
     }
     const chest = toBodyVisuals(SAMPLE).find((v) => v.id === 'chest')!;
@@ -60,7 +60,7 @@ describe('toBodyVisuals', () => {
   it('visualsByMuscle carries tint and intensity into the viewer prop shape', () => {
     const byMuscle = visualsByMuscle(toBodyVisuals(SAMPLE));
     expect(Object.keys(byMuscle).sort()).toEqual([...MUSCLE_GROUPS].sort());
-    expect(byMuscle.chest).toEqual({ tint: STATE_COLOR.improved.ink, intensity: 1 });
-    expect(byMuscle.biceps).toEqual({ tint: STATE_COLOR.awaitingBaseline.ink, intensity: 0.42 });
+    expect(byMuscle.chest).toEqual({ tint: STATE_COLOR.improved.model, intensity: 1 });
+    expect(byMuscle.biceps).toEqual({ tint: STATE_COLOR.awaitingBaseline.model, intensity: 0.42 });
   });
 });

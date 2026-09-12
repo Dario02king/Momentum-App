@@ -148,22 +148,22 @@
 
 /* State — how the group is doing — on the number and the badge only. */
 .muscle-row__right--improved {
-  color: var(--scale-good-ink);
+  color: var(--status-strong-ink);
 }
 .muscle-row__right--improved .muscle-row__badge {
-  background: var(--scale-good-tint);
+  background: var(--status-strong-tint);
 }
 .muscle-row__right--declined {
-  color: var(--scale-poor-ink);
+  color: var(--status-weak-ink);
 }
 .muscle-row__right--declined .muscle-row__badge {
-  background: var(--scale-poor-tint);
+  background: var(--status-weak-tint);
 }
 .muscle-row__right--unchanged {
-  color: var(--scale-okay-ink);
+  color: var(--status-mixed-ink);
 }
 .muscle-row__right--unchanged .muscle-row__badge {
-  background: var(--scale-okay-tint);
+  background: var(--status-mixed-tint);
 }
 .muscle-row__right--awaitingBaseline {
   color: var(--sky-ink);

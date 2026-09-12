@@ -1,0 +1,66 @@
+import { chromium } from 'playwright-core';
+import { URL_APP, onboard, seed, seedTraining, seedMuscles, phone } from './lib.mjs';
+
+/**
+ * Evidence screenshots for the status palette (D123): the 1–10 picker on
+ * Today, the Verlauf grid with its legend, a question's history, and the
+ * Gym muscle map, all at 393px. Full viewports, never crops.
+ */
+const OUT = process.env.OUT ?? 'docs/design/status-palette';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const ctx = await browser.newContext(phone);
+const page = await ctx.newPage();
+const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png` });
+
+await page.goto(URL_APP, { waitUntil: 'networkidle' });
+await page.waitForTimeout(400);
+await onboard(page, { gym: 3, running: 2, food: true });
+await seed(page, { days: 42 });
+await seedTraining(page, { days: 42 });
+await seedMuscles(page, { days: 42 });
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(1500);
+
+// Today: pick a 6 (mixed) on the first scale question, a 10 on the next.
+const six = page.getByRole('radio', { name: /^6 von 10/ }).first();
+await six.scrollIntoViewIfNeeded();
+await six.click();
+await page.waitForTimeout(500);
+await shot('393-A-today-scale-6');
+const ten = page.getByRole('radio', { name: /^10 von 10/ }).first();
+await ten.click();
+await page.waitForTimeout(500);
+await shot('393-B-today-scale-10');
+const three = page.getByRole('radio', { name: /^3 von 10/ }).last();
+await three.scrollIntoViewIfNeeded();
+await three.click();
+await page.waitForTimeout(500);
+await shot('393-C-today-food-3');
+
+// Verlauf: grid and legend.
+await page.locator('.tab-bar button', { hasText: 'Verlauf' }).click();
+await page.waitForTimeout(800);
+await shot('393-D-verlauf');
+await page.locator('.heatmap__legend').scrollIntoViewIfNeeded();
+await page.waitForTimeout(300);
+await shot('393-E-verlauf-legend');
+await page.getByRole('button', { name: /Wellbeing/ }).first().click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: /Wie gut hast du gesch/ }).first().click();
+await page.waitForTimeout(600);
+await shot('393-F-question-detail');
+await page.getByRole('button', { name: 'Zurück' }).click();
+await page.waitForTimeout(400);
+
+// Bereiche → Gym: the muscle map and its rows.
+await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
+await page.waitForTimeout(700);
+await page.getByRole('radio', { name: 'Gym' }).click();
+await page.waitForTimeout(4500);
+await page.locator('.areas__scroll').evaluate((el) => { const m = document.querySelector('.muscle-module'); if (m) el.scrollTop += m.getBoundingClientRect().top - el.getBoundingClientRect().top - 8; });
+await page.waitForTimeout(900);
+await shot('393-G-muscle-map');
+
+await ctx.close();
+await browser.close();
+console.log('screenshots written to', OUT);

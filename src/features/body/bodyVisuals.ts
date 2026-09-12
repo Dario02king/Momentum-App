@@ -10,7 +10,7 @@ import type { MuscleVisual } from './useMuscleHighlight';
  * derived.
  *
  * A pure mapping: the state is `muscleStateOf()`, the delta is
- * `percentChange()`, the tint is the state's ink and the intensity is the
+ * `percentChange()`, the tint is the state's model colour and the intensity is the
  * approved curve in tokens.ts. Nothing here reads history, chooses a range,
  * finds a baseline or computes a ratio — it receives `MusclePerformance`
  * values from whichever window the screen already loaded and translates
@@ -22,7 +22,7 @@ export interface BodyMuscleVisual {
   state: MuscleState;
   /** Percentage change, or `null` where the domain has no ratio. */
   delta: number | null;
-  /** The state's ink — what the region is tinted with. */
+  /** The state's model colour — what the region is tinted with. */
   tint: string;
   /** 0–1, the magnitude of the change; 0 keeps the region base grey. */
   intensity: number;
@@ -38,7 +38,7 @@ export function toBodyVisuals(muscles: readonly MusclePerformance[]): BodyMuscle
       id,
       state,
       delta,
-      tint: STATE_COLOR[state].ink,
+      tint: STATE_COLOR[state].model,
       intensity: stateIntensity(state, delta ?? 0),
     };
   });

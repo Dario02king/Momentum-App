@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { AnswerValue } from '../../core/model';
-import { SCALE_BAND_LABEL_KEYS, scaleBandOf } from '../../core/scoring/scale';
+import { STATUS_LABEL_KEYS, scaleBandOf } from '../../core/scoring/scale';
 import type { CheckInItem as Item } from '../../storage/services/checkInService';
 import { ChevronDownIcon } from '../../components/Icons';
 import { BooleanAnswer, ScaleAnswer } from '../../domains/mental/AnswerControls';
@@ -74,7 +74,7 @@ export function CheckInItem({
     typeof value === 'boolean'
       ? t(value ? 'answer.yes' : 'answer.no')
       : typeof value === 'number'
-        ? `${value} · ${t(SCALE_BAND_LABEL_KEYS[scaleBandOf(value)])}`
+        ? `${value} · ${t(STATUS_LABEL_KEYS[scaleBandOf(value)])}`
         : '';
 
   return (

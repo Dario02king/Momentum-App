@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react';
-import { SCALE_BAND_LABEL_KEYS, scaleBandOf } from '../../core/scoring/scale';
+import { STATUS_LABEL_KEYS, scaleBandOf } from '../../core/scoring/scale';
 import type { DateKey } from '../../core/dates';
 import { Button, Card, EmptyState, Section } from '../../components';
 import { ChevronLeftIcon, ProgressIcon } from '../../components/Icons';
@@ -60,7 +60,7 @@ export function QuestionDetail({ question, days, onClose, onAnswerToday }: Quest
     const value = percent / 10;
     return t('answer.scaleValue', {
       value,
-      band: t(SCALE_BAND_LABEL_KEYS[scaleBandOf(value)]),
+      band: t(STATUS_LABEL_KEYS[scaleBandOf(value)]),
     });
   };
 
@@ -165,7 +165,7 @@ export function QuestionDetail({ question, days, onClose, onAnswerToday }: Quest
                           className={
                             isScale
                               ? `question-detail__bar question-detail__bar--${scaleBandOf(percent / 10)}`
-                              : `question-detail__bar question-detail__bar--${percent === 100 ? 'veryGood' : 'poor'}`
+                              : `question-detail__bar question-detail__bar--${percent === 100 ? 'strong' : 'weak'}`
                           }
                           style={{ height: `${Math.max(8, percent)}%` }}
                         />

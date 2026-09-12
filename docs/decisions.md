@@ -2405,3 +2405,46 @@ success the whole time — the same failure shape as `core/decay` being a
 contract nobody called, and as `legacySportService` being an engine with no
 door. A pipeline is only a pipeline if something is actually at the other end
 of it.
+
+## D123 — One status palette, four bands on every scale
+
+**Decision.** The colours that answer "how is it going" are one palette,
+defined once: `weak` #ff3b5c, `mixed` #ffd600, `good` #4cde24, `strong`
+#00b85b, and `empty` for no data — the neutral grey the history grid already
+used, not a fifth status. They are written in exactly one place,
+`src/styles/tokens.css` (`--status-*`). CSS consumes them as `var()`;
+TypeScript and WebGL read them out of the same file through
+`src/styles/statusPalette.ts`, which parses the token file at module load.
+`statusPalette.test.ts` walks `src/` and fails on a second literal.
+
+**The 1–10 answer is re-banded** from five presentation bands (Schlecht,
+Mässig, Okay, Gut, Sehr gut) to the same four: 1–4 weak, 5–6 mixed, 7–8
+good, 9–10 strong. The 0–100 score bands keep RC2's thresholds exactly (0–40,
+40–65, 65–85, 85–100) and are only named and recoloured. Both scales now
+resolve to one `StatusId` and one set of labels (`status.*`: Schwach,
+Wechselhaft, Gut, Stark). This is presentation only: the stored answer, its
+percentage, the day scores, the ratings and every threshold in the scoring
+path are untouched.
+
+**The muscle map maps its states onto the same palette**: improved is
+strong, declined is weak, unchanged is mixed, no data is empty, and
+awaiting-baseline keeps the informational blue (`--sky-*`). The 3D region is
+tinted with the status colour itself, so the body and the legend swatch beside
+it agree; the row figure uses the status ink. Muscle identity colours are a
+different system and are unchanged.
+
+**Why the inks exist.** The four fills are signal colours and bright by
+design, and bright colours do not carry text: white fails 4.5:1 on all four,
+and yellow or green fail 3:1 as a graphical object on a white card or the
+history track. So every status has a darker `-ink` of its own hue for text and
+outlines, an `-on` colour (the primary text colour, dark on all four) for the
+label inside a filled control, and a pale `-tint`. Text is darkened; the bar
+never is. Legend swatches, the SVG body regions and the selected 1–10 control
+are outlined in their ink. The thirty-day strips are not: there the value is
+carried by height, as the heatmap has always documented, and colour only
+reinforces it. contrast.test.ts checks every one of these promises.
+
+**Superseded.** D13's five-band presentation and the `--band-*` / `--scale-*`
+token families. The `bandOf()` thresholds and the scoring model they sit on
+are not superseded.
+

@@ -7,8 +7,8 @@ import { BODY_BASE_COLOR, NEUTRAL_HIGHLIGHT, REGION_MATERIAL, STATE_COLOR, state
  * must still look chosen when it is chosen.
  */
 describe('regionTargets', () => {
-  const untrained = { tint: STATE_COLOR.noData.ink, intensity: stateIntensity('noData', 0) };
-  const improved = { tint: STATE_COLOR.improved.ink, intensity: stateIntensity('improved', 12) };
+  const untrained = { tint: STATE_COLOR.noData.model, intensity: stateIntensity('noData', 0) };
+  const improved = { tint: STATE_COLOR.improved.model, intensity: stateIntensity('improved', 12) };
 
   it('an untrained group is plain grey and draws no attention', () => {
     expect(regionTargets(untrained, false)).toEqual({
@@ -33,8 +33,8 @@ describe('regionTargets', () => {
   it('a measured group is tinted with its state, more so when selected', () => {
     const resting = regionTargets(improved, false);
     const chosen = regionTargets(improved, true);
-    expect(resting.emissive).toBe(STATE_COLOR.improved.ink);
-    expect(chosen.rimColor).toBe(STATE_COLOR.improved.ink);
+    expect(resting.emissive).toBe(STATE_COLOR.improved.model);
+    expect(chosen.rimColor).toBe(STATE_COLOR.improved.model);
     expect(chosen.rim).toBe(REGION_MATERIAL.selected.rim);
     expect(chosen.emissiveIntensity).toBeGreaterThan(resting.emissiveIntensity);
     expect(chosen.color).not.toBe(resting.color);

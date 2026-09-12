@@ -4,7 +4,10 @@
  * Two systems run side by side and must not be mixed:
  *
  *   IDENTITY  answers "which muscle is this?"   — fixed per group, state-independent
- *   STATE     answers "how did it go?"          — the five training states
+ *   STATE     answers "how did it go?"          — the five training states,
+ *             coloured by the app's one status palette (D123): improved is
+ *             `strong`, declined is `weak`, unchanged is `mixed`, noData is
+ *             `empty`, and awaitingBaseline keeps the informational blue.
  *
  * Identity is used for: the row swatch/dot, the row sparkline, the dot next to
  * the name in the detail card, and any legend that lists GROUPS.
@@ -18,6 +21,7 @@
  */
 
 import type { MuscleGroup } from '../../core/model';
+import { STATUS_PALETTE, cssToken } from '../../styles/statusPalette';
 
 export type MuscleState =
   | 'improved'          // Verbessert
@@ -67,24 +71,29 @@ export function mutedIdentity(hex: string, alpha = 1): string {
 export interface StateTokens {
   /** German label used by the badge and the legend. */
   text: string;
-  /** Full-saturation ink: percentage, badge text, 3D tint + emissive + rim. */
+  /** Text-safe: the percentage, the badge text, the row figure. */
   ink: string;
   /** Badge background. */
   tint: string;
-  /** 2D chart fill. */
-  fill: string;
-  /** 2D chart fill, emphasised. */
-  strong: string;
-  /** Hairline/border on tinted surfaces. */
-  stroke: string;
+  /** What the 3D region is tinted with: colour + emissive + rim. */
+  model: string;
 }
 
+/**
+ * Nothing here is a literal. The three status states read the status
+ * palette, which is parsed out of `tokens.css`; the informational blue is
+ * the same `--sky-*` pair the 2D renderer and the muscle rows use. The 3D
+ * region takes the status colour itself — the signal, not its text ink —
+ * so the body and the legend swatch next to it are the same colour.
+ */
+const SKY_INK = cssToken('--sky-ink');
+
 export const STATE_COLOR: Readonly<Record<MuscleState, StateTokens>> = {
-  improved:         { text: 'Verbessert',           ink: '#177a4c', tint: '#e4f6ec', fill: '#c6e6d3', strong: '#8fd0ae', stroke: 'rgba(21,128,78,0.26)' },
-  declined:         { text: 'Zurückgegangen',       ink: '#bf394e', tint: '#fdecef', fill: '#f7d3d9', strong: '#eda8b3', stroke: 'rgba(191,57,78,0.24)' },
-  unchanged:        { text: 'Gehalten',             ink: '#7a6410', tint: '#fdf3d4', fill: '#f4e4b2', strong: '#e9cf7d', stroke: 'rgba(122,100,16,0.24)' },
-  awaitingBaseline: { text: 'Kein Vergleich',       ink: '#166db6', tint: '#e6f2fd', fill: '#d6e9fb', strong: '#a9d2f6', stroke: 'rgba(22,109,182,0.22)' },
-  noData:           { text: 'Noch nicht trainiert', ink: '#8a8a95', tint: '#f2f2f6', fill: '#e9e9ef', strong: '#d6d6de', stroke: 'rgba(60,60,67,0.10)' },
+  improved:         { text: 'Verbessert',           ink: STATUS_PALETTE.strong.ink, tint: STATUS_PALETTE.strong.tint, model: STATUS_PALETTE.strong.fill },
+  declined:         { text: 'Zurückgegangen',       ink: STATUS_PALETTE.weak.ink,   tint: STATUS_PALETTE.weak.tint,   model: STATUS_PALETTE.weak.fill },
+  unchanged:        { text: 'Gehalten',             ink: STATUS_PALETTE.mixed.ink,  tint: STATUS_PALETTE.mixed.tint,  model: STATUS_PALETTE.mixed.fill },
+  awaitingBaseline: { text: 'Kein Vergleich',       ink: SKY_INK,                   tint: cssToken('--sky-tint'),     model: SKY_INK },
+  noData:           { text: 'Noch nicht trainiert', ink: STATUS_PALETTE.empty.ink,  tint: STATUS_PALETTE.empty.tint,  model: STATUS_PALETTE.empty.fill },
 };
 
 /* ── C. 3D material + selection treatment ─────────────────────────────── */
@@ -99,9 +108,9 @@ export const NEUTRAL_HIGHLIGHT = '#5e5ce6';
  * Region material mix. `intensity` (0…1) comes from the host and carries the
  * MAGNITUDE of the change, so +12 % burns brighter than +2 %.
  *
- *   color    = lerp(BODY_BASE_COLOR, STATE_COLOR[state].ink, mix * intensity)
- *   emissive = STATE_COLOR[state].ink at emissiveIntensity * intensity
- *   rim      = STATE_COLOR[state].ink at rim * intensity   (Fresnel, pow 2.6)
+ *   color    = lerp(BODY_BASE_COLOR, STATE_COLOR[state].model, mix * intensity)
+ *   emissive = STATE_COLOR[state].model at emissiveIntensity * intensity
+ *   rim      = STATE_COLOR[state].model at rim * intensity   (Fresnel, pow 2.6)
  */
 export const REGION_MATERIAL = {
   roughness: 0.74,

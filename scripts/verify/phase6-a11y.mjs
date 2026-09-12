@@ -83,7 +83,7 @@ const unnamed = (nodes) =>
   });
   check('all ten values are exposed as radios', scoped.length === 10, String(scoped.length));
   check('and each says what it means, not only what it is',
-    scoped.every((r) => /von 10 – (Schlecht|Mässig|Okay|Gut|Sehr gut)/.test(r.name)),
+    scoped.every((r) => /von 10 – (Schwach|Wechselhaft|Gut|Stark)/.test(r.name)),
     scoped.map((r) => r.name).slice(0, 2).join(' | '));
   check('every one of them is also in the accessibility tree by that name',
     scoped.every((r) => nodes.some((n) => n.role === 'radio' && n.name === r.name)));

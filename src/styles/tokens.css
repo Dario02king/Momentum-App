@@ -112,68 +112,61 @@
   --domain-food-tint: var(--peach-tint);
 
   /*
-   * Performance bands for the history grid (§12), mixed for a light ground
-   * rather than carried over from a dark palette. Each clears 3:1 against
-   * the empty cell track it sits in.
+   * Status palette — the ONE definition of "how is it going" colour (D123).
    *
-   * They sit at similar luminance, so hue alone would leave low and high
-   * confusable for a colour-blind reader. That is why the grid encodes the
-   * value as the height of the bar and uses colour only to reinforce it —
-   * magnitude is carried by a channel everyone can see.
+   * Four statuses and an empty state, shared by every scale in the app: the
+   * 1–10 answer (1–4, 5–6, 7–8, 9–10), the 0–100 day and domain scores
+   * (0–40, 40–65, 65–85, 85–100), the history grid, the muscle map and the
+   * gym change figures. The hex values below are the only place they are
+   * written; TypeScript and WebGL read them from this file through
+   * `src/styles/statusPalette.ts`, so a second literal anywhere is a bug —
+   * statusPalette.test.ts scans for one.
+   *
+   * These are signal colours, deliberately bright, and bright colours do
+   * not carry text. Each status therefore has three companions:
+   *
+   * - `-ink`  darker text of the same hue, safe on white and on `-tint`,
+   *           and dark enough to outline the fill as a graphical object.
+   *           Text is darkened, the bar never is.
+   * - `-on`   the label colour on top of the fill itself. Dark on all four:
+   *           white fails 4.5:1 on every one of them.
+   * - `-tint` the pale ground of an unselected control or a badge.
+   *
+   * Empty is the neutral grey the history grid always used for a day with
+   * no data, and its ink and tint are the existing neutral text and surface
+   * tokens — "no data" is not a fifth status colour.
+   *
+   * Colour is never the only carrier of meaning: every status is spelled
+   * out in words wherever it is shown, and the history bars carry the value
+   * as height. contrast.test.ts checks every promise made above.
    */
-  --band-low: #e7516b;
-  --band-fair: #ce6d12;
-  --band-good: #a88113;
-  --band-high: #1d9871;
-  /* No data: an empty track, distinguished by being unfilled rather than by
-     any colour at all. */
-  --band-none: #e6e6ec;
-  --band-track: #f1f1f5;
+  --status-weak: #ff3b5c;
+  --status-mixed: #ffd600;
+  --status-good: #4cde24;
+  --status-strong: #00b85b;
+  --status-empty: #e6e6ec;
 
-  /*
-   * The fixed 1–10 mapping: red, orange, yellow, green, dark green.
-   *
-   * Four values per band, because one colour cannot do four jobs:
-   *
-   * - `-fill` is the band at full strength, for a selected control or a bar.
-   * - `-on`   is the text colour that reads **on** that fill. It is white for
-   *           four of the five and near-black for yellow, because a yellow
-   *           dark enough to carry white text is not a yellow any more.
-   * - `-ink`  is text-safe on white and on the band's own tint.
-   * - `-tint` is the pale ground of an unselected control.
-   *
-   * Green and dark green are two steps of one hue, so they are separated by
-   * luminance as well — hue alone would leave 8 and 9 indistinguishable for a
-   * colour-blind reader, and contrast.test.ts checks the gap.
-   *
-   * A yellow fill cannot clear 3:1 against a white card, so a selected
-   * control is outlined in its own ink. That is what makes the shape a
-   * graphical object rather than a pale wash.
-   */
-  --scale-poor-fill: #c62d45;
-  --scale-poor-on: #ffffff;
-  --scale-poor-ink: #bf394e;
-  --scale-poor-tint: #fdecef;
+  --status-weak-ink: #c8183a;
+  --status-weak-on: var(--text-primary);
+  --status-weak-tint: #ffe6ea;
 
-  --scale-fair-fill: #b8500b;
-  --scale-fair-on: #ffffff;
-  --scale-fair-ink: #a2560f;
-  --scale-fair-tint: #fdeee2;
+  --status-mixed-ink: #7a6410;
+  --status-mixed-on: var(--text-primary);
+  --status-mixed-tint: #fff7cc;
 
-  --scale-okay-fill: #f2c300;
-  --scale-okay-on: #1c1c1e;
-  --scale-okay-ink: #7a6410;
-  --scale-okay-tint: #fdf3d4;
+  --status-good-ink: #1f7a12;
+  --status-good-on: var(--text-primary);
+  --status-good-tint: #e4f8dc;
 
-  --scale-good-fill: #15804e;
-  --scale-good-on: #ffffff;
-  --scale-good-ink: #177a4c;
-  --scale-good-tint: #e4f6ec;
+  --status-strong-ink: #00734a;
+  --status-strong-on: var(--text-primary);
+  --status-strong-tint: #dcf5e8;
 
-  --scale-veryGood-fill: #07452a;
-  --scale-veryGood-on: #ffffff;
-  --scale-veryGood-ink: #0b5733;
-  --scale-veryGood-tint: #dcece2;
+  --status-empty-ink: var(--text-secondary);
+  --status-empty-tint: var(--surface-secondary);
+
+  /* The unfilled track a history bar stands in. */
+  --status-track: #f1f1f5;
 
   /* iOS type scale. */
   --type-large-title: 34px;

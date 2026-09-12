@@ -2,7 +2,7 @@
 
 Current state, status and next work. Durable rules are in
 [`CLAUDE.md`](CLAUDE.md); the reasoning behind individual choices is in
-[`docs/decisions.md`](docs/decisions.md) (D1–D122). This file does not repeat
+[`docs/decisions.md`](docs/decisions.md) (D1–D123). This file does not repeat
 either — it says where things stand.
 
 ## Repository state
@@ -10,6 +10,7 @@ either — it says where things stand.
 | | |
 |---|---|
 | Branch | `claude/momentum-pwa-spec-j82dhm` — the default branch, which is the only one Pages deploys from. Pass 2, the domain terminal and the muscle map were developed on `claude/momentum-pass-2-geometry-r2qzkd`; the muscle-map release candidate `bc57ec6` was merged here with a merge commit (`90bf328`) because the default branch carried a later upload. The release is tagged **`muscle-map-v1`** |
+| Status palette | **Stage 1 of the Overall-rank update, on `claude/momentum-overall-rank-update-v2`** (D123): one `--status-*` palette in `tokens.css`, both scales on four bands, muscle-map states on the same colours. Stages 2–4 (Overall-only rank, Tombstones preserved, promotion confirmation) not started |
 | Muscle map | **Released.** The 3D body in Bereiche → Gym, the ten analytics rows with their mini sparklines, Laufen inside the Gym workspace, the credits entry. App source `5e554aa`; QA record `docs/design/muscle-map/INTEGRATION-QA.md`; handoff deviations `docs/design/muscle-map/HANDOFF-DEVIATIONS.md` |
 | Working tree | clean at the commit this file was committed in |
 | `SCHEMA_VERSION` | **5** (`src/core/model/index.ts`) — v5 adds the `foodDays` store |

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ADHERENCE_MAX, adherenceBandOf } from '../../core/food';
-import { SCALE_BAND_LABEL_KEYS } from '../../core/scoring/scale';
+import { STATUS_LABEL_KEYS } from '../../core/scoring/scale';
 import { Card, EmptyState, Row, Section } from '../../components';
 import { PlusIcon, SparkIcon } from '../../components/Icons';
 import { ScaleAnswer } from '../../domains/mental/AnswerControls';
@@ -71,7 +71,7 @@ export function FoodCard({
             ? t('food.rate.none')
             : t('food.rate.value', {
                 value: food.adherence,
-                band: t(SCALE_BAND_LABEL_KEYS[band]),
+                band: t(STATUS_LABEL_KEYS[band]),
               })}
         </p>
 
