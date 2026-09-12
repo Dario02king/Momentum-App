@@ -101,9 +101,9 @@ export function MetricTile({
   title: string;
   value: ReactNode;
   scale?: string;
-  /** A short line above the value — the rank name on a hero tile. */
+  /** A short line above the value, on a hero tile. */
   kicker?: ReactNode;
-  /** Something before the value — the rank badge on a hero tile. */
+  /** Something before the value — an emblem on a hero tile. */
   leading?: ReactNode;
   bar?: MetricBarSpec;
   /** At most one short supporting line. */

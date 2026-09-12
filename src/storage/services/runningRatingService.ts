@@ -66,7 +66,14 @@ export interface RunningRatingState {
   origin: DateKey | null;
   ageMonths: number;
   endurance: EnduranceState;
-  /** Whether a promotion is permitted on each day, aligned with `points`. */
+  /**
+   * Whether the Endurance gate was open on each day, aligned with `points`.
+   *
+   * The name is the one D94 gave it, when the gate held a domain's first
+   * promotion. A domain has no rank since D125, so nothing reads this any
+   * more; it stays as the gate's per-day answer, which the Stage 2 baseline
+   * records, and it is not a promotion of anything.
+   */
   promotionUnlocked: boolean[];
   /** Today's windows, for the Running screens. */
   performance: PerformanceScore;

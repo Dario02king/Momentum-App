@@ -29,7 +29,7 @@ export const de = {
     + 'lizenziert unter CC BY 4.0, für Momentum bearbeitet.',
   'gym.body.credit.model': 'Modell ansehen',
   'gym.body.credit.license': 'Lizenz',
-  'areas.standing': 'Rang in diesem Bereich',
+  'areas.standing': 'Rating in diesem Bereich',
   'areas.standing.value': '{value} von 1000',
   'areas.standing.summary': 'Gemessen an deiner eigenen Historie',
 
@@ -337,13 +337,13 @@ export const de = {
   'questionDetail.value': 'Antwort',
   'questionDetail.open': 'Verlauf dieser Frage öffnen',
 
-  /* Iteration 2, phase 3 — Boss Rank, domain ranks, weights and mystery. */
+  /* Iteration 2, phase 3 — Boss Rank, area ratings, weights and mystery. */
   'rank.boss': 'Boss-Rang',
   'rank.boss.explain': 'Deine Bereiche zusammen, nach deiner Gewichtung.',
   'rank.boss.toNext': 'Noch {points} bis {rank}',
   'rank.boss.maxed': 'Höchster Rang erreicht',
   'rank.domains': 'Bereiche',
-  'rank.domains.explain': 'Jeder Bereich hat seinen eigenen Rang.',
+  'rank.domains.explain': 'Jeder Bereich hat ein eigenes Rating. Zusammen ergeben sie, nach deiner Gewichtung, deinen Boss-Rang.',
   'rank.domain.notStarted': 'Noch nicht gestartet',
   'rank.ladder': 'Alle Ränge',
   'rank.ladder.earned': 'Erreicht',
@@ -430,7 +430,7 @@ export const de = {
     'Jede Muskelgruppe zählt gleich viel, unabhängig davon, wie viele Übungen sie enthält.',
   'gym.progress.explainMetric': 'Übungswert = bester Satz des Tages (Wdh. × kg).',
   'gym.progress.ratingNote':
-    'Der Gym-Rang misst deine eigene Entwicklung, nicht absolute Stärke: 40 % Anwesenheit, 60 % persönliche Leistungsentwicklung.',
+    'Das Gym-Rating misst deine eigene Entwicklung, nicht absolute Stärke: 40 % Anwesenheit, 60 % persönliche Leistungsentwicklung.',
 
   'gym.rating.title': 'Gym-Rating',
   'gym.rating.summary': '40 % Anwesenheit · 60 % Leistung',
@@ -464,21 +464,21 @@ export const de = {
   'gym.endurance.title': 'Ausdauerphase',
   'gym.endurance.progress': '{progress} von {required} Wochen',
   'gym.endurance.explain':
-    'Dein erster Rang wird freigeschaltet, sobald du vier Wochen netto geschafft hast. Eine erreichte Woche zählt +1, eine verpasste −0,5.',
-  'gym.endurance.locked': 'Erster Rang noch gesperrt',
+    'Vier Wochen netto schliessen die Ausdauerphase ab. Eine erreichte Woche zählt +1, eine verpasste −0,5.',
+  'gym.endurance.locked': 'Ausdauerphase läuft',
   'gym.endurance.unlocked': 'Ausdauerphase abgeschlossen',
   'gym.endurance.stillCounts':
-    'Dein Rating wird bereits normal berechnet. Gesperrt ist nur die Beförderung.',
+    'Dein Rating wird bereits normal berechnet. Solange die Phase läuft, baut eine Trainingspause nichts ab.',
   'gym.endurance.remaining': 'Noch {remaining} Wochen',
   'gym.endurance.weekMet': 'Woche erreicht',
   'gym.endurance.weekMissed': 'Woche verpasst',
 
   'gym.decay.title': 'Trainingspause',
   'gym.decay.days': '{days} Tage ohne Session',
-  'gym.decay.lost': '{percent} % deines Rangfortschritts abgebaut',
+  'gym.decay.lost': '{percent} % deines Fortschritts abgebaut',
   'gym.decay.explain':
-    'Abgebaut wird nur der Fortschritt innerhalb deines aktuellen Rangs. Deine aufgezeichneten Sätze und deine Leistungswerte bleiben unverändert.',
-  'gym.decay.floor': 'Du fällst dadurch nicht unter deinen aktuellen Rang.',
+    'Abgebaut wird nur ein Teil des Fortschritts, den dein Rating vor der Pause erreicht hatte. Deine aufgezeichneten Sätze und deine Leistungswerte bleiben unverändert.',
+  'gym.decay.floor': 'Dein Rating hat dabei eine Untergrenze: Eine Pause allein setzt es nie ganz zurück.',
   'gym.decay.resume': 'Eine gespeicherte Session beendet die Pause sofort.',
 
   'gym.maintenance.title': 'Erhaltung',
@@ -508,7 +508,7 @@ export const de = {
   'gym.picker.builtInProtected': 'Mitgelieferte Übungen behalten ihre Zuordnung.',
 
   'gym.tombstone.boundary':
-    'Absolute Bestleistungen gehören zu den Meilensteinen, nicht zum Gym-Rang.',
+    'Absolute Bestleistungen gehören zu den Meilensteinen, nicht zum Gym-Rating.',
   'gym.change.improved': '+{percent} %',
   'gym.change.declined': '{percent} %',
   'gym.change.unchanged': 'Gehalten',
@@ -561,17 +561,17 @@ export const de = {
   'running.endurance.title': 'Ausdauerphase',
   'running.endurance.progress': '{progress} von {required} Wochen',
   'running.endurance.explain':
-    'Dein erster Rang wird freigeschaltet, sobald du vier Wochen netto geschafft hast. Eine erreichte Woche zählt +1, eine verpasste −0,5.',
-  'running.endurance.locked': 'Erster Rang noch gesperrt',
+    'Vier Wochen netto schliessen die Ausdauerphase ab. Eine erreichte Woche zählt +1, eine verpasste −0,5.',
+  'running.endurance.locked': 'Ausdauerphase läuft',
   'running.endurance.stillCounts':
-    'Dein Rating wird bereits normal berechnet. Gesperrt ist nur die Beförderung.',
+    'Dein Rating wird bereits normal berechnet. Solange die Phase läuft, baut eine Laufpause nichts ab.',
 
   'running.decay.title': 'Laufpause',
   'running.decay.days': '{days} Tage ohne Lauf',
-  'running.decay.lost': '{percent} % deines Rangfortschritts abgebaut',
+  'running.decay.lost': '{percent} % deines Fortschritts abgebaut',
   'running.decay.explain':
-    'Abgebaut wird nur der Fortschritt innerhalb deines aktuellen Rangs. Deine aufgezeichneten Läufe und deine Tempowerte bleiben unverändert.',
-  'running.decay.floor': 'Du fällst dadurch nicht unter deinen aktuellen Rang.',
+    'Abgebaut wird nur ein Teil des Fortschritts, den dein Rating vor der Pause erreicht hatte. Deine aufgezeichneten Läufe und deine Tempowerte bleiben unverändert.',
+  'running.decay.floor': 'Dein Rating hat dabei eine Untergrenze: Eine Pause allein setzt es nie ganz zurück.',
   'running.decay.resume': 'Ein gespeicherter Lauf beendet die Pause sofort.',
 
   'running.maintenance.body':
@@ -613,8 +613,6 @@ export const de = {
   'food.per100': 'pro 100 g: {kcal} kcal',
   'food.locked': 'Dieser Tag ist abgeschlossen und kann nicht mehr geändert werden.',
   'areas.food.setup': 'Einrichtung',
-  'food.rank.notStarted': 'Noch nicht gestartet',
-  'food.rank.hint': 'Bewerte deinen ersten Tag, dann zählt Ernährung mit.',
 
 
   /* ── Sport (bisher): die einmalige Frage (Phase 7) ───────────────────── */

@@ -158,8 +158,8 @@ export function GymOverview({
           onOpen={() => setDetail('attendance')}
         />
 
-        {/* The Endurance Phase, while it is still the reason the rank is held.
-            Never mislabelled as performance: it is attendance over weeks. */}
+        {/* The Endurance Phase, while it is still running. Never mislabelled as
+            performance: it is attendance over weeks. */}
         {locked ? (
           <MetricTile
             id="gym-endurance"

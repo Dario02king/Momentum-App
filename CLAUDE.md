@@ -98,16 +98,18 @@ Never conflate them.
 
 ## Product rules that are settled
 
-- One Boss Rank, one domain-rank system, **one badge family**. No second
-  ladder, no "strength rank", no separate emblem set.
+- **One rank: the Boss** (D125). A domain has a rating, performance figures
+  and a share of the Boss — never a rank, a badge, a promotion, a peak rank
+  or an XP total of its own. **One badge family.** No second ladder, no
+  "strength rank", no separate emblem set.
 - Eight ranks, no divisions. Rank names stay English in every language.
 - Promotion is immediate; demotion needs hysteresis *and* sustained days. A
-  single bad day may never cost a tier. The **one** exception is Gym's
-  Endurance Phase, which holds a new user's *first* promotion until four net
-  weeks are earned — one optional argument to the existing rank resolver, not
-  a second ladder, and it gates the rank while the rating moves normally.
-- **A domain rank measures the user against their own history, never against
-  anyone else.** No population norms, no absolute-strength scaling, no
+  single bad day may never cost a tier. Gym's and Running's Endurance Phase
+  no longer gates a promotion (there is no domain promotion to gate, D125);
+  it stays as written in D94 — four net weeks, real numbers throughout — and
+  abstinence decay begins only once it is complete.
+- **A domain rating measures the user against their own history, never
+  against anyone else.** No population norms, no absolute-strength scaling, no
   calibration against other people — not as a modifier and not as a starting
   estimate. Absolute benchmarks are Tombstones, which are a separate system
   and stay separate in both directions.
@@ -255,7 +257,7 @@ Do not introduce a backend because it would simplify something.
 
 | | Answers |
 |---|---|
-| domain rank | how am I progressing, against my own history |
+| domain rating | how am I progressing, against my own history |
 | Tombstone | have I hit this absolute benchmark |
 | a food entry | what did I eat — shown, totalled, and never scored |
 

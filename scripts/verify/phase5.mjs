@@ -188,12 +188,13 @@ async function openProgress(page) {
   check('and is stated out of 1000', /von 1000/.test(rating ?? ''), rating?.trim());
 
   check('the Endurance Phase is named', await page.getByText('Ausdauerphase').first().isVisible());
-  check('the first rank is said to be locked', await page.getByText('Erster Rang noch gesperrt').isVisible());
+  check('the phase is said to be in progress, in words', await page.getByText('Ausdauerphase läuft').isVisible());
   check('it says the rating is calculating anyway',
     await inSheet(page, 'running-endurance', (sheet) =>
       sheet.getByText(/Rating wird bereits normal berechnet/).isVisible()));
-  check('the rank shown is still the first one',
-    /Rookie/.test((await page.locator('[data-metric="running-rating"] .metric-tile__kicker').textContent()) ?? ''));
+  check('the rating tile carries no rank — the Boss is the only rank',
+    (await page.locator('[data-metric="running-rating"] .metric-tile__kicker').count()) === 0 &&
+      (await page.locator('[data-metric="running-rating"] .badge-svg').count()) === 0);
 
   check('year-to-date pace is a visible secondary headline',
     await page.getByText('Tempo seit Jahresbeginn').isVisible());
@@ -228,9 +229,9 @@ async function openProgress(page) {
   await openProgress(page);
 
   check('the Endurance Phase is gone once complete',
-    !(await page.getByText('Erster Rang noch gesperrt').isVisible().catch(() => false)));
-  const rank = await page.locator('[data-metric="running-rating"] .metric-tile__kicker').textContent();
-  check('the rank has moved off the first one', !/Rookie/.test(rank ?? ''), rank?.trim());
+    !(await page.getByText('Ausdauerphase läuft').isVisible().catch(() => false)));
+  check('and the rating tile still carries no rank',
+    (await page.locator('[data-metric="running-rating"] .metric-tile__kicker').count()) === 0);
   check('the 40/60 split is explained',
     await inSheet(page, 'running-rating', (sheet) =>
       sheet.getByText(/40 % Anwesenheit und 60 % Tempoentwicklung/).isVisible()));
@@ -258,14 +259,14 @@ async function openProgress(page) {
   check('it says how long the break has been',
     /\d+ Tage ohne Lauf/.test((await page.getByText(/Tage ohne Lauf/).textContent()) ?? ''));
   check('it says what has been reduced',
-    await page.getByText(/deines Rangfortschritts abgebaut/).isVisible());
+    await page.getByText(/deines Fortschritts abgebaut/).isVisible());
   const breakSheet = await inSheet(page, 'running-decay', async (sheet) => ({
     untouched: await sheet.getByText(/aufgezeichneten Läufe und deine Tempowerte bleiben unverändert/).isVisible(),
-    floor: await sheet.getByText(/fällst dadurch nicht unter deinen aktuellen Rang/).isVisible(),
+    floor: await sheet.getByText(/Untergrenze/).isVisible(),
     resume: await sheet.getByText(/gespeicherter Lauf beendet die Pause sofort/).isVisible(),
   }));
   check('it says what has not been touched', breakSheet.untouched);
-  check('it says the rank floor holds', breakSheet.floor);
+  check('it says the rating has a floor', breakSheet.floor);
   check('it says how to stop it', breakSheet.resume);
   await ctx.close();
 }

@@ -15,11 +15,11 @@ import './food.css';
  * The card is in two halves, and the order says which one matters. The
  * **rating** comes first: one 1–10 answer about how the day matched what the
  * user set out to do, and it is the only thing on this screen that reaches
- * the rank. The **log** comes second, and its totals are there so a day can
+ * the rating. The **log** comes second, and its totals are there so a day can
  * be looked at — nothing about them is scored.
  *
  * Saying so in the interface is deliberate. A screen that shows a calorie
- * total next to a rank invites the reading that one produces the other, and
+ * total next to a rating invites the reading that one produces the other, and
  * here it does not: what a person's calorie target should be has not been
  * decided, and the app does not pretend otherwise.
  */

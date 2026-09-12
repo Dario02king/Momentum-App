@@ -149,7 +149,7 @@
 }
 
 /* A tile that opens nothing states its line in the primary colour when the
-   line *is* the state — a locked rank, a break — so it is not read as help
+   line *is* the state — a running phase, a break — so it is not read as help
    text. Opt in with the modifier. */
 .metric-tile__line--strong {
   color: var(--text-primary);

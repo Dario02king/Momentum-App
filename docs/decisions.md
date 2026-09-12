@@ -1349,6 +1349,12 @@ already done cannot be reinterpreted at all.
 
 ## D94 — The Endurance Phase gates the first promotion, and nothing else
 
+> **Status note (D125).** There is no domain promotion to gate any more.
+> The phase itself stays exactly as written below — four net weeks, +1 and
+> −0.5, real numbers throughout — and what it still governs is the
+> abstinence decay, which begins only once the phase is complete (D96). The
+> per-day `promotionUnlocked` answer keeps its name and is read by nothing.
+
 A new Gym user starts in an Endurance Phase, and their **first** rank
 promotion waits until they have shown four net weeks of training.
 
@@ -2498,4 +2504,47 @@ identical output on every day with no rounding and no tolerance.
 **What this is not.** Not a second ladder, not a domain rank under another
 name, and not a change to what an absence costs. Where a tier boundary
 sits, and what a block removes, are D96's numbers unchanged.
+
+## D125 — The Boss is the only rank
+
+**Decision.** Domain ranks are gone: no rank name, badge, progress bar,
+promotion or demotion message, peak rank or lifetime XP is computed or shown
+for Wellbeing, Gym, Running or Food. A domain has a **rating** on the shared
+0–1000 scale, its performance figures, its history, streaks, attendance and
+Endurance, and a **share** of the Boss. The Boss Rank — current, peak,
+lifetime XP, progress to the next rank, rank history, hysteresis, sustained
+demotion and the acknowledgement in `settings.acknowledgedRankId` — is
+unchanged and is the one rank system the user sees.
+
+**What was checked before removing.**
+
+- Boss lifetime XP is `legacy.lifetimeXp` from `ratingService`, computed
+  over every history day and every domain-week; it never read the per-domain
+  totals, so those went with their (never-built) presentation.
+- Boss peak rank is derived from the Boss's own series; the domain peak
+  ranks fed nothing.
+- `acknowledgedRankId` was introduced with RC2's single progression — which
+  is the Boss's legacy era — and re-pointed to `boss.rank` in phase 1. It
+  has only ever held the overall rank.
+- The abstinence decay's dependency on a held rank was characterised and
+  replaced first (D124), with exact equivalence, so the rating engine's
+  outputs did not move: the Stage 2 baseline replays byte-identical.
+
+**What replaced the visible surfaces.** The Rank screen's area section lists
+each enabled area's rating out of 1000, its weighting share and a short bar
+on the 0–1000 scale. The Gym and Running rating tiles show the rating and a
+bar on that same scale, without a badge or a rank name. The Wellbeing and
+Food standing tiles do the same. The Endurance and training-break copy no
+longer speaks of a first rank, a promotion or rank progress: the phase is
+"in progress", a break reduces "part of the progress your rating had
+reached", and the floor is "a break alone never resets it entirely".
+
+**What stays, and why.** `core/ranks` (the ladder, `rankHistory`, hysteresis)
+for the Boss. `RANKS` thresholds, because `ratingToProgress()` and the decay
+tier (D124) are measured against them. `promotionUnlocked` in the two
+training states, as the Endurance gate's per-day answer (D94 note). The
+`rankEvents` store and backup collection, untouched. The `Progression`
+type's rank fields, which are RC2's undivided rank — the Boss's legacy era,
+pinned by the migration tests — not a domain's. No schema version, no
+migration, no destructive change: a domain rank was never stored.
 

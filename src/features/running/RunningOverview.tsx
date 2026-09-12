@@ -143,7 +143,7 @@ export function RunningOverview({
           onOpen={() => setDetail('attendance')}
         />
 
-        {/* The Endurance Phase, while it is the reason the rank is held. */}
+        {/* The Endurance Phase, while it is still running. */}
         {locked ? (
           <MetricTile
             id="running-endurance"

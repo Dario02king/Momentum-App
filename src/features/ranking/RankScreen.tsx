@@ -3,10 +3,12 @@ import { RATING } from '../../core/config/constants';
 import type { BossWeights as BossWeightMap } from '../../core/boss';
 import { rankById } from '../../core/ranks';
 import { displayedRankProgress, rankLadder, type RankProgress } from '../../core/ranks/progress';
+import type { DomainType } from '../../core/model';
 import { Card, EmptyState, LoadFailure, Section, StaleNotice } from '../../components';
 import { RankIcon } from '../../components/Icons';
 import { formatDayAndMonth, formatNumber } from '../../i18n/format';
 import { useI18n, useT } from '../../i18n/I18nProvider';
+import type { TranslationKey } from '../../i18n';
 import { settingsRepository } from '../../storage/repositories';
 import { loadBossProgression } from '../../storage/services/bossService';
 import {
@@ -30,6 +32,13 @@ import './rank.css';
  * the whole reason that function exists: fill and copy describing different
  * things is the defect this screen used to have.
  */
+
+const DOMAIN_NAMES: Record<DomainType, TranslationKey> = {
+  mental: 'domain.wellbeing',
+  gym: 'domain.gym',
+  running: 'domain.running',
+  food: 'domain.food',
+};
 
 /**
  * One bar, and the sentence that describes it.
@@ -203,6 +212,44 @@ export function RankScreen({
               </span>
               <span className="standing__value">{formatNumber(language, boss.lifetimeXp)}</span>
             </div>
+          </Card>
+        </Section>
+
+        {/*
+          What each area brings to the Boss: its rating on the shared 0–1000
+          scale and its share of the weighting. No rank, no badge, no ladder
+          — those belong to the Boss above, and to nothing else.
+        */}
+        <Section label={t('rank.domains')}>
+          <Card>
+            <p className="rank-section__explain">{t('rank.domains.explain')}</p>
+            {boss.domains
+              .filter((domain) => configuration.domains[domain.domain]?.enabled)
+              .map((domain) => {
+                const value = Math.round(domain.momentum);
+                const share = weighting.find((entry) => entry.domain === domain.domain)?.share ?? 0;
+                const label = t('areas.standing.value', { value });
+                return (
+                  <div key={domain.domain} className="domain-standing">
+                    <span className="domain-standing__body">
+                      <span className="domain-standing__name">{t(DOMAIN_NAMES[domain.domain])}</span>
+                      <span className="domain-standing__meta">
+                        {domain.started
+                          ? `${label} · ${t('rank.weights.share', { percent: Math.round(share * 100) })}`
+                          : t('rank.domain.notStarted')}
+                      </span>
+                    </span>
+                    {domain.started ? (
+                      <span className="domain-standing__track" role="img" aria-label={label}>
+                        <span
+                          className="domain-standing__fill"
+                          style={{ width: `${Math.round((value / RATING.MAX) * 100)}%` }}
+                        />
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
           </Card>
         </Section>
 

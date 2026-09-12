@@ -27,7 +27,7 @@ export const en: Translations = {
     + 'licensed under CC BY 4.0, modified for Momentum.',
   'gym.body.credit.model': 'View model',
   'gym.body.credit.license': 'License',
-  'areas.standing': 'Rank in this area',
+  'areas.standing': 'Rating in this area',
   'areas.standing.value': '{value} of 1000',
   'areas.standing.summary': 'Measured against your own history',
 
@@ -337,7 +337,7 @@ export const en: Translations = {
   'rank.boss.toNext': '{points} to {rank}',
   'rank.boss.maxed': 'Top rank reached',
   'rank.domains': 'Areas',
-  'rank.domains.explain': 'Each area has a rank of its own.',
+  'rank.domains.explain': 'Each area has a rating of its own. Together, by your weighting, they make your Boss Rank.',
   'rank.domain.notStarted': 'Not started yet',
   'rank.ladder': 'Every rank',
   'rank.ladder.earned': 'Reached',
@@ -422,7 +422,7 @@ export const en: Translations = {
     'Every muscle group counts the same, however many exercises it contains.',
   'gym.progress.explainMetric': 'Exercise value = the best set of the day (reps × kg).',
   'gym.progress.ratingNote':
-    'The Gym rank measures your own development rather than absolute strength: 40 % attendance, 60 % personal performance development.',
+    'The Gym rating measures your own development rather than absolute strength: 40 % attendance, 60 % personal performance development.',
 
   'gym.rating.title': 'Gym rating',
   'gym.rating.summary': '40 % attendance · 60 % performance',
@@ -456,21 +456,21 @@ export const en: Translations = {
   'gym.endurance.title': 'Endurance phase',
   'gym.endurance.progress': '{progress} of {required} weeks',
   'gym.endurance.explain':
-    'Your first rank unlocks once you have four net weeks. A week you meet counts +1, a week you miss −0.5.',
-  'gym.endurance.locked': 'First rank still locked',
+    'Four net weeks complete the endurance phase. A week you meet counts +1, a week you miss −0.5.',
+  'gym.endurance.locked': 'Endurance phase in progress',
   'gym.endurance.unlocked': 'Endurance phase complete',
   'gym.endurance.stillCounts':
-    'Your rating is already being calculated normally. Only the promotion is held back.',
+    'Your rating is already being calculated normally. While the phase runs, a training break reduces nothing.',
   'gym.endurance.remaining': '{remaining} weeks to go',
   'gym.endurance.weekMet': 'Week met',
   'gym.endurance.weekMissed': 'Week missed',
 
   'gym.decay.title': 'Training break',
   'gym.decay.days': '{days} days without a session',
-  'gym.decay.lost': '{percent} % of your rank progress reduced',
+  'gym.decay.lost': '{percent} % of your progress reduced',
   'gym.decay.explain':
-    'Only your progress inside your current rank is reduced. Your recorded sets and your performance figures stay exactly as they were.',
-  'gym.decay.floor': 'This alone cannot drop you below your current rank.',
+    'Only part of the progress your rating had reached before the break is reduced. Your recorded sets and your performance figures stay exactly as they were.',
+  'gym.decay.floor': 'Your rating has a floor here: a break alone never resets it entirely.',
   'gym.decay.resume': 'One saved session ends the break immediately.',
 
   'gym.maintenance.title': 'Maintenance',
@@ -500,7 +500,7 @@ export const en: Translations = {
   'gym.picker.builtInProtected': 'Built-in exercises keep their mapping.',
 
   'gym.tombstone.boundary':
-    'Absolute personal bests belong to the milestones, not to the Gym rank.',
+    'Absolute personal bests belong to the milestones, not to the Gym rating.',
   'gym.change.improved': '+{percent} %',
   'gym.change.declined': '{percent} %',
   'gym.change.unchanged': 'Held',
@@ -553,17 +553,17 @@ export const en: Translations = {
   'running.endurance.title': 'Endurance phase',
   'running.endurance.progress': '{progress} of {required} weeks',
   'running.endurance.explain':
-    'Your first rank unlocks once you have four net weeks. A week you meet counts +1, a week you miss −0.5.',
-  'running.endurance.locked': 'First rank still locked',
+    'Four net weeks complete the endurance phase. A week you meet counts +1, a week you miss −0.5.',
+  'running.endurance.locked': 'Endurance phase in progress',
   'running.endurance.stillCounts':
-    'Your rating is already being calculated normally. Only the promotion is held back.',
+    'Your rating is already being calculated normally. While the phase runs, a running break reduces nothing.',
 
   'running.decay.title': 'Running break',
   'running.decay.days': '{days} days without a run',
-  'running.decay.lost': '{percent} % of your rank progress reduced',
+  'running.decay.lost': '{percent} % of your progress reduced',
   'running.decay.explain':
-    'Only your progress inside your current rank is reduced. Your recorded runs and your pace figures stay exactly as they were.',
-  'running.decay.floor': 'This alone cannot drop you below your current rank.',
+    'Only part of the progress your rating had reached before the break is reduced. Your recorded runs and your pace figures stay exactly as they were.',
+  'running.decay.floor': 'Your rating has a floor here: a break alone never resets it entirely.',
   'running.decay.resume': 'One saved run ends the break immediately.',
 
   'running.maintenance.body':
@@ -606,8 +606,6 @@ export const en: Translations = {
   'food.per100': 'per 100 g: {kcal} kcal',
   'food.locked': 'This day is closed and can no longer be changed.',
   'areas.food.setup': 'Setup',
-  'food.rank.notStarted': 'Not started yet',
-  'food.rank.hint': 'Rate your first day and Food starts counting.',
 
 
   /* ── Legacy Sport: the one-time question (phase 7) ────────────────────── */

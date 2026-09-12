@@ -342,13 +342,7 @@
 
 /* On a light card the track and the caption need the light-theme values. */
 .rank-progress--compact .rank-progress__track,
-.domain-rank .rank-progress__track {
-  background: var(--accent-tint);
-  height: 6px;
-}
-
-.rank-progress--compact .rank-progress__caption,
-.domain-rank .rank-progress__caption {
+.rank-progress--compact .rank-progress__caption {
   color: var(--text-secondary);
   text-align: right;
   font-size: var(--type-caption);
@@ -373,9 +367,9 @@
   padding-bottom: var(--space-2);
 }
 
-/* ── Domain ranks: same family, plainly subordinate ─────────────────────── */
+/* ── Area ratings: a rating and a share, plainly subordinate to the Boss ── */
 
-.domain-rank {
+.domain-standing {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -383,25 +377,42 @@
   border-bottom: 1px solid var(--separator);
 }
 
-.domain-rank:last-child {
+.domain-standing:last-child {
   border-bottom: none;
 }
 
-.domain-rank__body {
+.domain-standing__body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.domain-rank__name {
+.domain-standing__name {
   font-size: var(--type-subhead);
   color: var(--text-primary);
 }
 
-.domain-rank__rank {
+.domain-standing__meta {
   font-size: var(--type-caption);
   color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The rating on its 0–1000 scale, as a short bar beside the words. */
+.domain-standing__track {
+  flex: 0 0 96px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint);
+  overflow: hidden;
+}
+
+.domain-standing__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
 }
 
 /* ── The ladder ─────────────────────────────────────────────────────────── */

@@ -279,7 +279,7 @@ for (const [width, height] of [
 
   await ctx.close();
 
-  /* ── A younger profile: the Endurance Phase still holds the first rank, so
+  /* ── A younger profile: the Endurance Phase is still running, so
         Anwesenheit and Ausdauerphase share a row ───────────────────────── */
   const young = await browser.newContext({
     viewport: { width, height },

@@ -138,8 +138,8 @@ check('every bar has its number printed beside it',
     printed.some((t) => /von 2 Läufen/.test(t)),
   printed.map((t) => t.trim()).join(' | '));
 
-check('the locked rank is stated in words, not by a dimmed badge alone',
-  await page.getByText('Erster Rang noch gesperrt').isVisible());
+check('the running phase is stated in words, not by a dimmed badge alone',
+  await page.getByText('Ausdauerphase läuft').isVisible());
 check('the Endurance Phase is not announced as a pace figure',
   !/Tempo/.test((await page.locator('[data-metric="running-endurance"] .metric-tile__line').textContent()) ?? ''));
 

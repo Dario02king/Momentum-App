@@ -167,7 +167,7 @@ async function fillSet(page, index, reps, weight) {
   check('it names the metric', overallSheet.metric);
   // Phase 4.1 replaced this copy: performance now feeds the rating, and what
   // the screen has to keep separate is development from absolute strength.
-  check('it says what the Gym rank actually measures',
+  check('it says what the Gym rating actually measures',
     /40 % Anwesenheit, 60 % persönliche Leistungsentwicklung/.test(overallSheet.text ?? ''));
   check('it keeps the Tombstone boundary visible',
     /Absolute Bestleistungen gehören zu den Meilensteinen/.test(overallSheet.text ?? ''));
@@ -202,9 +202,9 @@ async function fillSet(page, index, reps, weight) {
 
   await page.locator('.tab-bar button', { hasText: 'Rang' }).click();
   await page.waitForTimeout(900);
-  const gymRow = await page.locator('.domain-rank', { hasText: 'Gym' }).textContent();
-  check('Gym has a domain rank of its own', Boolean(gymRow) && !/Noch nicht gestartet/.test(gymRow), gymRow?.trim());
-  const foodRow = await page.locator('.domain-rank', { hasText: 'Ernährung' }).textContent();
+  const gymRow = await page.locator('.domain-standing', { hasText: 'Gym' }).textContent();
+  check('Gym has a rating of its own on the Rank screen', /von 1000/.test(gymRow ?? ''), gymRow?.trim());
+  const foodRow = await page.locator('.domain-standing', { hasText: 'Ernährung' }).textContent();
   check('Food stays dormant, as phase 6 work', /Noch nicht gestartet/.test(foodRow ?? ''), foodRow?.trim());
 
   await ctx.close();

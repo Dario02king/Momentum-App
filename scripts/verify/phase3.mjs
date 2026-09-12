@@ -71,16 +71,18 @@ async function heroState(page) {
     consistent.remaining === null || consistent.caption.includes(String(consistent.remaining)),
     `${consistent.caption} vs ${consistent.remaining}`);
 
-  /* ── Domain ranks ─────────────────────────────────────────────────────── */
-  const domainRows = await page.locator('.domain-rank__name').allTextContents();
-  check('every enabled area has a rank of its own',
+  /* ── Area ratings: a rating and a share each, and no rank ─────────────── */
+  const domainRows = await page.locator('.domain-standing__name').allTextContents();
+  check('every enabled area is listed with a rating of its own',
     JSON.stringify(domainRows) === JSON.stringify(['Wellbeing', 'Gym', 'Laufen']),
     JSON.stringify(domainRows));
-  const heroBadge = await page.locator('.rank-hero .badge-svg').boundingBox();
-  const domainBadge = await page.locator('.domain-rank .badge-svg').first().boundingBox();
-  check('domain badges are visibly subordinate to the Boss badge',
-    (domainBadge?.width ?? 0) * 2 < (heroBadge?.width ?? 0),
-    `${domainBadge?.width} vs ${heroBadge?.width}`);
+  const domainMeta = await page.locator('.domain-standing__meta').allTextContents();
+  check('each area states its rating out of 1000 and its share, or that it has not started',
+    domainMeta.every((text) => /von 1000 · \d+ %/.test(text) || /Noch nicht gestartet/.test(text)) &&
+      domainMeta.some((text) => /von 1000 · \d+ %/.test(text)),
+    domainMeta.join(' | '));
+  check('no area carries a rank badge — the Boss is the only rank',
+    (await page.locator('.domain-standing .badge-svg').count()) === 0);
   check('there is only one badge family',
     (await page.locator('.badge-svg').count()) > 5);
 

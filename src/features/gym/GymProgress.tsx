@@ -113,7 +113,7 @@ export function GymProgress({ history }: { history: GymHistory }) {
         The overall development, as one tile: the figure, how many groups it
         rests on, and a sheet for what the figure is and is not. The one
         place the two numbers could be confused — this percentage and the
-        rank it feeds — is said plainly there, not paraphrased here.
+        rating it feeds — is said plainly there, not paraphrased here.
       */}
       <MetricTile
         id="gym-overall"
