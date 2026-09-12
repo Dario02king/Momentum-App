@@ -3,6 +3,7 @@ import { RATING } from '../../core/config/constants';
 import type { BossWeights as BossWeightMap } from '../../core/boss';
 import { rankById } from '../../core/ranks';
 import { displayedRankProgress, rankLadder, type RankProgress } from '../../core/ranks/progress';
+import { confirmationIndicator } from '../../core/ranks/confirmation';
 import type { DomainType } from '../../core/model';
 import { Card, EmptyState, LoadFailure, Section, StaleNotice } from '../../components';
 import { RankIcon } from '../../components/Icons';
@@ -141,6 +142,9 @@ export function RankScreen({
   const calibrating = legacy.points[legacy.points.length - 1]?.calibrating ?? false;
   const weighting = bossWeightingOf(configuration);
   const ladder = rankLadder(boss.peakRank);
+  // Shown as soon as a promotion is pending, 0/7 included, so crossing a
+  // threshold without an instant promotion is explained where it happens.
+  const confirming = confirmationIndicator(rating, boss.pending);
 
   const streakLabel = (count: number, unit: 'days' | 'weeks') => {
     if (count === 0) return t('rank.noStreak');
@@ -174,6 +178,12 @@ export function RankScreen({
             </div>
 
             <RankProgressBar progress={progress} className="rank-progress--hero" />
+
+            {confirming ? (
+              <p className="rank-hero__confirm" data-testid="rank-confirm">
+                {t('rank.confirm', { count: confirming.count, required: confirming.required })}
+              </p>
+            ) : null}
 
             {calibrating ? (
               <p className="rank-hero__note">

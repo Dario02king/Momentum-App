@@ -1,0 +1,220 @@
+import {
+  RANK_DEMOTION_SUSTAIN_DAYS,
+  RANK_PROMOTION_CONFIRMATION_DAYS,
+  type RankId,
+} from '../config/constants';
+import { compareDateKeys, type DateKey } from '../dates';
+import type { PromotionConfirmationState } from '../model';
+import {
+  newRankWalk,
+  nextRank,
+  rankById,
+  rankForRating,
+  rankWalkDemotionStep,
+  rankWalkStep,
+  type Rank,
+  type RankChange,
+} from './index';
+
+/**
+ * Boss promotion confirmation (D126).
+ *
+ * Two eras, and the join between them is the whole design:
+ *
+ * - **Before `from`** every point is walked by the legacy rule, unchanged —
+ *   the same function, the same immediate promotion, the same sustained
+ *   demotion — so a rank a user already held on the activation day is the
+ *   rank they keep. The activation day itself is legacy on purpose.
+ * - **From `from` on** a promotion has to be *confirmed*: the next rank is
+ *   awarded only once the rating has been at or above its threshold on
+ *   `RANK_PROMOTION_CONFIRMATION_DAYS` eligible days in a row. A day is
+ *   eligible when it is strictly before today, was scored, and was not
+ *   paused. Everything else — today, an open day, a neutral day, a paused day
+ *   — is transparent: it neither counts nor resets. A scored day below the
+ *   threshold resets the count to nothing.
+ *
+ * One target at a time. The dates collected for one rank can never confirm
+ * another, a rating already two thresholds up still advances one rank per
+ * confirmation, and each promotion starts the next target from zero.
+ *
+ * **Demotion is not touched.** The new walk runs the same demotion step the
+ * legacy walk runs, on every point, today's and unscored ones included, with
+ * the counter carried across the boundary. The confirmation rule replaces
+ * the promotion branch and nothing else.
+ *
+ * Pure. Same days, same boundary, same today: same result, byte for byte.
+ */
+
+export interface ConfirmationDay {
+  date: DateKey;
+  /** The Boss rating on this day. */
+  rating: number;
+  /** `history.days[i].status === 'scored'`: the day was evaluated. */
+  scored: boolean;
+  paused: boolean;
+}
+
+export interface PendingConfirmation {
+  targetRankId: RankId;
+  /** Ascending, unique: the fold visits each day once. */
+  eligibleDates: DateKey[];
+  required: number;
+}
+
+export interface ConfirmedRankHistory {
+  changes: RankChange[];
+  current: Rank;
+  peak: Rank;
+  /** `null` at the top of the ladder. */
+  pending: PendingConfirmation | null;
+  /** How many leading points were walked by the legacy rule. */
+  legacyPoints: number;
+}
+
+export interface ConfirmationOptions {
+  /** First day of the confirmation era. */
+  from: DateKey;
+  /** The current local day. A day counts only when strictly before it. */
+  today: DateKey;
+  required?: number;
+  sustainDays?: number;
+}
+
+export function confirmedRankHistory(
+  days: readonly ConfirmationDay[],
+  options: ConfirmationOptions,
+): ConfirmedRankHistory {
+  const required = options.required ?? RANK_PROMOTION_CONFIRMATION_DAYS;
+  const sustainDays = options.sustainDays ?? RANK_DEMOTION_SUSTAIN_DAYS;
+  const state = newRankWalk();
+
+  const split = days.findIndex((day) => compareDateKeys(day.date, options.from) >= 0);
+  const legacyPoints = split === -1 ? days.length : split;
+
+  // The legacy prefix, exactly as rankHistory() walks it.
+  for (let index = 0; index < legacyPoints; index += 1) {
+    rankWalkStep(state, days[index]!, true, sustainDays);
+  }
+
+  let target: Rank | null = state.current ? nextRank(state.current) : null;
+  let eligible: DateKey[] = [];
+  const retarget = () => {
+    target = state.current ? nextRank(state.current) : null;
+    eligible = [];
+  };
+
+  for (let index = legacyPoints; index < days.length; index += 1) {
+    const day = days[index]!;
+
+    if (state.current === null) {
+      // No legacy prefix at all: the opening rank is where the rating already
+      // is, not a promotion — the legacy rule's own opening, kept.
+      state.current = rankForRating(day.rating);
+      state.peak = state.current;
+      retarget();
+      continue;
+    }
+
+    const before = state.current;
+    const natural = rankForRating(day.rating);
+    const eligibleDay =
+      compareDateKeys(day.date, options.today) < 0 && !day.paused && day.scored;
+
+    let promoted = false;
+    if (eligibleDay && target !== null) {
+      if (day.rating >= target.min) {
+        // A set: the fold visits each day once, and this guards it anyway.
+        if (!eligible.includes(day.date)) eligible.push(day.date);
+        if (eligible.length >= required) {
+          const duplicate = state.changes.some(
+            (change) =>
+              change.kind === 'promotion' && change.to === target!.id && change.date === day.date,
+          );
+          if (!duplicate) {
+            state.changes.push({
+              date: day.date,
+              kind: 'promotion',
+              from: state.current.id,
+              to: target.id,
+              rating: day.rating,
+            });
+          }
+          state.current = target;
+          state.daysBelow = 0;
+          promoted = true;
+          retarget();
+        }
+      } else {
+        eligible = [];
+      }
+    }
+
+    // The demotion step, on every point that did not confirm — exactly the
+    // legacy walk's, with its counter carried in from the prefix.
+    if (!promoted) rankWalkDemotionStep(state, day, natural, sustainDays);
+    if (state.current !== before && !promoted) retarget();
+
+    if (state.current.index > state.peak.index) state.peak = state.current;
+  }
+
+  return {
+    changes: state.changes,
+    current: state.current ?? rankById('rookie'),
+    peak: state.peak,
+    pending: target
+      ? { targetRankId: (target as Rank).id, eligibleDates: [...eligible], required }
+      : null,
+    legacyPoints,
+  };
+}
+
+/**
+ * The persisted shape, in one fixed key order with the dates sorted and
+ * deduplicated — so the same canonical state always serialises to the same
+ * bytes, whichever path produced it.
+ */
+export function canonicalConfirmation(
+  from: DateKey,
+  pending: PendingConfirmation | null,
+): PromotionConfirmationState {
+  const dates = [...new Set(pending?.eligibleDates ?? [])].sort(compareDateKeys);
+  return {
+    from,
+    targetRankId: pending?.targetRankId ?? null,
+    eligibleDates: dates,
+  };
+}
+
+export function serialiseConfirmation(state: PromotionConfirmationState): string {
+  return JSON.stringify(canonicalConfirmation(state.from, state.targetRankId
+    ? { targetRankId: state.targetRankId, eligibleDates: state.eligibleDates, required: RANK_PROMOTION_CONFIRMATION_DAYS }
+    : null));
+}
+
+export interface ConfirmationIndicator {
+  targetRankId: RankId;
+  count: number;
+  required: number;
+}
+
+/**
+ * What the screen says, if anything.
+ *
+ * Shown as soon as a promotion is pending — the rating has reached the next
+ * threshold, or qualifying days are already on record — so a user who has
+ * just crossed a threshold sees why nothing happened yet. Not shown merely
+ * because a next rank exists.
+ */
+export function confirmationIndicator(
+  rating: number,
+  pending: PendingConfirmation | null,
+): ConfirmationIndicator | null {
+  if (!pending) return null;
+  const target = rankById(pending.targetRankId);
+  if (pending.eligibleDates.length === 0 && rating < target.min) return null;
+  return {
+    targetRankId: pending.targetRankId,
+    count: pending.eligibleDates.length,
+    required: pending.required,
+  };
+}

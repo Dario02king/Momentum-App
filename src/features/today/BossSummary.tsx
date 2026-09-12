@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { displayedRankProgress } from '../../core/ranks/progress';
+import { confirmationIndicator } from '../../core/ranks/confirmation';
 import { ChevronRightIcon } from '../../components/Icons';
 import { useT } from '../../i18n/I18nProvider';
 import { RankBadge } from '../ranking/RankBadge';
@@ -32,6 +33,7 @@ export function BossSummary({ onOpen }: { onOpen(): void }) {
     progress.next && progress.remaining !== null
       ? t('rank.boss.toNext', { points: progress.remaining, rank: progress.next.name })
       : t('rank.boss.maxed');
+  const confirming = confirmationIndicator(rating, boss.pending);
 
   return (
     <button type="button" data-card className="boss-summary" onClick={onOpen}>
@@ -45,6 +47,11 @@ export function BossSummary({ onOpen }: { onOpen(): void }) {
           <span className="boss-summary__fill" style={{ width: `${progress.percent}%` }} />
         </span>
         <span className="boss-summary__caption">{caption}</span>
+        {confirming ? (
+          <span className="boss-summary__confirm">
+            {t('rank.confirm', { count: confirming.count, required: confirming.required })}
+          </span>
+        ) : null}
       </span>
       <ChevronRightIcon size={18} />
     </button>

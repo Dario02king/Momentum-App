@@ -1,0 +1,60 @@
+{
+ "activationDay": "2026-07-03",
+ "after": {
+  "changes": [
+   {
+    "date": "2026-06-03",
+    "from": "contender",
+    "kind": "promotion",
+    "rating": 414.9945612971167,
+    "to": "elite"
+   },
+   {
+    "date": "2026-06-09",
+    "from": "elite",
+    "kind": "promotion",
+    "rating": 575.8085328677386,
+    "to": "veteran"
+   },
+   {
+    "date": "2026-07-03",
+    "from": "veteran",
+    "kind": "promotion",
+    "rating": 706.5117347043996,
+    "to": "master"
+   }
+  ],
+  "lifetimeXp": 2155,
+  "peakRank": "master",
+  "rank": "master"
+ },
+ "before": {
+  "changes": [
+   {
+    "date": "2026-06-03",
+    "from": "contender",
+    "kind": "promotion",
+    "rating": 414.9945612971167,
+    "to": "elite"
+   },
+   {
+    "date": "2026-06-09",
+    "from": "elite",
+    "kind": "promotion",
+    "rating": 575.8085328677386,
+    "to": "veteran"
+   },
+   {
+    "date": "2026-07-03",
+    "from": "veteran",
+    "kind": "promotion",
+    "rating": 706.5117347043996,
+    "to": "master"
+   }
+  ],
+  "lifetimeXp": 2155,
+  "peakRank": "master",
+  "rank": "master"
+ },
+ "from": "2026-07-04"
+}

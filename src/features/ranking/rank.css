@@ -80,6 +80,13 @@
   width: 100%;
 }
 
+.rank-hero__confirm {
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-semibold);
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
 .rank-hero__note {
   font-size: var(--type-caption);
   color: rgba(255, 255, 255, 0.5);

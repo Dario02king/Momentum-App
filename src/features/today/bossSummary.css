@@ -63,6 +63,13 @@
   color: rgba(255, 255, 255, 0.72);
 }
 
+.boss-summary__confirm {
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  color: rgba(255, 255, 255, 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
 .boss-summary > svg {
   color: rgba(255, 255, 255, 0.5);
   flex: none;

@@ -86,6 +86,14 @@ async function heroState(page) {
   check('there is only one badge family',
     (await page.locator('.badge-svg').count()) > 5);
 
+  /* ── Promotion confirmation (D126): the indicator, when it is there, is
+        the compact count and nothing else; a seeded history is all legacy
+        so it is usually absent ─────────────────────────────────────────── */
+  const confirmLines = await page.locator('.rank-hero__confirm').allTextContents();
+  check('the confirmation indicator is compact and counts days out of seven',
+    confirmLines.every((line) => /^Rang bestätigen: \d\/7 Tage$/.test(line.trim())),
+    confirmLines.join(' | ') || '(absent)');
+
   /* ── Mystery ranks ────────────────────────────────────────────────────── */
   const ladder = await page.evaluate(() => {
     return [...document.querySelectorAll('.ladder-row')].map((row) => ({

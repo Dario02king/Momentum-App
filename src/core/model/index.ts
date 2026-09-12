@@ -361,6 +361,23 @@ export interface SettingsRecord {
    */
   acknowledgedRankId?: RankId | null;
   /**
+   * The Boss promotion-confirmation era and its pending state (D126).
+   *
+   * **Absent means the feature is not active yet**, and every day is walked
+   * by the legacy rank rule. The ensure step writes it once, on the first
+   * load after the update, with `from` set to the *next* local day — the
+   * activation day stays legacy, so a promotion it awards is kept — and it
+   * is never overwritten.
+   *
+   * The pending part is persisted because the product model asks for the
+   * unique qualifying dates to be on record, but it is **not a source of
+   * truth**: every Boss replay recomputes the canonical state from stored
+   * history, the pauses, the Boss points, `from` and today, and writes it
+   * back only when it differs. Two replays of the same history write the
+   * same bytes.
+   */
+  promotionConfirmation?: PromotionConfirmationState;
+  /**
    * What became of the RC2 generic Sport domain.
    *
    * - `none`      — nothing to decide: a fresh install, or no legacy data.
@@ -388,6 +405,21 @@ export interface SettingsRecord {
 }
 
 export type LegacySportMigration = 'none' | 'pending' | 'gym' | 'running' | 'kept';
+
+/**
+ * The persisted shape of the Boss promotion confirmation (D126).
+ *
+ * `eligibleDates` is logically a set, serialised as a sorted, deduplicated
+ * array; the count the interface shows is its length, never a counter.
+ * `targetRankId` scopes those dates to exactly one target rank and is `null`
+ * at the top of the ladder.
+ */
+export interface PromotionConfirmationState {
+  /** First day of the confirmation era. Days before it are legacy. */
+  from: DateKey;
+  targetRankId: RankId | null;
+  eligibleDates: DateKey[];
+}
 
 export type RankEventKind = 'promotion' | 'demotion';
 

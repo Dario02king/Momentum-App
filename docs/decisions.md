@@ -2548,3 +2548,61 @@ type's rank fields, which are RC2's undivided rank — the Boss's legacy era,
 pinned by the migration tests — not a domain's. No schema version, no
 migration, no destructive change: a domain rank was never stored.
 
+## D126 — A Boss promotion is confirmed over seven eligible days
+
+**Decision.** From the confirmation era on, the Boss reaches the next rank
+only once its rating has been at or above that rank's threshold on
+`RANK_PROMOTION_CONFIRMATION_DAYS` (seven) eligible evaluations in a row. A
+day is eligible when its local calendar date is strictly before `today()`,
+it is not paused, and the ordinary scoring produced `scored` for it. Today
+never confirms — it is not final. Open, neutral and paused days are
+transparent: they neither count nor reset. A scored day below the threshold
+empties the count. One target at a time, the next rank only: a rating already
+two thresholds up advances one rank per confirmation, and each promotion
+starts the following target from nothing. The top rank has no pending state.
+Demotion is untouched — same hysteresis, same sustained-days rule, same
+treatment of today and of unscored points, the counter carried across the
+boundary.
+
+**The era boundary is option B.** The one stored fact is
+`settings.promotionConfirmation.from`, written once by an ensure step on the
+first configuration load after the update as `addDays(today(), 1)`, and never
+moved. The activation day is therefore legacy in its entirety: whatever the
+immediate-promotion rule awards on it, including later that same day, is
+kept, and the first day the new rule could count is the day after tomorrow.
+Days before `from` are walked by `rankHistory()` verbatim; days from `from`
+on are walked by `confirmedRankHistory()`, which continues from the legacy
+walk's own terminal state. Existing users keep their rank, peak rank, lifetime
+XP and legacy rank history to the byte (`.github/fixtures/stage4/activation.json`).
+
+**The pending state is persisted, and is not a source of truth.** The
+product model asks for the unique qualifying dates to be on record, so the
+settings carry `{ from, targetRankId, eligibleDates }` with the dates as a
+sorted, deduplicated array and the shown count as its length. Every Boss
+replay recomputes the canonical state from stored history, pauses, Boss
+points, `from` and today, and writes it back only when the bytes differ.
+Editing a counted day inside the edit window simply produces a different
+canonical set on the next replay; nothing is patched from the edit itself.
+Saving the same day twice, replaying twice and reloading twice write nothing.
+
+**What was not done, and why.** `rankHistory()` was not changed globally —
+it is now one fold over a shared step, byte-identical in output, so the
+confirmation walk can run the same demotion step rather than a copy. The
+`rankEvents` store stays unused: a promotion is a derived `RankChange`,
+identified by target and date, and the fold cannot produce the same one
+twice. No schema or backup-format version moved: the field is optional on
+the settings record, which the backup validator passes through and the
+importer stores whole. An old file activates a fresh prospective boundary on
+the importing device; a newer file keeps the boundary it carries.
+
+**A consequence to know.** A closed day nobody answered is a scored day with
+a real result, and it is eligible. If the rating stays above the threshold
+through seven such days — the general cooling-off is gentle and capped — the
+promotion confirms through them. That follows from "a missed item on a
+closed day is a real result" and is not special-cased.
+
+**Interface.** "Rang bestätigen: n/7 Tage" on the Rank hero and the Today
+Boss card, shown as soon as a promotion is pending — the rating has reached
+the next threshold, 0/7 included, or qualifying days are on record — and not
+merely because a next rank exists. The progress bar is unchanged.
+

@@ -16,6 +16,7 @@ import type {
 } from '../../core/model';
 import { normaliseWeights, type BossWeights } from '../../core/boss';
 import { ensureCurrentSnapshot } from '../configService';
+import { ensurePromotionConfirmation } from './promotionConfirmationService';
 import { legacySportPrompt, type LegacySportPrompt } from './legacySportService';
 import {
   domainsRepository,
@@ -63,6 +64,8 @@ export interface AppConfiguration {
 }
 
 export async function loadConfiguration(): Promise<AppConfiguration> {
+  // Activates the promotion-confirmation era once, prospectively (D126).
+  await ensurePromotionConfirmation();
   const [settings, domains, questions, legacySportChoice] = await Promise.all([
     settingsRepository.getOrCreate(),
     domainsRepository.list(),

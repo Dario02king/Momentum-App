@@ -103,8 +103,16 @@ Never conflate them.
   or an XP total of its own. **One badge family.** No second ladder, no
   "strength rank", no separate emblem set.
 - Eight ranks, no divisions. Rank names stay English in every language.
-- Promotion is immediate; demotion needs hysteresis *and* sustained days. A
-  single bad day may never cost a tier. Gym's and Running's Endurance Phase
+- **A Boss promotion is confirmed, never instant** (D126): seven eligible
+  days in a row at or above the next threshold — past, scored, unpaused;
+  today, open, neutral and paused days are transparent, a scored day below
+  resets. One rank per confirmation. Days before the stored era boundary
+  `settings.promotionConfirmation.from` keep the legacy immediate rule, and
+  that boundary is written once as the day after activation and never
+  moved. The pending dates are persisted but recomputed from history on
+  every replay; never patch them from an edit. Demotion needs hysteresis
+  *and* sustained days, exactly as before. A single bad day may never cost a
+  tier. Gym's and Running's Endurance Phase
   no longer gates a promotion (there is no domain promotion to gate, D125);
   it stays as written in D94 — four net weeks, real numbers throughout — and
   abstinence decay begins only once it is complete.

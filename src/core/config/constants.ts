@@ -122,12 +122,24 @@ export const RANK_DEMOTION_HYSTERESIS = 15;
 /**
  * And it must stay there this many scored days running.
  *
- * Promotion is immediate, because reaching a rank is an achievement the
- * moment it happens. Demotion has to be a trend: a dip that recovers within
+ * Promotion was immediate under the legacy walk, because reaching a rank is
+ * an achievement the moment it happens; from the confirmation era on it has
+ * to be held (below). Demotion has to be a trend: a dip that recovers within
  * a couple of days was never a change in standing, and §13 requires that a
  * single bad day cannot cost a tier — including through its after-effects.
  */
 export const RANK_DEMOTION_SUSTAIN_DAYS = 3;
+
+/**
+ * A Boss promotion must be confirmed (D126).
+ *
+ * From the confirmation era on, the next rank is awarded only once the Boss
+ * rating has been at or above its threshold on this many **eligible**
+ * evaluations in a row — past, scored, unpaused days. Open, neutral and
+ * paused days are transparent to the count; a scored day below the threshold
+ * resets it. Today never counts: it is not final yet. Demotion is untouched.
+ */
+export const RANK_PROMOTION_CONFIRMATION_DAYS = 7;
 
 /** Lifetime XP. Never decreases, never spendable, never purchasable. */
 export const XP = {

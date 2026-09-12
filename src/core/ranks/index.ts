@@ -103,6 +103,93 @@ export interface RankHistoryOptions {
 }
 
 /**
+ * The state one rank walk carries from point to point.
+ *
+ * Exposed so the confirmation era (`confirmation.ts`) can continue a walk
+ * from exactly where the legacy prefix left it — the same current rank, the
+ * same peak, the same demotion counter — rather than re-deriving any of it.
+ */
+export interface RankWalkState {
+  current: Rank | null;
+  peak: Rank;
+  /** Consecutive points below the hysteresis buffer, for the sustained rule. */
+  daysBelow: number;
+  changes: RankChange[];
+}
+
+export function newRankWalk(): RankWalkState {
+  return { current: null, peak: RANK_LIST[0]!, daysBelow: 0, changes: [] };
+}
+
+/**
+ * The demotion half of one step, on its own.
+ *
+ * This is the only demotion logic in the app. The legacy walk runs it on
+ * every point that did not promote; the confirmation walk runs it on every
+ * point that did not confirm a promotion. Neither has a copy.
+ */
+export function rankWalkDemotionStep(
+  state: RankWalkState,
+  point: { date: string; rating: number },
+  natural: Rank,
+  sustainDays: number,
+): void {
+  const current = state.current!;
+  if (point.rating < current.min - RANK_DEMOTION_HYSTERESIS) {
+    state.daysBelow += 1;
+    if (state.daysBelow >= sustainDays) {
+      state.changes.push({
+        date: point.date,
+        kind: 'demotion',
+        from: current.id,
+        to: natural.id,
+        rating: point.rating,
+      });
+      state.current = natural;
+      state.daysBelow = 0;
+    }
+  } else {
+    // Back inside the buffer: the dip did not become a demotion.
+    state.daysBelow = 0;
+  }
+}
+
+/** One point of the legacy walk: immediate promotion, sustained demotion. */
+export function rankWalkStep(
+  state: RankWalkState,
+  point: { date: string; rating: number },
+  mayPromote: boolean,
+  sustainDays: number,
+): void {
+  if (state.current === null) {
+    // The opening rank is where the rating already is, not a promotion —
+    // except while the gate is closed, where the user starts at the bottom
+    // of the ladder and stays there until they have earned the first climb.
+    state.current = mayPromote ? rankForRating(point.rating) : RANK_LIST[0]!;
+    state.peak = state.current;
+    return;
+  }
+
+  const natural = rankForRating(point.rating);
+
+  if (natural.index > state.current.index && mayPromote) {
+    state.changes.push({
+      date: point.date,
+      kind: 'promotion',
+      from: state.current.id,
+      to: natural.id,
+      rating: point.rating,
+    });
+    state.current = natural;
+    state.daysBelow = 0;
+  } else {
+    rankWalkDemotionStep(state, point, natural, sustainDays);
+  }
+
+  if (state.current.index > state.peak.index) state.peak = state.current;
+}
+
+/**
  * Walks a rating series and reports the crossings, so the log matches what
  * the user actually saw.
  *
@@ -116,6 +203,10 @@ export interface RankHistoryOptions {
  * within a couple of days was never a change in standing, and this is what
  * makes "a single bad day must never cost a tier" hold for the whole tail of
  * that day rather than only for the day itself.
+ *
+ * This is the **legacy** walk: the Boss ran on it alone until D126, and it
+ * still walks every day before the confirmation era. It is one fold over
+ * `rankWalkStep`, so what it does is written once.
  */
 export function rankHistory(
   series: { date: string; rating: number }[],
@@ -127,55 +218,12 @@ export function rankHistory(
 } {
   const sustainDays = options.sustainDays ?? RANK_DEMOTION_SUSTAIN_DAYS;
   const unlocked = options.promotionUnlocked;
-  let current: Rank | null = null;
-  let peak: Rank = RANK_LIST[0]!;
-  let daysBelow = 0;
-  const changes: RankChange[] = [];
+  const state = newRankWalk();
 
   for (const [index, point] of series.entries()) {
     const mayPromote = unlocked === undefined || unlocked[index] === true;
-
-    if (current === null) {
-      // The opening rank is where the rating already is, not a promotion —
-      // except while the gate is closed, where the user starts at the bottom
-      // of the ladder and stays there until they have earned the first climb.
-      current = mayPromote ? rankForRating(point.rating) : RANK_LIST[0]!;
-      peak = current;
-      continue;
-    }
-
-    const natural = rankForRating(point.rating);
-
-    if (natural.index > current.index && mayPromote) {
-      changes.push({
-        date: point.date,
-        kind: 'promotion',
-        from: current.id,
-        to: natural.id,
-        rating: point.rating,
-      });
-      current = natural;
-      daysBelow = 0;
-    } else if (point.rating < current.min - RANK_DEMOTION_HYSTERESIS) {
-      daysBelow += 1;
-      if (daysBelow >= sustainDays) {
-        changes.push({
-          date: point.date,
-          kind: 'demotion',
-          from: current.id,
-          to: natural.id,
-          rating: point.rating,
-        });
-        current = natural;
-        daysBelow = 0;
-      }
-    } else {
-      // Back inside the buffer: the dip did not become a demotion.
-      daysBelow = 0;
-    }
-
-    if (current.index > peak.index) peak = current;
+    rankWalkStep(state, point, mayPromote, sustainDays);
   }
 
-  return { changes, current: current ?? RANK_LIST[0]!, peak };
+  return { changes: state.changes, current: state.current ?? RANK_LIST[0]!, peak: state.peak };
 }

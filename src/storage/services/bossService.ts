@@ -15,8 +15,20 @@ import { buildLedger, type DomainLedger } from '../../core/ledger';
 import type { ConfigSnapshotRecord, DomainType } from '../../core/model';
 import { compareDateKeys } from '../../core/dates';
 import type { DayState } from '../../core/rating';
+import type { PromotionConfirmationState } from '../../core/model';
 import { rankHistory, rankForRating, type Rank, type RankChange } from '../../core/ranks';
-import { configSnapshotsRepository, gymSessionsRepository, runsRepository } from '../repositories';
+import {
+  canonicalConfirmation,
+  confirmedRankHistory,
+  type PendingConfirmation,
+} from '../../core/ranks/confirmation';
+import {
+  configSnapshotsRepository,
+  gymSessionsRepository,
+  runsRepository,
+  settingsRepository,
+} from '../repositories';
+import { reconcilePromotionConfirmation } from './promotionConfirmationService';
 import { buildGymRating, type GymRatingState } from './gymRatingService';
 import { loadExerciseDays } from './gymService';
 import {
@@ -80,6 +92,13 @@ export interface BossProgression {
   changes: RankChange[];
   /** Lifetime XP across every domain — one number, never per domain. */
   lifetimeXp: number;
+  /**
+   * The promotion being confirmed, or `null` at the top of the ladder or
+   * before the confirmation era was activated (D126).
+   */
+  pending: PendingConfirmation | null;
+  /** The persisted confirmation state as reconciled by this replay, if active. */
+  confirmation: PromotionConfirmationState | null;
   domains: DomainProgression[];
   /** The era today's Boss was computed in, for the "why this number" panel. */
   era: BossEra['era'];
@@ -287,9 +306,30 @@ export async function loadBossProgression(
   );
   const points = series.points;
 
-  const ranks = rankHistory(
-    points.map((point, index) => ({ date: dates[index]!, rating: point.rating })),
-  );
+  /*
+   * The rank walk. Before the confirmation era was activated every point is
+   * walked by the legacy rule; once it is, days before `from` still are —
+   * verbatim, by the same function — and days from `from` on need a
+   * confirmed promotion. Demotion is the same step in both (D126).
+   */
+  const settings = await settingsRepository.get();
+  const activation = settings?.promotionConfirmation ?? null;
+  const walk = activation
+    ? confirmedRankHistory(
+        points.map((point, index) => ({
+          date: dates[index]!,
+          rating: point.rating,
+          scored: history.days[index]!.status === 'scored',
+          paused: history.paused[index] === true,
+        })),
+        { from: activation.from, today: reference },
+      )
+    : { ...rankHistory(points.map((point, index) => ({ date: dates[index]!, rating: point.rating }))), pending: null };
+  const ranks = walk;
+  const confirmation = activation ? canonicalConfirmation(activation.from, walk.pending) : null;
+  // The persisted set is what this replay says it is, and nothing else.
+  if (confirmation) await reconcilePromotionConfirmation(confirmation);
+
   const peakRating = points.reduce((max, point) => Math.max(max, point.rating), 0);
   const last = points[points.length - 1];
 
@@ -306,6 +346,8 @@ export async function loadBossProgression(
     // One lifetime total, not four: XP answers "how much have I done", and
     // the answer to that question is not per domain.
     lifetimeXp: legacy.lifetimeXp,
+    pending: walk.pending,
+    confirmation,
     domains,
     era: last ? last.era : 'legacy',
     history,
