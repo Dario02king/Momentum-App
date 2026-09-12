@@ -107,12 +107,17 @@ export function confirmedRankHistory(
     const day = days[index]!;
 
     if (state.current === null) {
-      // No legacy prefix at all: the opening rank is where the rating already
-      // is, not a promotion — the legacy rule's own opening, kept.
-      state.current = rankForRating(day.rating);
+      // No legacy prefix at all — a profile created under the confirmation
+      // rule. There is no earned standing to keep, so it opens at the bottom
+      // of the ladder and confirms every rank from there; a rating already
+      // past a threshold on day one shows 0/7 rather than a rank it has not
+      // held for seven days. (A legacy prefix opens where its rating is, as
+      // it always did — that is rankWalkStep's own opening.)
+      state.current = rankById('rookie');
       state.peak = state.current;
       retarget();
-      continue;
+      // And the day itself is evaluated like any other: once it is past, a
+      // first day at or above the first threshold is the first of seven.
     }
 
     const before = state.current;

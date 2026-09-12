@@ -10,13 +10,16 @@ import { settingsRepository } from '../repositories';
  *
  * ## Activation
  *
- * `ensurePromotionConfirmation` runs on every configuration load. The first
- * time it finds no state it writes one: `from` is the **next** local day, so
- * the activation day — whatever the legacy rule awards on it, including a
- * promotion later that same day — stays entirely legacy, and the new rule
- * begins on a day that is still today and therefore cannot count until it
- * has become yesterday. Every later call finds the state and does nothing.
- * The boundary is never moved.
+ * `ensurePromotionConfirmation` runs on every configuration load. A settings
+ * record created under this version already carries the state (see
+ * `settingsRepository.getOrCreate`, `from` = its first day), so an absent
+ * field means exactly one thing: a record that predates the feature. For
+ * that record the ensure step writes the state once with `from` set to the
+ * **next** local day, so the activation day — whatever the legacy rule
+ * awards on it, including a promotion later that same day — stays entirely
+ * legacy, and the new rule begins on a day that is still today and
+ * therefore cannot count until it has become yesterday. Every later call
+ * finds the state and does nothing. The boundary is never moved.
  *
  * An old backup carries no state, so restoring one on a device activates a
  * fresh prospective boundary on the next load; a newer backup carries its

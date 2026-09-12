@@ -54,7 +54,7 @@ afterEach(async () => {
   await closeDatabase();
 });
 
-/* ── A Wellbeing-only profile climbing through two thresholds ────────────── */
+/* ── A fresh install climbing under the confirmation rule ───────────────── */
 
 const D0 = '2026-01-05'; // a Monday
 const D = (index: number) => addDays(D0, index);
@@ -67,10 +67,14 @@ async function climbUntil(last: string, value: (day: string) => number): Promise
   }
 }
 
-/** 5 on the first day, 6 for five days, then 10 every day: crosses Elite on D8. */
+/** 5 on the first day, 6 for five days, then 10 every day. */
 const climb = (day: string) => (day === D0 ? 5 : day < D(6) ? 6 : 10);
+/** 5 every day: the rating crosses Elite (410) on D17, slowly. */
+const steady = () => 5;
 
-describe('a profile climbing under the confirmation rule', () => {
+const lastRating = (boss: BossProgression) => boss.points[boss.points.length - 1]!.rating;
+
+describe('a fresh install under the confirmation rule', () => {
   beforeEach(async () => {
     freezeAt(D0);
     await applyOnboarding({
@@ -79,48 +83,58 @@ describe('a profile climbing under the confirmation rule', () => {
         { text: 'B', type: 'scale', category: 'gesundheit' },
       ],
     });
-    await loadConfiguration(); // activates: from = D1
+    await loadConfiguration();
   });
 
-  it('activates prospectively, from the next local day, with nothing collected', async () => {
-    expect(await persisted()).toEqual({ from: D(1), targetRankId: null, eligibleDates: [] });
-    // Nothing answered yet: the Boss has not started, and the first replay
-    // fills in the target without collecting anything.
-    const boss = await loadBossProgression();
+  it('A — carries the era from its first day and shows 0/7 at the first threshold, without promoting', async () => {
+    // Created today under this version: the boundary is today itself.
+    expect(await persisted()).toEqual({ from: D0, targetRankId: null, eligibleDates: [] });
+
+    await climbUntil(D0, climb);
+    let boss = await loadBossProgression();
+    // Day one already sits above the first threshold (120). It opens at the
+    // bottom, it is not promoted, and the indicator says why.
+    expect(lastRating(boss)).toBeGreaterThanOrEqual(120);
     expect(boss.rank.id).toBe('rookie');
     expect(boss.changes).toEqual([]);
     expect(boss.pending).toEqual({ targetRankId: 'challenger', eligibleDates: [], required: 7 });
-    expect(await persisted()).toEqual({ from: D(1), targetRankId: 'challenger', eligibleDates: [] });
+    expect(confirmationIndicator(lastRating(boss), boss.pending)).toEqual({ targetRankId: 'challenger', count: 0, required: 7 });
+    expect(await persisted()).toEqual({ from: D0, targetRankId: 'challenger', eligibleDates: [] });
+
+    // The next day, day one is past and counts.
+    await climbUntil(D(1), climb);
+    boss = await loadBossProgression();
+    expect(boss.pending?.eligibleDates).toEqual([D0]);
   });
 
-  it('5, 6, 22, 23 — counts yesterday, never today, and promotes on the seventh', async () => {
-    await climbUntil(D(8), climb);
+  it('5, 6, 22, 23 — promotes one rank per confirmation, on the seventh past day, and starts the next from nothing', async () => {
+    await climbUntil(D(6), climb);
     let boss = await loadBossProgression();
-    // D8 is the first day at or above Elite: 0/7, shown, not counted.
-    expect(boss.points[boss.points.length - 1]!.rating).toBeGreaterThanOrEqual(410);
-    expect(boss.pending?.eligibleDates).toEqual([]);
-    expect(confirmationIndicator(boss.points[boss.points.length - 1]!.rating, boss.pending)).toEqual({
-      targetRankId: 'elite', count: 0, required: 7,
-    });
+    expect(boss.rank.id).toBe('rookie');
+    expect(boss.pending?.eligibleDates).toEqual([D(0), D(1), D(2), D(3), D(4), D(5)]);
 
-    await climbUntil(D(9), climb);
+    await climbUntil(D(7), climb);
     boss = await loadBossProgression();
-    expect(boss.pending?.eligibleDates).toEqual([D(8)]);
+    expect(boss.rank.id).toBe('challenger');
+    expect(boss.changes).toEqual([
+      { date: D(6), kind: 'promotion', from: 'rookie', to: 'challenger', rating: boss.points[6]!.rating },
+    ]);
+    // Already above Contender's threshold: 0/7 towards it, nothing carried over.
+    expect(boss.pending).toEqual({ targetRankId: 'contender', eligibleDates: [], required: 7 });
+    expect(confirmationIndicator(lastRating(boss), boss.pending)).toEqual({ targetRankId: 'contender', count: 0, required: 7 });
 
     await climbUntil(D(14), climb);
     boss = await loadBossProgression();
     expect(boss.rank.id).toBe('contender');
-    expect(boss.pending?.eligibleDates).toEqual([D(8), D(9), D(10), D(11), D(12), D(13)]);
+    expect(boss.changes.map((c) => [c.to, c.date])).toEqual([['challenger', D(6)], ['contender', D(13)]]);
+    expect(boss.pending).toEqual({ targetRankId: 'elite', eligibleDates: [], required: 7 });
+    expect(boss.peakRank.id).toBe('contender');
 
-    await climbUntil(D(15), climb);
+    await climbUntil(D(21), climb);
     boss = await loadBossProgression();
     expect(boss.rank.id).toBe('elite');
-    expect(boss.changes).toEqual([
-      { date: D(14), kind: 'promotion', from: 'contender', to: 'elite', rating: boss.points[14]!.rating },
-    ]);
-    expect(boss.pending).toEqual({ targetRankId: 'veteran', eligibleDates: [], required: 7 });
-    expect(await persisted()).toEqual({ from: D(1), targetRankId: 'veteran', eligibleDates: [] });
-    expect(boss.peakRank.id).toBe('elite');
+    expect(boss.changes.map((c) => [c.to, c.date])).toEqual([['challenger', D(6)], ['contender', D(13)], ['elite', D(20)]]);
+    expect(await persisted()).toEqual({ from: D0, targetRankId: 'veteran', eligibleDates: [] });
   });
 
   it('9–12 — persists byte-identical state across replays, saves and reloads', async () => {
@@ -128,7 +142,7 @@ describe('a profile climbing under the confirmation rule', () => {
     // The set is reconciled by the replay, so it is current after a load.
     await loadBossProgression();
     const first = await settingsJson();
-    expect(JSON.parse(first).eligibleDates).toEqual([D(8), D(9), D(10)]);
+    expect(JSON.parse(first).eligibleDates).toEqual([D(7), D(8), D(9), D(10)]);
     expect(Object.keys(JSON.parse(first))).toEqual(['from', 'targetRankId', 'eligibleDates']);
 
     await loadBossProgression();
@@ -152,43 +166,34 @@ describe('a profile climbing under the confirmation rule', () => {
   });
 
   it('14, 15 — an edit inside the window corrects the sequence from history, not from the edit', async () => {
-    await climbUntil(D(11), climb); // D11 today: [D8, D9, D10]
-    expect((await loadBossProgression()).pending?.eligibleDates).toEqual([D(8), D(9), D(10)]);
-
-    // D8 is three days back, still editable. Both answers to 1.
-    const questions = await questionsRepository.list();
-    for (const question of questions) await saveAnswer(D(8), question.id, 1);
+    await climbUntil(D(20), steady); // Elite crossed on D17; today D20: [D17, D18, D19]
     let boss = await loadBossProgression();
-    expect(boss.points[8]!.rating).toBeLessThan(410);
-    expect(boss.pending?.eligibleDates).toEqual([D(9), D(10)]);
-    expect(await persisted()).toEqual(recomputed(boss, D(11)));
+    expect(boss.rank.id).toBe('contender');
+    expect(boss.pending?.eligibleDates).toEqual([D(17), D(18), D(19)]);
 
-    // And back up again: the sequence is rebuilt, not patched.
-    for (const question of questions) await saveAnswer(D(8), question.id, 10);
-    boss = await loadBossProgression();
-    expect(boss.pending?.eligibleDates).toEqual([D(8), D(9), D(10)]);
-    expect(await persisted()).toEqual(recomputed(boss, D(11)));
-  });
-
-  it('16 — editing the activation day replays it under the legacy rule', async () => {
-    await climbUntil(D(3), climb);
+    // D17 is three days back, still editable. Both answers to 1: the day
+    // falls below Elite, and the two after it, replayed from the lower
+    // rating, no longer clear it either.
     const questions = await questionsRepository.list();
-    // D0 is the activation day and still editable on D3.
-    for (const question of questions) await saveAnswer(D(0), question.id, 10);
-    const boss = await loadBossProgression();
-    // The prefix is one legacy point, whatever its rating now is; the new
-    // era still begins on D1 and has collected nothing towards Elite.
-    expect(boss.confirmation?.from).toBe(D(1));
-    expect(boss.changes).toEqual([]);
-    expect(boss.pending?.targetRankId).toBe('elite');
+    for (const question of questions) await saveAnswer(D(17), question.id, 1);
+    boss = await loadBossProgression();
+    expect(boss.points[17]!.rating).toBeLessThan(410);
+    expect(boss.pending?.eligibleDates).toEqual([]);
+    expect(await persisted()).toEqual(recomputed(boss, D(20)));
+
+    // And back: the sequence is rebuilt, not patched.
+    for (const question of questions) await saveAnswer(D(17), question.id, 5);
+    boss = await loadBossProgression();
+    expect(boss.pending?.eligibleDates).toEqual([D(17), D(18), D(19)]);
+    expect(await persisted()).toEqual(recomputed(boss, D(20)));
   });
 
-  it('20 — a newer backup keeps its boundary and reconciles its dates from history', async () => {
+  it('20 / D — a newer backup keeps its boundary and reconciles its dates from history', async () => {
     await climbUntil(D(11), climb);
     await loadBossProgression(); // the replay is what reconciles the set
     const exported = JSON.stringify(await exportBackup());
     expect(JSON.parse(exported).data.settings.promotionConfirmation).toEqual({
-      from: D(1), targetRankId: 'elite', eligibleDates: [D(8), D(9), D(10)],
+      from: D0, targetRankId: 'contender', eligibleDates: [D(7), D(8), D(9), D(10)],
     });
 
     await deleteDatabase();
@@ -196,22 +201,45 @@ describe('a profile climbing under the confirmation rule', () => {
     const result = await importBackup(exported);
     expect(result.ok).toBe(true);
     await loadConfiguration(); // must not reset the era
-    expect((await persisted()).from).toBe(D(1));
+    expect((await persisted()).from).toBe(D0);
     const boss = await loadBossProgression();
-    expect(boss.confirmation?.from).toBe(D(1));
+    expect(boss.confirmation?.from).toBe(D0);
     expect(await persisted()).toEqual(boss.confirmation);
     expect(await persisted()).toEqual(recomputed(boss, '2026-02-10'));
-    /*
-     * The days after the export are silent: closed, scored as misses, and
-     * the rating decays under the general cooling-off. It stayed above the
-     * Elite threshold through the first seven of them — a scored day is a
-     * real result, whatever it contains — so the confirmation completed on
-     * the seventh and the target moved on to Veteran with an empty set.
-     * Nothing was seeded from the import date, and the boundary did not
-     * move: the promotion is dated inside the era the file carried.
-     */
-    expect(boss.changes.map((c) => [c.to, c.date])).toEqual([['elite', D(14)]]);
-    expect(await persisted()).toEqual({ from: D(1), targetRankId: 'veteran', eligibleDates: [] });
+    // The boundary the file carried is where the walk still splits, and the
+    // legacy prefix is empty: nothing was seeded from the import date.
+    expect(boss.changes[0]).toMatchObject({ to: 'challenger', date: D(6) });
+  });
+});
+
+/* ── B: a legacy settings record without the field ──────────────────────── */
+
+describe('a legacy record upgrading into the feature', () => {
+  it('B — activates from tomorrow, and the activation day keeps the legacy opening', async () => {
+    freezeAt(D0);
+    // A record written before the feature existed: no field at all.
+    await settingsRepository.replaceAll({
+      id: 'settings', language: 'de', firstUseDate: D0, onboardingCompletedAt: null,
+      acknowledgedRankId: null, createdAt: '2026-01-05T08:00:00.000Z', updatedAt: '2026-01-05T08:00:00.000Z',
+    });
+    expect((await settingsRepository.get())!.promotionConfirmation).toBeUndefined();
+    await applyOnboarding({
+      questions: [
+        { text: 'A', type: 'scale', category: 'mental' },
+        { text: 'B', type: 'scale', category: 'gesundheit' },
+      ],
+    });
+    await loadConfiguration(); // the ensure step: an upgrade, so tomorrow
+    expect(await persisted()).toEqual({ from: D(1), targetRankId: null, eligibleDates: [] });
+
+    await climbUntil(D0, climb);
+    const boss = await loadBossProgression();
+    // Same history as the fresh install above, different path: the
+    // activation day is legacy, so it opens where the rating is.
+    expect(boss.rank.id).toBe('contender');
+    expect(boss.changes).toEqual([]);
+    expect(boss.pending).toEqual({ targetRankId: 'elite', eligibleDates: [], required: 7 });
+    expect(confirmationIndicator(lastRating(boss), boss.pending)).toBeNull();
   });
 });
 

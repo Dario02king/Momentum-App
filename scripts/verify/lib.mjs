@@ -335,3 +335,53 @@ export async function inSheet(page, metric, fn) {
   await page.waitForTimeout(350);
   return result;
 }
+
+/**
+ * A verify-only profile for the promotion-confirmation indicator (D126).
+ *
+ * The ordinary seeds leave every past day under the legacy rule, so the
+ * indicator never shows on them. This one moves the confirmation boundary
+ * back to the origin of the seeded history and rewrites every answer to one
+ * constant value, so the whole history is walked by the confirmation rule
+ * from a Rookie opening and the state on screen is a pure function of
+ * `days` and `value`. Nothing here is a production path: it writes the
+ * same stores a restored backup writes, and the app reconciles the pending
+ * dates from history on the next load exactly as it would for that backup.
+ *
+ * Presets, calibrated once against the rating curve and pinned in
+ * stage4-shots.mjs: `threshold` (28 days of 10 plus today) renders 0/7,
+ * `pending` (32 days of 10) renders 4/7, `below` (28 days of 10) renders no
+ * indicator.
+ */
+export async function seedConfirmation(page, { days = 30, value = 10, today = false } = {}) {
+  await seed(page, { days });
+  return page.evaluate(async ({ value, today }) => {
+    const open = () => new Promise((res, rej) => { const r = indexedDB.open('momentum'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const all = (db, s) => new Promise((res, rej) => { const r = db.transaction([s], 'readonly').objectStore(s).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const putAll = (db, s, recs) => new Promise((res, rej) => { const tx = db.transaction([s], 'readwrite'); for (const r of recs) tx.objectStore(s).put(r); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+    const db = await open();
+    const settings = (await all(db, 'settings'))[0];
+    const answers = await all(db, 'answers');
+    const rewritten = answers.map((a) => (a.valueType === 'scale' ? { ...a, value } : { ...a, value: true }));
+    if (today) {
+      // Today answered too, so a threshold can be crossed on the current day
+      // itself — the 0/7 case — rather than carried in from yesterday.
+      const pad = (n, l = 2) => String(n).padStart(l, '0');
+      const now = new Date();
+      const date = `${pad(now.getFullYear(), 4)}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      const stamp = now.toISOString();
+      for (const q of await all(db, 'questions')) {
+        rewritten.push({ id: `${date}#${q.id}`, date, questionId: q.id, domainId: q.domainId,
+          value: q.type === 'scale' ? value : true, valueType: q.type, sensitivity: 'private',
+          configSnapshotId: rewritten[0]?.configSnapshotId ?? null, createdAt: stamp, updatedAt: stamp });
+      }
+    }
+    await putAll(db, 'answers', rewritten);
+    await putAll(db, 'settings', [{
+      ...settings,
+      promotionConfirmation: { from: settings.firstUseDate, targetRankId: null, eligibleDates: [] },
+    }]);
+    return { from: settings.firstUseDate, answers: answers.length };
+  }, { value, today });
+}
+

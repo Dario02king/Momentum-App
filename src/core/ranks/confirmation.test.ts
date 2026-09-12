@@ -201,15 +201,21 @@ describe('the era boundary', () => {
     expect(fold(climbing, day(5)).pending?.eligibleDates).toEqual([day(3), day(4)]);
   });
 
-  it('starts a profile with no legacy prefix at the rank the rating is in, without a promotion', () => {
+  it('opens a profile with no legacy prefix at Rookie and counts its first day once it is past', () => {
     const high = rankById('veteran').min + 5;
     const result = confirmedRankHistory(
       days([{ rating: ABOVE }, { rating: high }, { rating: high }]),
       { from: D0, today: day(3) },
     );
-    expect(result.current.id).toBe('elite');
+    // No earned standing to keep: Rookie, 3/7 towards Challenger, no promotion.
+    expect(result.legacyPoints).toBe(0);
+    expect(result.current.id).toBe('rookie');
     expect(result.changes).toEqual([]);
-    expect(result.pending?.eligibleDates).toEqual([day(1), day(2)]);
+    expect(result.pending).toEqual({ targetRankId: 'challenger', eligibleDates: [day(0), day(1), day(2)], required: 7 });
+    // On day one itself: 0/7, shown, because the rating is already past 120.
+    const dayOne = confirmedRankHistory(days([{ rating: ABOVE }]), { from: D0, today: D0 });
+    expect(dayOne.current.id).toBe('rookie');
+    expect(confirmationIndicator(ABOVE, dayOne.pending)).toEqual({ targetRankId: 'challenger', count: 0, required: 7 });
   });
 
   it('with the boundary in the future everything is legacy and the pending state is empty', () => {
@@ -278,12 +284,20 @@ describe('demotion, strictly isolated', () => {
       }
       const list = days(specs);
       const legacy = rankHistory(list.map((d) => ({ date: d.date, rating: d.rating })));
-      for (const from of [day(0), day(1), day(30), day(121)]) {
+      // Any boundary after the first point: the prefix opens where the
+      // rating is, exactly as the legacy walk does, and the tail's demotions
+      // land on the same days.
+      for (const from of [day(1), day(30), day(121)]) {
         const confirmed = confirmedRankHistory(list, { from, today: day(121) });
         expect(confirmed.changes).toEqual(legacy.changes);
         expect(confirmed.current.id).toBe(legacy.current.id);
         expect(confirmed.peak.id).toBe(legacy.peak.id);
       }
+      // With no prefix at all the profile is a fresh install: it opens at
+      // Rookie rather than at Master, which is the one intended difference.
+      const fresh = confirmedRankHistory(list, { from: day(0), today: day(121) });
+      expect(fresh.legacyPoints).toBe(0);
+      expect(fresh.changes[0]?.from ?? 'rookie').toBe('rookie');
     }
   });
 

@@ -107,9 +107,10 @@ Never conflate them.
   days in a row at or above the next threshold — past, scored, unpaused;
   today, open, neutral and paused days are transparent, a scored day below
   resets. One rank per confirmation. Days before the stored era boundary
-  `settings.promotionConfirmation.from` keep the legacy immediate rule, and
-  that boundary is written once as the day after activation and never
-  moved. The pending dates are persisted but recomputed from history on
+  `settings.promotionConfirmation.from` keep the legacy immediate rule. A
+  settings record created under this version carries the boundary from its
+  first day and opens at Rookie; a record without the field predates the
+  feature and is activated once from the day after, never moved. The pending dates are persisted but recomputed from history on
   every replay; never patch them from an edit. Demotion needs hysteresis
   *and* sustained days, exactly as before. A single bad day may never cost a
   tier. Gym's and Running's Endurance Phase

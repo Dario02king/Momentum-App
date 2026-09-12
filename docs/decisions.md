@@ -2564,16 +2564,26 @@ Demotion is untouched — same hysteresis, same sustained-days rule, same
 treatment of today and of unscored points, the counter carried across the
 boundary.
 
-**The era boundary is option B.** The one stored fact is
-`settings.promotionConfirmation.from`, written once by an ensure step on the
-first configuration load after the update as `addDays(today(), 1)`, and never
-moved. The activation day is therefore legacy in its entirety: whatever the
-immediate-promotion rule awards on it, including later that same day, is
-kept, and the first day the new rule could count is the day after tomorrow.
-Days before `from` are walked by `rankHistory()` verbatim; days from `from`
-on are walked by `confirmedRankHistory()`, which continues from the legacy
-walk's own terminal state. Existing users keep their rank, peak rank, lifetime
-XP and legacy rank history to the byte (`.github/fixtures/stage4/activation.json`).
+**The era boundary is option B, and it has two entry points.** The one
+stored fact is `settings.promotionConfirmation.from`, never moved once
+written. A settings record **created under this version** carries it from
+the start with `from = today()`: a new user has no legacy rank to keep, the
+walk opens at Rookie and confirms every rank from there, and a first day
+already past a threshold shows 0/7 rather than a rank it has not held — the
+day itself counts once it is past, today never does. A record that
+**predates the feature** has no field, and that absence has exactly one
+meaning: the ensure step on the next configuration load activates it
+prospectively with `from = addDays(today(), 1)`. The activation day is then
+legacy in its entirety — whatever the immediate-promotion rule awards on it,
+including later that same day, is kept — and the first day the new rule
+could count is the day after tomorrow. Days before `from` are walked by
+`rankHistory()` verbatim; days from `from` on are walked by
+`confirmedRankHistory()`, which continues from the legacy walk's own
+terminal state. Existing users keep their rank, peak rank, lifetime XP and
+legacy rank history to the byte (`.github/fixtures/stage4/activation.json`).
+A restored backup follows the same two rules by its settings record: an old
+file has no field and activates from the day after the import; a newer file
+keeps the boundary it carries. Nothing infers "new user" heuristically.
 
 **The pending state is persisted, and is not a source of truth.** The
 product model asks for the unique qualifying dates to be on record, so the
