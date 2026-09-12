@@ -60,12 +60,15 @@ seven consecutive days with no session it becomes an *abstinence episode*, and
 from that day the decay schedule sets the rating instead of the gap movement
 running as well.
 
-Decay of that kind touches **only the progress inside the rank currently
-held**, and it is cumulative against the progress held when the episode began
-— never compounded against what is left. Compounding never reaches zero and
-makes a fourth week of absence cost a quarter of what the first did. Nothing
-historical moves: sets, exercise performances, muscle-group figures, past
-snapshots and Tombstones are facts about what happened.
+Decay of that kind touches **only the progress inside the tier held when the
+episode began** — an interval of the shared ladder, held with hysteresis and
+internal to the fold (D124); it is not a domain rank and nothing is shown or
+promoted by it — and it is cumulative against the progress held when the
+episode began, never compounded against what is left. Compounding never
+reaches zero and makes a fourth week of absence cost a quarter of what the
+first did. Nothing historical moves: sets, exercise performances,
+muscle-group figures, past snapshots and Tombstones are facts about what
+happened.
 
 ## Absence is not failure
 

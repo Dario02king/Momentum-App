@@ -1403,6 +1403,13 @@ building something else.
 
 ## D96 — Abstinence decay reduces rank progress, and only that
 
+> **Status note (D124).** The interval this entry calls "the rank currently
+> held" is, since Stage 2 of the Overall-rank update, an internal *decay
+> tier* — the same interval of the same ladder, held with the same
+> hysteresis, but no longer a rank: nothing is named, shown, promoted or
+> demoted by it. Every number below is unchanged and the equivalence is
+> pinned day by day (`decayEquivalence.test.ts`).
+
 > **Status note (D113).** The cooling-off gate this entry describes as open
 > has since been closed, on RC2's formula unchanged. Nothing about the rule
 > below moved: the two models remain separate, and no day is charged by both.
@@ -2447,4 +2454,48 @@ reinforces it. contrast.test.ts checks every one of these promises.
 **Superseded.** D13's five-band presentation and the `--band-*` / `--scale-*`
 token families. The `bandOf()` thresholds and the scoring model they sit on
 are not superseded.
+
+## D124 — Abstinence decay is measured in a held tier, not in a domain rank
+
+**Decision.** `computeTrainingRating` no longer holds a `Rank`. The interval
+the abstinence schedule (D96) measures progress in is a **decay tier**
+(`src/core/scoring/decayTier.ts`): an interval of the shared ladder,
+identified by its position and its two bounds, held with the ladder's
+demotion hysteresis. It is not user-facing, it produces no promotion or
+demotion, it is never persisted, and it exists only because the decay
+formula needs a stable pair of numbers.
+
+**What the held rank was doing, characterised before it was replaced.**
+
+- The fold tracked `heldRank` with `rankWithHysteresis()`: up the moment a
+  threshold was reached, down only once the rating had fallen more than 15
+  points below the held floor, and then to wherever the rating actually was.
+  No sustained-days rule and no Endurance gate — so it was **already not the
+  rank the user saw**, which `rankHistory()` computed separately with both.
+- An episode read it exactly once, on its seventh abstinent day, and kept it
+  until a session ended the episode. The decay's floor and ceiling were that
+  held rank's threshold and the next one's (or the top of the scale).
+- Because the held interval is sticky, an episode can begin with the rating a
+  few points *below* the floor it is measured against. The progress is then
+  clamped to zero and the seventh day sets the rating **to the floor** —
+  695 becomes 700. A lookup on the current rating would have measured the
+  same episode in the interval below and decayed it downwards instead. That
+  case is in the differential fixture on purpose; it must keep behaving as
+  it did.
+- Replay-sensitive state: the held tier and the episode baseline, both pure
+  functions of the day sequence and both recomputed on every replay.
+- Endurance: decay runs only while the gate is open, but the held interval
+  tracks throughout, so an episode beginning just after the gate opens is
+  measured in an interval the rating cleared while it was shut. Preserved.
+
+**Equivalence.** The tier's bounds are the ladder thresholds `RANKS` — the
+same ones the Boss normalises against in `ratingToProgress()` — and the
+arithmetic in `abstinence.ts` reads two numbers from it and nothing else.
+One hundred and four hand-built sequences and four replayed profiles,
+frozen from the previous implementation before this change, produce
+identical output on every day with no rounding and no tolerance.
+
+**What this is not.** Not a second ladder, not a domain rank under another
+name, and not a change to what an absence costs. Where a tier boundary
+sits, and what a block removes, are D96's numbers unchanged.
 

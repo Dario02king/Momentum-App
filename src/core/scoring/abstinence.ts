@@ -1,10 +1,10 @@
 import { TRAINING_DECAY_PHASES, TRAINING_RATING, type TrainingDecayPhaseId } from '../config/constants';
 import type { DateKey } from '../dates';
 import { diffInDays, middayOf } from '../dates';
-import { nextRank, rankById, type Rank } from '../ranks';
+import { tierProgressOf, type DecayTier } from './decayTier';
 
 /**
- * Inactivity decay for Gym — **within the rank, and nowhere else.**
+ * Inactivity decay for Gym — **within the tier held, and nowhere else.**
  *
  * This is not the general cooling-off model. That one lives in `core/decay`
  * and was ratified as RC2's formula unchanged (D113); what is defined here is
@@ -22,30 +22,32 @@ import { nextRank, rankById, type Rank } from '../ranks';
  * them again here would punish partial effort harder than the rule that is
  * already measuring it. One saved session, any day, and the episode is over.
  *
- * Decay starts only after the Endurance Phase is complete. Before that the
- * user has not been promoted anything to lose.
+ * Decay starts only after the Endurance Phase is complete. Before that there
+ * is no earned standing to lose.
  *
  * ## What it touches
  *
- * Only the **progress the user has made inside the rank they currently hold**:
+ * Only the **progress the user has made inside the tier they hold** — the
+ * interval of the shared ladder the rating was in when the episode began
+ * (`decayTier.ts`; an internal interval, not a rank):
  *
  * ```
- *   rankProgress = (rating − rankFloor) / (rankCeiling − rankFloor)
+ *   tierProgress = (rating − floor) / (ceiling − floor)
  * ```
  *
  * Nothing else moves. Sets, exercise performances, muscle-group figures, the
  * performance percentages, past snapshots and Tombstones are all facts about
  * what happened, and not training this week does not change what happened
- * last March. The user also cannot fall out of their rank through this: the
- * floor is the floor. Losing the rank as well would make a fortnight's
- * holiday cost a tier, and demotion in this app has always needed sustained
- * evidence rather than an absence.
+ * last March. The rating also cannot fall out of that interval through this:
+ * the floor is the floor. Letting it fall further would make a fortnight's
+ * holiday cost a whole tier of the scale, and losing ground in this app has
+ * always needed sustained evidence rather than an absence.
  *
  * ## Cumulative, never compounded
  *
- * Every percentage below is measured against the rank progress held **at the
+ * Every percentage below is measured against the tier progress held **at the
  * start of the episode**, which is captured once and then left alone. In the
- * 25 %-a-block phase, 80 % of a rank runs
+ * 25 %-a-block phase, 80 % of a tier runs
  *
  * ```
  *   80 → 60 → 40 → 20 → 0
@@ -54,6 +56,10 @@ import { nextRank, rankById, type Rank } from '../ranks';
  * and emphatically not 80 → 60 → 45 → 33.75, which is what applying each
  * step to the remainder would give. Compounding never reaches zero and would
  * make the fourth week of absence cost a quarter of what the first did.
+ *
+ * Nothing in this file knows what a rank is. The tier is supplied by the
+ * fold, which holds it with the same hysteresis the ladder uses; the
+ * arithmetic here reads two numbers from it and nothing else.
  */
 
 export interface AbstinenceEpisode {
@@ -86,7 +92,7 @@ export function trainingAgeMonths(start: DateKey, on: DateKey): number {
 export interface TrainingDecayPhase {
   id: TrainingDecayPhaseId;
   fromMonth: number;
-  /** Share of the baseline rank progress one full 7-day block removes. */
+  /** Share of the baseline tier progress one full 7-day block removes. */
   perBlock: number;
 }
 
@@ -99,7 +105,7 @@ export function decayPhaseFor(ageMonths: number): TrainingDecayPhase {
 }
 
 /**
- * How much of the baseline rank progress an episode has removed, 0 to 1.
+ * How much of the baseline tier progress an episode has removed, 0 to 1.
  *
  * One expression covers all four approved schedules, because all four *are*
  * one rule with a different number in it: a full seven-day block removes a
@@ -122,44 +128,23 @@ export function decayFraction(days: number, ageMonths: number): number {
   return Math.min(1, blocks * decayPhaseFor(ageMonths).perBlock);
 }
 
-export interface RankInterval {
-  floor: number;
-  /** The next rank's threshold, or the top of the scale at Legend. */
-  ceiling: number;
-}
-
-/** The rating interval a rank spans, which is what progress is measured in. */
-export function rankInterval(rank: Rank, max: number): RankInterval {
-  const next = nextRank(rank);
-  return { floor: rank.min, ceiling: next ? next.min : max };
-}
-
-/** Where in its rank a rating sits, from 0 to 1. */
-export function rankProgressOf(rating: number, interval: RankInterval): number {
-  const span = interval.ceiling - interval.floor;
-  if (span <= 0) return 1;
-  return Math.min(1, Math.max(0, (rating - interval.floor) / span));
-}
-
 export interface DecayInput {
   /** The rating when the abstinence episode began. Not today's. */
   baselineRating: number;
-  /** The rank held when it began, whose interval the progress is measured in. */
-  baselineRank: Rank;
+  /** The tier held when it began, whose interval the progress is measured in. */
+  baselineTier: DecayTier;
   /** Consecutive abstinent days so far. */
   days: number;
   /** Gym training age in whole months at the start of the episode. */
   ageMonths: number;
-  /** The top of the rating scale, for the interval at Legend. */
-  max: number;
 }
 
 export interface DecayResult {
-  /** The rating after the decay, never below the baseline rank's floor. */
+  /** The rating after the decay, never below the baseline tier's floor. */
   rating: number;
   /** Share of the baseline progress removed, 0 to 1. */
   fraction: number;
-  /** Rank progress before and after, for a screen that wants to explain it. */
+  /** Tier progress before and after, for a screen that wants to explain it. */
   progressBefore: number;
   progressAfter: number;
   phase: TrainingDecayPhaseId;
@@ -175,8 +160,8 @@ export interface DecayResult {
  * cumulative rather than compounding, and it is why nothing is stored.
  */
 export function applyAbstinenceDecay(input: DecayInput): DecayResult {
-  const interval = rankInterval(input.baselineRank, input.max);
-  const progressBefore = rankProgressOf(input.baselineRating, interval);
+  const interval = input.baselineTier;
+  const progressBefore = tierProgressOf(input.baselineRating, interval);
   const fraction = decayFraction(input.days, input.ageMonths);
   const progressAfter = progressBefore * (1 - fraction);
   return {
@@ -228,4 +213,3 @@ function shift(key: DateKey, days: number): DateKey {
   return `${y}-${m}-${d}`;
 }
 
-export { rankById };

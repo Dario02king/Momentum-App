@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { RATING } from '../config/constants';
-import { rankById } from '../ranks';
 import {
   applyAbstinenceDecay,
   currentAbstinence,
   decayFraction,
   decayPhaseFor,
-  rankInterval,
-  rankProgressOf,
   trainingAgeMonths,
 } from './abstinence';
+import { decayTierFor, tierProgressOf } from './decayTier';
 
 describe('training age', () => {
   it('counts completed calendar months', () => {
@@ -86,7 +84,9 @@ describe('the decay schedules, at every boundary', () => {
 });
 
 describe('what decay does to a rating', () => {
-  const veteran = rankById('veteran');
+  // The fifth tier of the ladder, 560 to 700 — what used to be called the
+  // Veteran interval and is now simply the interval it always was.
+  const veteran = decayTierFor(560);
 
   it('takes the specification worked example exactly', () => {
     /*
@@ -94,44 +94,41 @@ describe('what decay does to a rating', () => {
      * A 50 % decay leaves 40 %, which is 580.
      *
      * Those thresholds are the specification's illustration rather than a
-     * rank on this ladder — Veteran runs 560 to 700 — so the interval is
-     * spelled out here instead of borrowed, and the real ladder is exercised
-     * by every other case in this file.
+     * tier on this ladder — the fifth tier runs 560 to 700 — so the interval
+     * is spelled out here instead of borrowed, and the real ladder is
+     * exercised by every other case in this file.
      */
-    const rank = { id: 'veteran' as const, name: 'Veteran', min: 500, index: 4 };
+    const tier = { index: 4, floor: 500, ceiling: 700 };
     const result = applyAbstinenceDecay({
       baselineRating: 660,
-      baselineRank: rank,
+      baselineTier: tier,
       days: 7,
       ageMonths: 0,
-      max: RATING.MAX,
     });
-    expect(rankProgressOf(660, { floor: 500, ceiling: 700 })).toBeCloseTo(0.8, 12);
+    expect(tierProgressOf(660, tier)).toBeCloseTo(0.8, 12);
     expect(result.progressBefore).toBeCloseTo(0.8, 12);
     expect(result.progressAfter).toBeCloseTo(0.4, 12);
     expect(result.rating).toBeCloseTo(580, 12);
   });
 
-  it('measures progress inside the real Veteran interval', () => {
+  it('measures progress inside the real fifth interval', () => {
     // 560 to 700: a rating of 660 is five sevenths of the way through it.
-    const interval = rankInterval(veteran, RATING.MAX);
-    expect(interval).toEqual({ floor: 560, ceiling: 700 });
-    expect(rankProgressOf(660, interval)).toBeCloseTo(100 / 140, 12);
+    expect(veteran).toEqual({ index: 4, floor: 560, ceiling: 700 });
+    expect(tierProgressOf(660, veteran)).toBeCloseTo(100 / 140, 12);
   });
 
   it('is cumulative against the baseline, never compounded on the remainder', () => {
     // The 25 % phase over four weeks: 80 → 60 → 40 → 20 → 0, and not
     // 80 → 60 → 45 → 33.75, which is what compounding would give.
-    const interval = rankInterval(veteran, RATING.MAX);
+    const interval = veteran;
     const baseline = interval.floor + 0.8 * (interval.ceiling - interval.floor);
     const progress = [7, 14, 21, 28].map(
       (days) =>
         applyAbstinenceDecay({
           baselineRating: baseline,
-          baselineRank: veteran,
+          baselineTier: veteran,
           days,
           ageMonths: 2,
-          max: RATING.MAX,
         }).progressAfter,
     );
     expect(progress[0]).toBeCloseTo(0.6, 12);
@@ -144,51 +141,46 @@ describe('what decay does to a rating', () => {
   it('is idempotent: day 21 gives the same answer however it was reached', () => {
     const once = applyAbstinenceDecay({
       baselineRating: 640,
-      baselineRank: veteran,
+      baselineTier: veteran,
       days: 21,
       ageMonths: 2,
-      max: RATING.MAX,
     });
     const again = applyAbstinenceDecay({
       baselineRating: 640,
-      baselineRank: veteran,
+      baselineTier: veteran,
       days: 21,
       ageMonths: 2,
-      max: RATING.MAX,
     });
     expect(again.rating).toBe(once.rating);
   });
 
-  it('never drops the user below the floor of the rank they hold', () => {
+  it('never drops the rating below the floor of the tier held', () => {
     const result = applyAbstinenceDecay({
       baselineRating: 700,
-      baselineRank: veteran,
+      baselineTier: veteran,
       days: 365,
       ageMonths: 0,
-      max: RATING.MAX,
     });
     expect(result.fraction).toBe(1);
-    expect(result.rating).toBe(veteran.min);
-    expect(result.rating).toBeGreaterThanOrEqual(veteran.min);
+    expect(result.rating).toBe(veteran.floor);
+    expect(result.rating).toBeGreaterThanOrEqual(veteran.floor);
   });
 
   it('leaves a rating already at the floor exactly where it is', () => {
     const result = applyAbstinenceDecay({
-      baselineRating: veteran.min,
-      baselineRank: veteran,
+      baselineRating: veteran.floor,
+      baselineTier: veteran,
       days: 28,
       ageMonths: 0,
-      max: RATING.MAX,
     });
-    expect(result.rating).toBe(veteran.min);
+    expect(result.rating).toBe(veteran.floor);
   });
 
-  it('measures Legend across the rest of the scale rather than a zero span', () => {
-    const legend = rankById('legend');
-    const interval = rankInterval(legend, RATING.MAX);
-    expect(interval.floor).toBe(legend.min);
-    expect(interval.ceiling).toBe(RATING.MAX);
-    expect(rankProgressOf(975, interval)).toBeCloseTo(0.5, 12);
+  it('measures the top tier across the rest of the scale rather than a zero span', () => {
+    const top = decayTierFor(RATING.MAX);
+    expect(top.floor).toBe(950);
+    expect(top.ceiling).toBe(RATING.MAX);
+    expect(tierProgressOf(975, top)).toBeCloseTo(0.5, 12);
   });
 });
 

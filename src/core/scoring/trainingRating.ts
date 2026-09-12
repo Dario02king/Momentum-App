@@ -1,17 +1,17 @@
 import { TRAINING_RATING, RATING } from '../config/constants';
 import type { DateKey } from '../dates';
-import { rankForRating, rankWithHysteresis, type Rank } from '../ranks';
-import { applyAbstinenceDecay, rankInterval, rankProgressOf } from './abstinence';
+import { applyAbstinenceDecay } from './abstinence';
+import { decayTierFor, holdDecayTier, type DecayTier } from './decayTier';
 import { attendanceScore, performanceScore, type PerformanceScore } from './performanceCurve';
 
 /**
  * The Gym rating: **40 % attendance, 60 % personal development.**
  *
  * This is the decision phase 4 left open (D88), and the shape of it is worth
- * stating before the code, because two readings of "Gym rank" are possible
+ * stating before the code, because two readings of "Gym rating" are possible
  * and only one of them is this app's:
  *
- * > A Gym rank is a statement about **the user against their own history**,
+ * > A Gym rating is a statement about **the user against their own history**,
  * > never about the user against anyone else. Someone pressing 30 kg who
  * > trains three times a week and adds a rep a month outranks someone
  * > pressing 120 kg who turns up occasionally and has not moved in a year.
@@ -66,7 +66,7 @@ import { attendanceScore, performanceScore, type PerformanceScore } from './perf
  *   throughout the lower two thirds of the scale rather than starting to bite
  *   immediately, so the moderate responsiveness that was approved is what a
  *   normal user actually experiences.
- * - *Falling is not slowed.* A high rank buys no protection from a decline;
+ * - *Falling is not slowed.* A high rating buys no protection from a decline;
  *   if it did, a rating could only ever ratchet upwards. Maintenance is the
  *   one rule that holds a rating up, it is explicit, and it has conditions.
  *
@@ -210,7 +210,7 @@ export interface TrainingRatingDay {
    * week has no sessions in it — the same "no data" the app already gives a
    * day before the domain was enabled. Suppressing only the decay would have
    * been strictly worse than no pause at all: the decay branch is
-   * rank-floored, the ordinary target is not, so a paused week of zero
+   * tier-floored, the ordinary target is not, so a paused week of zero
    * attendance would drag the rating towards zero while an unpaused one
    * stopped at the floor. Measured before this rule existed: 899 → 98 paused
    * against 899 → 560 unpaused. A pause that punishes is not a pause.
@@ -234,7 +234,7 @@ export interface TrainingRatingPoint {
   attendance: number;
   performance: number | null;
   movement: number;
-  /** Share of the baseline rank progress removed today, 0 to 1. */
+  /** Share of the baseline tier progress removed today, 0 to 1. */
   decayFraction: number;
   /** True when this day's rating was set by decay rather than by movement. */
   decaying: boolean;
@@ -264,7 +264,8 @@ const clamp = (value: number) => Math.min(RATING.MAX, Math.max(RATING.MIN, value
  * that is a real result which lowers the rating through the ordinary target.
  * Once an absence reaches seven days it becomes an *abstinence episode*, and
  * from that day the rating is set by the decay schedule computed from the
- * rating held when the episode began — the gap movement does not also run.
+ * rating, and the tier, held when the episode began — the gap movement does
+ * not also run.
  * Charging for the same absence through two mechanisms is exactly the double
  * penalty the decay rule was written to avoid, and it is why decay reads its
  * baseline once and then recomputes from it rather than eating the remainder.
@@ -283,8 +284,6 @@ export interface TrainingRatingOptions {
   start?: number;
   /** The peak already reached before those days, which can never fall. */
   peak?: number;
-  /** The rank already held, so hysteresis continues rather than restarting. */
-  heldRank?: Rank | null;
 }
 
 export function computeTrainingRating(
@@ -296,9 +295,15 @@ export function computeTrainingRating(
   let peak: number = Math.max(options.peak ?? RATING.START, rating);
 
   /** Captured once when an episode starts, and left alone until it ends. */
-  let episode: { rating: number; rank: Rank; ageMonths: number } | null = null;
-  /** The rank actually held, so hysteresis behaves as it does everywhere. */
-  let heldRank: Rank | null = options.heldRank ?? null;
+  let episode: { rating: number; tier: DecayTier; ageMonths: number } | null = null;
+  /**
+   * The decay tier held so far — the ladder interval the rating last
+   * cleared, kept with hysteresis so an episode is measured in a stable
+   * interval rather than whichever one today's rating happens to sit in.
+   * Internal to the fold: it is not a rank, it is never shown, and nothing
+   * is promoted or demoted by it (`decayTier.ts`).
+   */
+  let heldTier: DecayTier | null = null;
 
   for (const day of days) {
     // Any saved session ends the episode immediately. What was lost stays
@@ -352,16 +357,15 @@ export function computeTrainingRating(
       if (episode === null) {
         episode = {
           rating,
-          rank: heldRank ?? rankForRating(rating),
+          tier: heldTier ?? decayTierFor(rating),
           ageMonths: day.ageMonths,
         };
       }
       const result = applyAbstinenceDecay({
         baselineRating: episode.rating,
-        baselineRank: episode.rank,
+        baselineTier: episode.tier,
         days: day.abstinentDays,
         ageMonths: episode.ageMonths,
-        max: RATING.MAX,
       });
       decayFraction = result.fraction;
       rating = clamp(result.rating);
@@ -403,7 +407,7 @@ export function computeTrainingRating(
       rating = clamp(rating + (target - rating) * movement);
     }
 
-    heldRank = rankWithHysteresis(rating, heldRank?.id ?? null);
+    heldTier = holdDecayTier(rating, heldTier);
     peak = Math.max(peak, rating);
 
     points.push({
@@ -424,4 +428,4 @@ export function computeTrainingRating(
   return { points, current: last ? last.rating : RATING.START, peak };
 }
 
-export { performanceScore, rankInterval, rankProgressOf };
+export { performanceScore };
