@@ -3,7 +3,7 @@ import { RATING } from '../../core/config/constants';
 import type { BossWeights as BossWeightMap } from '../../core/boss';
 import { rankById } from '../../core/ranks';
 import { displayedRankProgress, rankLadder, type RankProgress } from '../../core/ranks/progress';
-import { confirmationIndicator } from '../../core/ranks/confirmation';
+import { confirmationIndicator, thresholdReached } from '../../core/ranks/confirmation';
 import type { DomainType } from '../../core/model';
 import { Card, EmptyState, LoadFailure, Section, StaleNotice } from '../../components';
 import { RankIcon } from '../../components/Icons';
@@ -51,14 +51,19 @@ const DOMAIN_NAMES: Record<DomainType, TranslationKey> = {
 export function RankProgressBar({
   progress,
   className = '',
+  reached = false,
 }: {
   progress: RankProgress;
   className?: string;
+  /** The next threshold is reached and the rank is waiting to be confirmed. */
+  reached?: boolean;
 }) {
   const t = useT();
   const label =
     progress.next && progress.remaining !== null
-      ? t('rank.boss.toNext', { points: progress.remaining, rank: progress.next.name })
+      ? reached
+        ? t('rank.boss.thresholdReached')
+        : t('rank.boss.toNext', { points: progress.remaining, rank: progress.next.name })
       : t('rank.boss.maxed');
 
   return (
@@ -177,7 +182,11 @@ export function RankScreen({
               </p>
             </div>
 
-            <RankProgressBar progress={progress} className="rank-progress--hero" />
+            <RankProgressBar
+              progress={progress}
+              className="rank-progress--hero"
+              reached={thresholdReached(rating, boss.pending)}
+            />
 
             {confirming ? (
               <p className="rank-hero__confirm" data-testid="rank-confirm">

@@ -2614,5 +2614,16 @@ closed day is a real result" and is not special-cased.
 **Interface.** "Rang bestätigen: n/7 Tage" on the Rank hero and the Today
 Boss card, shown as soon as a promotion is pending — the rating has reached
 the next threshold, 0/7 included, or qualifying days are on record — and not
-merely because a next rank exists. The progress bar is unchanged.
+merely because a next rank exists. The progress bar is unchanged. Once the
+threshold is reached and the rank is waiting, the distance caption says
+"Schwelle erreicht" rather than counting to nothing ("Noch 0 bis …" was
+true and misleading); below the threshold the numeric distance stays, pending
+dates or not, and the top rank keeps its own treatment (Stage 5).
+
+**Product rule for a fresh install.** A profile created under this version
+begins at Rookie and needs one separate seven-day confirmation for every
+rank transition, in order. A rating already past several thresholds does
+not jump to its natural rank; it confirms Challenger, then Contender, then
+Elite, seven eligible days each. Pinned by `confirmation.test.ts` and the
+fresh-install service test.
 

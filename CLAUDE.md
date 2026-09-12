@@ -109,8 +109,10 @@ Never conflate them.
   resets. One rank per confirmation. Days before the stored era boundary
   `settings.promotionConfirmation.from` keep the legacy immediate rule. A
   settings record created under this version carries the boundary from its
-  first day and opens at Rookie; a record without the field predates the
-  feature and is activated once from the day after, never moved. The pending dates are persisted but recomputed from history on
+  first day, opens at Rookie and confirms every rank in order, one seven-day
+  period per transition, however high the rating already is; a record
+  without the field predates the feature and is activated once from the day
+  after, never moved. The pending dates are persisted but recomputed from history on
   every replay; never patch them from an edit. Demotion needs hysteresis
   *and* sustained days, exactly as before. A single bad day may never cost a
   tier. Gym's and Running's Endurance Phase

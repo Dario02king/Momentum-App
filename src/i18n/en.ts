@@ -336,6 +336,7 @@ export const en: Translations = {
   'rank.boss.explain': 'Your areas together, weighted the way you set them.',
   'rank.boss.toNext': '{points} to {rank}',
   'rank.boss.maxed': 'Top rank reached',
+  'rank.boss.thresholdReached': 'Threshold reached',
   'rank.confirm': 'Confirm rank: {count}/{required} days',
   'rank.domains': 'Areas',
   'rank.domains.explain': 'Each area has a rating of its own. Together, by your weighting, they make your Boss Rank.',

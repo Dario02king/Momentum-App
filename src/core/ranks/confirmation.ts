@@ -196,6 +196,20 @@ export function serialiseConfirmation(state: PromotionConfirmationState): string
     : null));
 }
 
+/**
+ * Whether the distance caption should stop counting.
+ *
+ * "Noch 0 bis Veteran" is true and misleading once the threshold has been
+ * reached and the rank is merely waiting to be confirmed; the caption says
+ * the threshold is reached instead, and the indicator carries the count.
+ * Below the threshold the numeric distance stays, even while dates are
+ * pending, because there is a real distance to state again.
+ */
+export function thresholdReached(rating: number, pending: PendingConfirmation | null): boolean {
+  if (!pending) return false;
+  return rating >= rankById(pending.targetRankId).min;
+}
+
 export interface ConfirmationIndicator {
   targetRankId: RankId;
   count: number;

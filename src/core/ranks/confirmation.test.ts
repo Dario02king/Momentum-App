@@ -7,6 +7,7 @@ import {
   confirmationIndicator,
   confirmedRankHistory,
   serialiseConfirmation,
+  thresholdReached,
   type ConfirmationDay,
 } from './confirmation';
 
@@ -354,6 +355,13 @@ describe('the indicator', () => {
     const top = rankById('legend').min + 1;
     const legend = confirmedRankHistory(days(repeat({ rating: top }, 9)), { from: day(1), today: day(9) });
     expect(legend.pending).toBeNull();
+  });
+
+  it('reports the threshold as reached only at or above it, and never without a target', () => {
+    expect(thresholdReached(ELITE, pending([]))).toBe(true);
+    expect(thresholdReached(ELITE + 100, pending([day(3)]))).toBe(true);
+    expect(thresholdReached(BELOW, pending([day(3), day(4)]))).toBe(false);
+    expect(thresholdReached(ELITE, null)).toBe(false);
   });
 
   it('covers every threshold on the ladder', () => {

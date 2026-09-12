@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { displayedRankProgress } from '../../core/ranks/progress';
-import { confirmationIndicator } from '../../core/ranks/confirmation';
+import { confirmationIndicator, thresholdReached } from '../../core/ranks/confirmation';
 import { ChevronRightIcon } from '../../components/Icons';
 import { useT } from '../../i18n/I18nProvider';
 import { RankBadge } from '../ranking/RankBadge';
@@ -31,7 +31,9 @@ export function BossSummary({ onOpen }: { onOpen(): void }) {
   const progress = displayedRankProgress(rating, boss.rank);
   const caption =
     progress.next && progress.remaining !== null
-      ? t('rank.boss.toNext', { points: progress.remaining, rank: progress.next.name })
+      ? thresholdReached(rating, boss.pending)
+        ? t('rank.boss.thresholdReached')
+        : t('rank.boss.toNext', { points: progress.remaining, rank: progress.next.name })
       : t('rank.boss.maxed');
   const confirming = confirmationIndicator(rating, boss.pending);
 

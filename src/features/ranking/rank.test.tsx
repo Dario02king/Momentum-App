@@ -48,6 +48,19 @@ describe('the progress bar', () => {
     expect(html).not.toContain(translate('de', 'rank.boss.toNext', { points: 0, rank: 'Legend' }));
   });
 
+  it('says the threshold is reached instead of counting to nothing while a rank waits', () => {
+    // 700 as Veteran: Master's threshold is met, remaining is 0, and the
+    // caption must not say "Noch 0 bis Master" above a 0/7 indicator.
+    const progress = displayedRankProgress(700, rankById('veteran'));
+    expect(progress.remaining).toBe(0);
+    const html = render(<RankProgressBar progress={progress} reached />);
+    expect(html).toContain(translate('de', 'rank.boss.thresholdReached'));
+    expect(html).not.toContain(translate('de', 'rank.boss.toNext', { points: 0, rank: 'Master' }));
+    // Below the threshold the distance stays, pending dates or not.
+    const below = render(<RankProgressBar progress={displayedRankProgress(690, rankById('veteran'))} />);
+    expect(below).toContain(translate('de', 'rank.boss.toNext', { points: 10, rank: 'Master' }));
+  });
+
   it('reads empty, not negative, for a rank held by hysteresis', () => {
     const html = render(<RankProgressBar progress={displayedRankProgress(690, rankById('master'))} />);
     expect(html).toContain('width:0%');

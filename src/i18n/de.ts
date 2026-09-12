@@ -342,6 +342,7 @@ export const de = {
   'rank.boss.explain': 'Deine Bereiche zusammen, nach deiner Gewichtung.',
   'rank.boss.toNext': 'Noch {points} bis {rank}',
   'rank.boss.maxed': 'Höchster Rang erreicht',
+  'rank.boss.thresholdReached': 'Schwelle erreicht',
   'rank.confirm': 'Rang bestätigen: {count}/{required} Tage',
   'rank.domains': 'Bereiche',
   'rank.domains.explain': 'Jeder Bereich hat ein eigenes Rating. Zusammen ergeben sie, nach deiner Gewichtung, deinen Boss-Rang.',
