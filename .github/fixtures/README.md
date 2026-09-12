@@ -53,3 +53,24 @@ the numbers do not move.
 
 Do not regenerate it. Regenerating it would change the pinned numbers, which
 would defeat the point of pinning them.
+
+## `stage2/` — the Overall-rank update's golden baseline
+
+Written by `src/storage/services/stage2Baseline.test.ts` and
+`src/core/scoring/decayEquivalence.test.ts` from the engine **as it was
+before Stage 2 touched it** (commit 1 of that stage), and never regenerated
+to make a test pass.
+
+| file | what it freezes |
+|---|---|
+| `rc2-export.baseline.json`, `rc2-synthetic.baseline.json` | the two RC2 profiles above, replayed under the current build: Boss series, rank, peak, XP, rank history, every domain's series and Boss contribution, the Gym and Running states, the whole history |
+| `current.baseline.json` | the four-domain profile `domainOutputs.test.ts` fingerprints, in values rather than a hash |
+| `training-break.baseline.json` | the same profile over 180 days with a four-week Gym break and a twenty-day Running break, so the abstinence schedule runs through several blocks at the service level |
+| `decay-equivalence.json` | hand-built day sequences through `computeTrainingRating`: every threshold, both sides of every hysteresis buffer, an episode held above a threshold with the rating below it, every decay phase, broken and restarted episodes, the Endurance gate shut and opening, pauses, Maintenance, and a 400-day mixed replay — every point, every field |
+
+Every number is stored exactly as the engine produced it. The tests compare
+with no rounding and no tolerance: a one-ULP drift is a failure, and the
+right response to one is to find out why, not to add an epsilon.
+
+Regenerating is a deliberate act with a commit of its own:
+`UPDATE_STAGE2_BASELINE=1 npx vitest run stage2Baseline decayEquivalence`.
