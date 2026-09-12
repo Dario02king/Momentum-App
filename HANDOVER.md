@@ -10,7 +10,7 @@ either — it says where things stand.
 | | |
 |---|---|
 | Branch | `claude/momentum-pwa-spec-j82dhm` — the default branch, which is the only one Pages deploys from. Pass 2, the domain terminal and the muscle map were developed on `claude/momentum-pass-2-geometry-r2qzkd`; the muscle-map release candidate `bc57ec6` was merged here with a merge commit (`90bf328`) because the default branch carried a later upload. The release is tagged **`muscle-map-v1`** |
-| Overall-rank update | On `claude/momentum-overall-rank-update-v2`. **Stage 1** (D123): one `--status-*` palette in `tokens.css`, both scales on four bands, muscle-map states on the same colours. **Stage 2** (D124, D125): the Boss is the only rank — domain ranks, badges, promotion messages, peak ranks and per-domain XP are gone from the engine and the screens; abstinence decay measures in an internal held tier; the rating engine's outputs are frozen in `.github/fixtures/stage2/` and replay byte-identical. Stages 3–4 (Tombstones preserved, Overall promotion confirmation) not started |
+| Overall-rank update | On `claude/momentum-overall-rank-update-v2`. **Stage 1** (D123): one `--status-*` palette in `tokens.css`, both scales on four bands, muscle-map states on the same colours. **Stage 2** (D124, D125): the Boss is the only rank — domain ranks, badges, promotion messages, peak ranks and per-domain XP are gone from the engine and the screens; abstinence decay measures in an internal held tier; the rating engine's outputs are frozen in `.github/fixtures/stage2/` and replay byte-identical. **Stage 3**: Tombstones verified dormant and pinned by `tombstones.test.ts`; no production change. Stage 4 (Overall promotion confirmation) not started |
 | Muscle map | **Released.** The 3D body in Bereiche → Gym, the ten analytics rows with their mini sparklines, Laufen inside the Gym workspace, the credits entry. App source `5e554aa`; QA record `docs/design/muscle-map/INTEGRATION-QA.md`; handoff deviations `docs/design/muscle-map/HANDOFF-DEVIATIONS.md` |
 | Working tree | clean at the commit this file was committed in |
 | `SCHEMA_VERSION` | **5** (`src/core/model/index.ts`) — v5 adds the `foodDays` store |
@@ -141,7 +141,13 @@ records (answers, sessions, sets, snapshots)
   repository, type and backup collection stay for compatibility; nothing
   creates one and no UI ever should. A test asserts no flow does.
 - **Tombstone unlocks.** Store and repository exist; the benchmark values are
-  an open product decision, so nothing writes them.
+  an open product decision, so nothing writes them. Stage 3 of the
+  Overall-rank update verified this rather than changing it, and
+  `src/storage/services/tombstones.test.ts` now pins it: the five ids, the
+  storage and backup round trip of a record, an RC2 file without the
+  collection importing with an empty store, and no writer or screen outside
+  storage. `firstPromotion` stays dormant and semantically unresolved; it is
+  not connected to the Boss or to the removed domain ranks.
 
 **Not implemented**
 - Nutrition targets (Gate 2) — deliberately, see below. Tombstone unlocking,
