@@ -435,3 +435,180 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Planned workouts (WP2-1) ───────────────────────────────────────────── */
+
+.gym-exercise__source {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-input);
+  color: var(--text-secondary);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+  vertical-align: middle;
+}
+
+.gym-exercise__last {
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+  padding-top: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.gym-set--pending .gym-set__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.gym-set__remove--spacer {
+  background: transparent;
+}
+
+/* ── The plan chooser ───────────────────────────────────────────────────── */
+
+.plan-chooser {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-chooser__heading {
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding-bottom: var(--space-2);
+}
+
+.plan-chooser__manage {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--space-1);
+  color: var(--accent-ink);
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-medium);
+}
+
+.plan-chooser__freeHint {
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+  padding-top: var(--space-3);
+}
+
+/* ── Plans in the Gym workspace ─────────────────────────────────────────── */
+
+.plans__empty {
+  font-size: var(--type-subhead);
+  color: var(--text-secondary);
+  /* Margins, not padding: the card's own inset plus these keep the text
+     clear of the corner radius, and the geometry suite measures the box. */
+  margin: var(--space-2) 0 var(--space-1);
+}
+
+.plans__limit {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  margin: var(--space-3) 0 0;
+}
+
+.plans__slots {
+  font-size: var(--type-caption);
+  color: var(--text-tertiary);
+  margin: var(--space-2) 0 var(--space-2);
+}
+
+/* ── The plan editor ────────────────────────────────────────────────────── */
+
+.plan-editor__hint {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  padding: 0 var(--space-2);
+}
+
+.plan-editor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-editor__line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--separator);
+}
+
+.plan-editor__number {
+  width: 16px;
+  flex: none;
+  font-size: var(--type-footnote);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-editor__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-editor__name {
+  font-size: var(--type-subhead);
+  color: var(--text-primary);
+  /* Wraps at a space where it can; a single long word breaks only if it must. */
+  overflow-wrap: break-word;
+}
+
+.plan-editor__detail {
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+}
+
+.plan-editor__controls {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.plan-editor__control {
+  width: 36px;
+  height: 40px;
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: var(--type-subhead);
+}
+
+.plan-editor__control::before {
+  content: '';
+  position: absolute;
+  inset: -2px -4px;
+}
+
+.plan-editor__control:disabled {
+  opacity: 0.35;
+}
+
+.plan-editor__limit,
+.plan-editor__deleteNote {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  padding: 0 var(--space-2);
+}
+
+.plan-editor__deleteConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

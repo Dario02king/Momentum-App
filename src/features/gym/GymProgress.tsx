@@ -8,6 +8,7 @@ import { percentChange } from '../../core/gym/performance';
 import { useT } from '../../i18n/I18nProvider';
 import { exerciseHistory, type GymHistory } from '../../storage/services/gymService';
 import { ExerciseDetail } from './ExerciseDetail';
+import { useExerciseNamer } from './exerciseNames';
 import { MuscleModule } from './MuscleModule';
 import { toMuscleAnalytics } from './muscleAnalytics';
 import { muscleStateOf } from './muscleState';
@@ -48,6 +49,7 @@ const changeText = (
 
 export function GymProgress({ history }: { history: GymHistory }) {
   const t = useT();
+  const namer = useExerciseNamer();
   const [selected, setSelected] = useState<MuscleGroup | null>(null);
   const [openExercise, setOpenExercise] = useState<string | null>(null);
   const [overallOpen, setOverallOpen] = useState(false);
@@ -75,17 +77,17 @@ export function GymProgress({ history }: { history: GymHistory }) {
     return [...ids]
       .map((id) => ({
         id,
-        name: history.names.get(id) ?? id,
+        name: namer.name(id, history.names.get(id) ?? id),
         comparison: history.comparisons.get(id),
         latest: exerciseHistory(history, id)[0] ?? null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [history, selected]);
+  }, [history, selected, namer]);
 
   if (openExercise) {
     return (
       <ExerciseDetail
-        name={history.names.get(openExercise) ?? openExercise}
+        name={namer.name(openExercise, history.names.get(openExercise) ?? openExercise)}
         days={exerciseHistory(history, openExercise)}
         comparison={history.comparisons.get(openExercise)}
         onClose={() => setOpenExercise(null)}

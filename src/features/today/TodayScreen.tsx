@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { today as currentDay } from '../../core/clock';
-import type { StoredDomainType } from '../../core/model';
+import type { StoredDomainType, TrainingPlanRecord } from '../../core/model';
+import type { DomainTerminal } from '../../app/route';
 import { Button, Card, EmptyState, LoadFailure, Row, Section, StaleNotice } from '../../components';
 import { ChevronRightIcon, PlusIcon, SparkIcon } from '../../components/Icons';
 import { SessionSheet } from '../../domains/sports/SessionSheet';
@@ -11,7 +12,9 @@ import type { TranslationKey } from '../../i18n';
 import { FoodCard } from '../food/FoodCard';
 import '../pause/pause.css';
 import { GymSessionScreen } from '../gym/GymSessionScreen';
-import { openSessionForDay } from '../../storage/services/gymService';
+import { PlanChooserSheet } from '../gym/PlanChooserSheet';
+import { draftFromPlan, openSessionForDay, type SessionDraft } from '../../storage/services/gymService';
+import { listTrainingPlans } from '../../storage/services/trainingPlanService';
 import { BossSummary } from './BossSummary';
 import { CheckInItem } from './CheckInItem';
 import { useDay } from './useDay';
@@ -38,7 +41,8 @@ export function TodayScreen({
   onGoToAreas,
   onGoToRank,
 }: {
-  onGoToAreas(): void;
+  /** Bereiche, optionally opened on a given area. */
+  onGoToAreas(terminal?: DomainTerminal): void;
   onGoToRank?(): void;
 }) {
   const t = useT();
@@ -63,6 +67,13 @@ export function TodayScreen({
    * the other training logs use.
    */
   const [gymSessionId, setGymSessionId] = useState<string | null>(null);
+  /*
+   * A planned workout that has not been persisted yet (WP2-1): the plan's
+   * exercises on the page, no session row anywhere. It becomes a session
+   * inside the logging screen, with the first saved set — never here.
+   */
+  const [gymDraft, setGymDraft] = useState<{ draft: SessionDraft; planName: string } | null>(null);
+  const [plans, setPlans] = useState<TrainingPlanRecord[] | null>(null);
 
   // Three states, never collapsed into one: still loading, failed outright,
   // or loaded. What is *empty* is decided further down, from the day itself.
@@ -103,23 +114,49 @@ export function TodayScreen({
   const dailyDone =
     (mental?.answeredCount ?? 0) + (day.food?.adherence !== null && day.food ? 1 : 0);
 
-  const openGym = (sessionId?: string) => {
-    if (sessionId) {
-      setGymSessionId(sessionId);
-      return;
-    }
+  /** A free session, created on opening — exactly as before WP2-1. */
+  const openFreeSession = () => {
+    setPlans(null);
     void openSessionForDay(date)
       .then((session) => setGymSessionId(session.id))
       .catch(() => reload());
   };
 
-  if (gymSessionId) {
+  const openGym = (sessionId?: string) => {
+    if (sessionId) {
+      setGymSessionId(sessionId);
+      return;
+    }
+    /*
+     * One session per calendar day: a day that already has one is continued,
+     * whichever way it was started, and no second plan is seeded into it.
+     */
+    const todays = day.training.find((training) => training.domain === 'gym')?.sessionsToday ?? [];
+    const existing = todays[todays.length - 1];
+    if (existing) {
+      setGymSessionId(existing.id);
+      return;
+    }
+    // With saved plans the user chooses; without any, the flow is the free
+    // session it always was, with no sheet in the way.
+    void listTrainingPlans()
+      .then((saved) => {
+        if (saved.length === 0) openFreeSession();
+        else setPlans(saved);
+      })
+      .catch(() => openFreeSession());
+  };
+
+  if (gymSessionId || gymDraft) {
     return (
       <GymSessionScreen
         sessionId={gymSessionId}
+        draft={gymDraft?.draft ?? null}
+        planName={gymDraft?.planName ?? null}
         date={date}
         onClose={() => {
           setGymSessionId(null);
+          setGymDraft(null);
           void reload();
         }}
       />
@@ -178,7 +215,7 @@ export function TodayScreen({
               title={t('today.emptyTitle')}
               body={t('today.emptyBody')}
               action={
-                <Button variant="secondary" onClick={onGoToAreas}>
+                <Button variant="secondary" onClick={() => onGoToAreas()}>
                   {t('today.emptyAction')}
                 </Button>
               }
@@ -194,7 +231,7 @@ export function TodayScreen({
                   title={t('today.noQuestionsTitle')}
                   body={t('today.noQuestionsBody')}
                   action={
-                    <Button variant="secondary" onClick={onGoToAreas}>
+                    <Button variant="secondary" onClick={() => onGoToAreas()}>
                       {t('today.emptyAction')}
                     </Button>
                   }
@@ -295,7 +332,7 @@ export function TodayScreen({
                     out beside it.
                   */
                   day.legacySportChoicePending ? (
-                    <button type="button" className="week__legacyAsk" onClick={onGoToAreas}>
+                    <button type="button" className="week__legacyAsk" onClick={() => onGoToAreas()}>
                       {t('legacySport.today.pending')}
                     </button>
                   ) : null
@@ -334,6 +371,21 @@ export function TodayScreen({
           />
         ) : null}
       </div>
+
+      <PlanChooserSheet
+        open={plans !== null}
+        plans={plans ?? []}
+        onClose={() => setPlans(null)}
+        onChoosePlan={(plan) => {
+          setPlans(null);
+          setGymDraft({ draft: draftFromPlan(plan), planName: plan.name });
+        }}
+        onFreeSession={openFreeSession}
+        onManagePlans={() => {
+          setPlans(null);
+          onGoToAreas('gym');
+        }}
+      />
 
       <SessionSheet
         open={editingSession !== null}

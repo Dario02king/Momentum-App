@@ -41,7 +41,7 @@ function MainApp({
       <main className="app__content">
         {tab === 'today' ? (
           <TodayScreen
-            onGoToAreas={() => navigate({ tab: 'areas' })}
+            onGoToAreas={(terminal) => navigate(terminal ? { tab: 'areas', terminal } : { tab: 'areas' })}
             onGoToRank={() => navigate({ tab: 'rank' })}
           />
         ) : null}

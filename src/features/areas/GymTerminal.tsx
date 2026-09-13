@@ -4,6 +4,7 @@ import { Segmented } from '../../components';
 import { useT } from '../../i18n/I18nProvider';
 import { GymOverview } from '../gym/GymOverview';
 import { GymProgress } from '../gym/GymProgress';
+import { TrainingPlansSection } from '../gym/TrainingPlansSection';
 import { useGymHistory } from '../gym/useGymHistory';
 import { useGymRating } from '../gym/useGymRating';
 
@@ -28,6 +29,9 @@ export function GymTerminal() {
       {gymRating ? (
         <GymOverview state={gymRating.state} started={gymRating.started} />
       ) : null}
+      {/* The user's saved plans (WP2-1). Where they sit in the workspace is
+          WP2-2's question; that they are here and editable is this one's. */}
+      <TrainingPlansSection />
       {gym && gym.days.length > 0 ? (
         <>
           <div className="progress__ranges">

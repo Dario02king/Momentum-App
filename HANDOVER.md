@@ -129,8 +129,37 @@ records (answers, sessions, sets, snapshots)
   conversion engine is unchanged — it was always correct, it simply had no
   door.
 
+**WP2-1 — exercise catalogue and training plans** (branch
+`claude/momentum-gym-plans`, not merged)
+- The catalogue has 48 entries (`src/core/gym/catalogue.ts`): the 29 from
+  iteration 2 with their roles and English record names unchanged, plus 19
+  approved ids. It is now the **presentation source** for a built-in — a
+  localised name (de-CH / en) and an anatomical detail label — while the
+  seeded `exercises` record stays the id anchor and fallback, never
+  rewritten (`features/gym/exerciseNames.ts`). Roles are pinned in
+  `catalogue.test.ts`.
+- Training plans live in the existing `gymPlans` store as
+  `TrainingPlanRecord` (`kind: 'userTrainingPlan', version: 1`); at most
+  `GYM.MAX_PLANS` (5). Service: `storage/services/trainingPlanService.ts`;
+  UI: Bereiche → Gym → Trainingspläne (`features/gym/TrainingPlansSection`,
+  `PlanEditor`). A record of any other shape in that store is preserved and
+  never shown.
+- A planned workout is a **draft** until its first set is saved
+  (`gymService.startSessionFromDraft`); the session then owns an ordered
+  exercise snapshot (`GymSessionRecord.exercises`, absent on every free or
+  pre-WP2 session) and `planId` is provenance only. One session per day.
+  Extras land in the snapshot, never in the plan. Screenshots and the
+  browser proof: `scripts/verify/wp2-1-shots.mjs`, `docs/design/wp2-1/`.
+- `SCHEMA_VERSION` and `BACKUP_FORMAT_VERSION` are unchanged (5 / 3).
+- **Open (A5):** the exact manual-vs-plan *output* comparison is blocked by
+  a pre-existing property of `gymService.buildExerciseDays`: sets are read
+  in `by_date` index order — date, then the random id — and
+  `musclePerformance` sums in that order, so two identical manual histories
+  already differ in the last ULP. Inputs are proved identical
+  (`planEquivalence.test.ts`); the output assertion is an explicit todo.
+
 **Infrastructure only — built, tested, not reachable from any screen**
-- Gym plans, rest days, pause periods, tombstones, profile: stores +
+- Rest days, pause periods, tombstones, profile: stores +
   repositories exist, no logic and no UI. **Weight entries are now reachable**
   — the Gym session screen writes one when a bodyweight exercise needs it.
 - `RunRecord` carries `source`/`externalId` as the import seam. No importer.

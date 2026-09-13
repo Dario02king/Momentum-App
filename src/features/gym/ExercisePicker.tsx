@@ -7,8 +7,10 @@ import {
 } from '../../core/model';
 import { Button, Sheet } from '../../components';
 import { MUSCLE_LABEL_KEYS } from '../../components/BodyRenderer';
+import { catalogueEntry } from '../../core/gym/catalogue';
 import { useT } from '../../i18n/I18nProvider';
 import type { NewExerciseInput } from '../../storage/services/gymService';
+import { useExerciseNamer } from './exerciseNames';
 import './gym.css';
 
 /**
@@ -44,6 +46,7 @@ export function ExercisePicker({
   onCreate(input: NewExerciseInput): void;
 }) {
   const t = useT();
+  const namer = useExerciseNamer();
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
@@ -51,11 +54,33 @@ export function ExercisePicker({
   const [primary, setPrimary] = useState<MuscleGroup[]>([]);
   const [loadType, setLoadType] = useState<ExerciseLoadType>('external');
 
+  /**
+   * Every exercise the user may pick, under the name they see it by. A
+   * deprecated catalogue entry is not offered — it stays resolvable for
+   * what already names it, and that is all (WP2 A2). The search matches the
+   * shown name and the stored one, so "bench" still finds Bankdrücken.
+   */
+  const offered = useMemo(
+    () =>
+      exercises
+        .filter((exercise) => !catalogueEntry(exercise.id)?.deprecated)
+        .map((exercise) => ({
+          exercise,
+          label: namer.name(exercise.id, exercise.name),
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [exercises, namer],
+  );
+
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return exercises;
-    return exercises.filter((exercise) => exercise.name.toLowerCase().includes(needle));
-  }, [exercises, query]);
+    if (!needle) return offered;
+    return offered.filter(
+      (entry) =>
+        entry.label.toLowerCase().includes(needle) ||
+        entry.exercise.name.toLowerCase().includes(needle),
+    );
+  }, [offered, query]);
 
   const reset = () => {
     setQuery('');
@@ -216,7 +241,7 @@ export function ExercisePicker({
             {matches.length === 0 ? (
               <p className="gym-picker__empty">{t('gym.picker.empty')}</p>
             ) : (
-              matches.map((exercise) => (
+              matches.map(({ exercise, label }) => (
                 <button
                   key={exercise.id}
                   type="button"
@@ -226,9 +251,9 @@ export function ExercisePicker({
                     reset();
                   }}
                 >
-                  <span className="gym-picker__name">{exercise.name}</span>
+                  <span className="gym-picker__name">{label}</span>
                   <span className="gym-picker__groups">
-                    {exercise.muscles.map((muscle) => t(MUSCLE_LABEL_KEYS[muscle])).join(' · ')}
+                    {namer.describe(exercise.id, exercise.muscles.map((muscle) => t(MUSCLE_LABEL_KEYS[muscle])))}
                   </span>
                 </button>
               ))

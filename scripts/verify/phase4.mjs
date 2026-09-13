@@ -19,12 +19,17 @@ async function openGym(page) {
   await page.waitForTimeout(700);
 }
 
+/**
+ * Since WP2-1 the picker shows a built-in under its German catalogue name
+ * while the search still matches the stored English one, so the search
+ * narrows by the English name and the first row is the one wanted.
+ */
 async function addExercise(page, name) {
   await page.getByRole('button', { name: /Übung hinzufügen/ }).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('textbox', { name: 'Suchen' }).fill(name);
   await page.waitForTimeout(300);
-  await page.locator('.gym-picker__row', { hasText: name }).first().click();
+  await page.locator('.gym-picker__row').first().click();
   await page.waitForTimeout(600);
 }
 
@@ -191,7 +196,7 @@ async function fillSet(page, index, reps, weight) {
   await page.locator('.gym-progress__row').first().click();
   await page.waitForTimeout(600);
   check('an exercise opens its own history',
-    await page.getByRole('heading', { name: 'Bench Press' }).isVisible());
+    await page.getByRole('heading', { name: 'Bankdrücken' }).isVisible());
   check('the history shows the best-set comparison',
     (await page.locator('.gym-detail__value').first().textContent())?.includes('×'));
   clip = await clipped(page);

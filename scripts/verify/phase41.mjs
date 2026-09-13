@@ -270,8 +270,9 @@ async function openProgress(page) {
   await page.waitForTimeout(400);
   await page.getByRole('textbox', { name: 'Suchen' }).fill('Pull-Up');
   await page.waitForTimeout(300);
-  // Exact, because "Assisted Pull-Up" sorts first and is a different load type.
-  await page.locator('.gym-picker__name', { hasText: /^Pull-Up$/ }).first().click();
+  // Exact, because "Klimmzüge assistiert" is a different load type — the
+  // search matched the stored English name, the row shows the German one.
+  await page.locator('.gym-picker__name', { hasText: /^Klimmzüge$/ }).first().click();
   await page.waitForTimeout(800);
 
   check('a bodyweight exercise asks for a body weight',
