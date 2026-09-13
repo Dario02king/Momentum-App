@@ -161,8 +161,7 @@ records (answers, sessions, sets, snapshots)
 **WP2-2 — Gym navigation** (same branch, not merged)
 - `#/areas/gym` is the **Gym hub** (`features/areas/GymTerminal.tsx`):
   Training (this week, last session, *Training erfassen*, the plan count
-  with *Pläne verwalten*) → the *Muskelgruppen* entry card (bundled SVG
-  figure in the range's states, or untrained) → the rating board → the
+  with *Pläne verwalten*) → the *Muskelgruppen* entry card → the rating board → the
   plans → the Gym card and Laufen as before. `#/areas/gym/muscles` is the
   **muscle destination** (`features/gym/GymMusclesScreen.tsx`): the range
   control and the whole `GymProgress` hierarchy — overall tile, the 3D body
@@ -175,6 +174,17 @@ records (answers, sessions, sets, snapshots)
 - Only the muscle destination fetches the viewer chunk and the model
   (`release-proof.mjs`, `wp2-2-shots.mjs`); `gymHub.test.tsx` pins that no
   hub file imports `features/body`. Screenshots: `docs/design/wp2-2/`.
+- The entry card's body is a **still of the approved model**:
+  `features/gym/assets/body-preview.webp` (12 kB) is `momentum-body.glb`
+  rendered once through the real viewer in its neutral tint by
+  `tools/render-body-preview.mjs` — regenerate it from there when the model
+  changes, never redraw it. It has no regions and takes no colour; ten
+  markers beside it carry the groups' states from the same history the
+  module shows (grey before the first workout). The bundled SVG diagram
+  stays what it was: the muscle module's stand-in where WebGL is missing.
+- The training line is the same two stored values read three ways — a
+  fraction only below target, *Ziel erreicht* at it, *· Ziel n* above it —
+  so "7 von 3" never appears (`weekSentence` in `TrainingCard.tsx`).
 - Pre-existing, untouched: the "Laufen" label is rendered twice in the Gym
   area (the section heading and `RunningTerminal`'s own), as in the
   muscle-map QA screenshots.

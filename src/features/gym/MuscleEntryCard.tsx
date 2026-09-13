@@ -3,22 +3,28 @@ import { MUSCLE_GROUPS } from '../../core/model';
 import { percentChange } from '../../core/gym/performance';
 import { Section } from '../../components';
 import { ChevronRightIcon } from '../../components/Icons';
-import { BodyRenderer, type MuscleView } from '../../components/BodyRenderer';
 import { useT } from '../../i18n/I18nProvider';
 import type { GymHistory } from '../../storage/services/gymService';
+import type { MuscleState } from '../../components/BodyRenderer';
 import { muscleStateOf } from './muscleState';
+import bodyPreview from './assets/body-preview.webp';
 import './gymHub.css';
 
 /**
  * The door to muscle-group progress, on the Gym hub (WP2-2).
  *
  * A whole card that is one button, so the destination is obvious and the
- * tap target is the card. The figure inside it is the SVG body the app
- * already ships in the main bundle, drawn in the states the range shows —
- * or in the neutral, untrained state before the first workout. It is a
- * picture and is hidden from assistive technology; the button's name and
- * the two lines of text carry the facts. The 3D body is **not** here: it
- * loads only in the destination this card opens.
+ * tap target is the card. The figure inside it is a still of the approved
+ * body — `momentum-body.glb`, rendered once through the real viewer in its
+ * neutral tint and saved as a small image (`tools/render-body-preview.mjs`).
+ * It is a picture of the destination, not a second body: it has no regions,
+ * takes no colour and answers no tap of its own. What the data says is
+ * carried by the text and, as an accent, by ten small markers in the
+ * groups' order, each in the state the module shows — grey before the first
+ * workout, so nothing reads as progress that is not. All of it is hidden
+ * from assistive technology; the button's name and the lines of text carry
+ * the facts. The 3D body is **not** here: it loads only in the destination
+ * this card opens.
  *
  * Nothing is computed: the states and the overall figure are the ones
  * `GymProgress` shows, from the same loaded history.
@@ -34,7 +40,7 @@ export function MuscleEntryCard({
   onOpen(): void;
 }) {
   const t = useT();
-  const views: MuscleView[] = useMemo(
+  const states: { muscle: (typeof MUSCLE_GROUPS)[number]; state: MuscleState }[] = useMemo(
     () =>
       (history?.overall.muscles ?? MUSCLE_GROUPS.map((muscle) => ({ muscle, status: 'noData' as const, ratio: null, exercises: 0, compared: 0, latestScore: null }))).map(
         (entry) => ({ muscle: entry.muscle, state: muscleStateOf(entry) }),
@@ -42,7 +48,7 @@ export function MuscleEntryCard({
     [history],
   );
 
-  const trained = views.filter((view) => view.state !== 'noData').length;
+  const trained = states.filter((view) => view.state !== 'noData').length;
   const measured = history?.overall.measured.length ?? 0;
   const change = percentChange(history?.overall.ratio ?? null);
   const hasData = (history?.days.length ?? 0) > 0;
@@ -73,8 +79,13 @@ export function MuscleEntryCard({
         aria-label={t('gymHub.muscles.open')}
         onClick={onOpen}
       >
-        <span className="gym-hub__figure" aria-hidden="true">
-          <BodyRenderer muscles={views} parts="figure" size={64} />
+        <span className="gym-hub__preview" aria-hidden="true">
+          <img className="gym-hub__previewBody" src={bodyPreview} alt="" width={240} height={472} decoding="async" />
+          <span className="gym-hub__previewStates">
+            {states.map(({ muscle, state }) => (
+              <i key={muscle} className={`gym-hub__previewState gym-hub__previewState--${state}`} />
+            ))}
+          </span>
         </span>
         <span className="gym-hub__musclesBody">
           <span className="gym-hub__musclesTitle">{t('gymHub.muscles.title')}</span>

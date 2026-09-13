@@ -63,18 +63,54 @@
   filter: brightness(0.97);
 }
 
-/* The two figures side by side, small: a preview, not the module. */
-.gym-hub__figure {
+/* A still of the approved body, small: a picture of the destination, not
+   the module. Ten markers beside it carry the groups' states as an accent;
+   the text carries the facts. */
+.gym-hub__preview {
   flex: none;
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-2);
   height: 128px;
 }
 
-.gym-hub__figure .body-renderer,
-.gym-hub__figure .body-renderer__figures {
+.gym-hub__previewBody {
+  display: block;
+  width: auto;
+  height: 100%;
+  filter: drop-shadow(0 6px 10px rgba(16, 24, 40, 0.16));
+}
+
+.gym-hub__previewStates {
   display: flex;
-  gap: 2px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.gym-hub__previewState {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-empty);
+}
+
+.gym-hub__previewState--awaitingBaseline {
+  background: var(--sky-fill);
+  opacity: 0.55;
+}
+
+.gym-hub__previewState--improved {
+  background: var(--status-strong);
+}
+
+.gym-hub__previewState--unchanged {
+  background: var(--status-mixed);
+}
+
+.gym-hub__previewState--declined {
+  background: var(--status-weak);
 }
 
 .gym-hub__musclesBody {

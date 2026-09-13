@@ -7,6 +7,7 @@ import { MUSCLE_GROUPS } from '../../core/model';
 import { exerciseDays, gymPerformance, gymPerformanceOverSpan, latestComparisons } from '../../core/gym/performance';
 import type { GymHistory } from '../../storage/services/gymService';
 import { MuscleEntryCard } from './MuscleEntryCard';
+import { weekSentence } from './TrainingCard';
 
 /**
  * The Gym hub's door to the muscle groups (WP2-2): what it says before the
@@ -38,12 +39,14 @@ describe('the muscle entry card before the first workout', () => {
       expect(html).toMatch(/<button[^>]*aria-label="Muskelgruppen öffnen"/);
       expect(html).toContain(de['gymHub.muscles.none']);
       expect(html).toContain(de['gymHub.muscles.noneHint']);
-      // The figure is a picture, hidden from assistive technology.
-      expect(html).toMatch(/<span class="gym-hub__figure" aria-hidden="true">/);
-      // Every group is drawn in its no-data state; no other state exists yet.
-      expect(html.match(/body-renderer__muscle--noData/g)?.length ?? 0).toBeGreaterThanOrEqual(MUSCLE_GROUPS.length);
+      // The preview is a picture, hidden from assistive technology: a still
+      // of the approved body, never the SVG diagram and never the viewer.
+      expect(html).toMatch(/<span class="gym-hub__preview" aria-hidden="true"><img class="gym-hub__previewBody" src="[^"]*body-preview[^"]*\.webp" alt=""/);
+      expect(html).not.toContain('body-renderer');
+      // Every group's marker is in its no-data state; no other state exists yet.
+      expect(html.match(/gym-hub__previewState--noData/g)?.length ?? 0).toBe(MUSCLE_GROUPS.length);
       for (const state of ['improved', 'unchanged', 'declined', 'awaitingBaseline']) {
-        expect(html, state).not.toContain(`body-renderer__muscle--${state}`);
+        expect(html, state).not.toContain(`gym-hub__previewState--${state}`);
       }
     }
   });
@@ -66,6 +69,22 @@ describe('the muscle entry card before the first workout', () => {
     expect(html).toContain('Gesamt +10 %');
     expect(html).toContain('Letzte 30 Tage');
     expect(html).not.toContain(de['gymHub.muscles.none']);
+    // One marker lit for the one measured group, the other nine grey.
+    expect(html.match(/gym-hub__previewState--improved/g)?.length ?? 0).toBe(1);
+    expect(html.match(/gym-hub__previewState--noData/g)?.length ?? 0).toBe(MUSCLE_GROUPS.length - 1);
+  });
+});
+
+describe('the training card\'s week sentence', () => {
+  const t = ((key: string, params: Record<string, string | number> = {}) =>
+    Object.entries(params).reduce((text, [name, value]) => text.split(`{${name}}`).join(String(value)), (de as Record<string, string>)[key] ?? key)) as unknown as Parameters<typeof weekSentence>[0];
+
+  it('is a fraction only while the target is ahead', () => {
+    expect(weekSentence(t, 0, 3)).toBe('0 von 3 Sessions diese Woche');
+    expect(weekSentence(t, 2, 3)).toBe('2 von 3 Sessions diese Woche');
+    expect(weekSentence(t, 3, 3)).toBe('3 Sessions diese Woche ·\u00A0Ziel\u00A0erreicht');
+    expect(weekSentence(t, 1, 1)).toBe('1 Session diese Woche ·\u00A0Ziel\u00A0erreicht');
+    expect(weekSentence(t, 7, 3)).toBe('7 Sessions diese Woche ·\u00A0Ziel\u00A03');
   });
 });
 

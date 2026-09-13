@@ -39,7 +39,11 @@ async function boot(width, { withData }) {
   const ctx = await browser.newContext({ ...phone, viewport: { width, height: width === 430 ? 932 : 852 } });
   const page = await ctx.newPage();
   const fetched = [];
-  page.on('response', (r) => { if (/BodyViewer|\.glb/.test(r.url())) fetched.push(r.url().split('/').pop()); });
+  const preview = [];
+  page.on('response', async (r) => {
+    if (/BodyViewer|\.glb/.test(r.url())) fetched.push(r.url().split('/').pop());
+    if (/body-preview.*\.webp$/.test(r.url())) preview.push({ file: r.url().split('/').pop(), bytes: (await r.body().catch(() => Buffer.alloc(0))).length });
+  });
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
   await page.goto(URL_APP, { waitUntil: 'networkidle' });
@@ -53,7 +57,7 @@ async function boot(width, { withData }) {
   }
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(1200);
-  return { ctx, page, fetched, errors };
+  return { ctx, page, fetched, preview, errors };
 }
 
 const firstView = (page, selector) => page.locator(selector).first().evaluate((el) => {
@@ -67,7 +71,7 @@ for (const width of CHECK_WIDTHS) {
 
   /* ── With data: Heute → Gym → hub → Muskelgruppen ───────────────────── */
   {
-    const { ctx, page, fetched, errors } = await boot(width, { withData: true });
+    const { ctx, page, fetched, preview, errors } = await boot(width, { withData: true });
 
     // Heute: the label opens the hub; the quick-log action does not.
     check(`${width}: Heute keeps the quick-log action`, await page.getByRole('button', { name: 'Session eintragen' }).isVisible());
@@ -86,6 +90,14 @@ for (const width of CHECK_WIDTHS) {
     const overallText = ((await page.locator('.gym-hub__musclesOverall').textContent()) ?? '').trim();
     check(`${width}: the entry states the counted groups and the overall change`, /\d+ von 10 Gruppen gewertet/.test(summaryText) && /^Gesamt [+-]?\d+ %$/.test(overallText), `${summaryText} | ${overallText}`);
     check(`${width}: the entry is one named button`, (await page.getByRole('button', { name: 'Muskelgruppen öffnen' }).count()) === 1);
+    check(`${width}: the preview is the still of the approved body, not the SVG diagram`, (await page.locator('.gym-hub__previewBody').count()) === 1 && (await page.locator('.gym-hub__muscles .body-renderer').count()) === 0 && (await page.locator('.gym-hub__previewBody').evaluate((img) => img.complete && img.naturalWidth > 0)));
+    check(`${width}: the preview is one small asset`, preview.length === 1 && preview[0].bytes > 0 && preview[0].bytes <= 20000, JSON.stringify(preview));
+    const lit = await page.locator('.gym-hub__previewState').evaluateAll((els) => els.map((el) => [...el.classList].find((c) => /--(improved|unchanged|declined|awaitingBaseline|noData)$/.test(c))?.split('--')[1]));
+    const measuredCount = Number(/^(\d+) von/.exec(summaryText)?.[1] ?? 0);
+    check(`${width}: ten markers, lit only where a group is measured`, lit.length === 10 && lit.filter((s) => s === 'improved' || s === 'unchanged' || s === 'declined').length === measuredCount, lit.join(','));
+    const weekText = ((await page.locator('.gym-hub__week').textContent()) ?? '').trim();
+    check(`${width}: above target the week line is not a fraction`, /^\d+ Sessions diese Woche ·\u00A0Ziel\u00A0\d+$/.test(weekText), weekText);
+    check(`${width}: the plan count is a figure`, ((await page.locator('.gym-hub__plans span').first().textContent()) ?? '').trim() === '1 Plan');
     check(`${width}: the rating board is still on the hub, below`, (await page.locator('[data-metric="gym-rating"]').count()) === 1);
     check(`${width}: the plans are reachable from the hub`, await page.getByRole('button', { name: 'Pläne verwalten' }).isVisible() && (await page.locator('.plans__slots').count()) === 1);
     let clip = await clipped(page);
@@ -125,7 +137,16 @@ for (const width of CHECK_WIDTHS) {
     check(`${width}: the overall tile and the exercise list came along`, (await page.locator('[data-metric="gym-overall"]').count()) === 1 && (await page.locator('.gym-progress__row').count()) > 0);
     clip = await clipped(page);
     check(`${width}: the muscle destination is not clipped`, clip.length === 0, clip.slice(0, 2).join('; '));
+    check(`${width}: the destination draws the 3D body, not a still`, (await page.locator('.body-viewer canvas').evaluate((c) => c.width > 0 && c.getContext('webgl2') !== null)) && (await page.locator('.muscle-module .body-renderer').count()) === 0 && (await page.locator('.muscle-module img').count()) === 0);
+    check(`${width}: the body keeps its views`, (await page.locator('.body-viewer__view').count()) === 3);
     if (shoot) await page.screenshot({ path: tag('D', 'muscles-destination') });
+    // D3: a selected muscle highlights on the 3D body, as before.
+    await page.locator('.muscle-row').filter({ hasText: 'Brust' }).first().locator('.muscle-row__button').click();
+    await page.waitForTimeout(900);
+    check(`${width}: selecting a row marks it selected`, (await page.locator('.muscle-row__button[aria-pressed="true"] .muscle-row__name').textContent())?.trim() === 'Brust');
+    await page.locator('.body-viewer').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+    if (shoot) await page.screenshot({ path: tag('D3', 'muscles-selected') });
 
     // Back, both ways.
     await page.goBack();
@@ -159,13 +180,14 @@ for (const width of CHECK_WIDTHS) {
 
   /* ── Without data: the destination exists before the first workout ───── */
   {
-    const { ctx, page, fetched, errors } = await boot(width, { withData: false });
+    const { ctx, page, fetched, preview, errors } = await boot(width, { withData: false });
     await page.getByRole('button', { name: 'Gym öffnen' }).click();
     await page.waitForTimeout(1500);
     const summaryText = ((await page.locator('.gym-hub__musclesSummary').textContent()) ?? '').trim();
-    check(`${width}: with no data the entry says so`, summaryText === 'Noch keine Trainingsdaten.', summaryText);
-    const states = await page.locator('.gym-hub__figure [class*="body-renderer__muscle--"]').evaluateAll((els) => [...new Set(els.flatMap((el) => [...el.classList].filter((c) => c.startsWith('body-renderer__muscle--'))))]);
-    check(`${width}: the preview colours nothing as progress`, states.length === 1 && states[0] === 'body-renderer__muscle--noData', states.join(','));
+    check(`${width}: with no data the entry says so`, summaryText === 'Noch nicht trainiert', summaryText);
+    const states = await page.locator('.gym-hub__previewState').evaluateAll((els) => [...new Set(els.map((el) => [...el.classList].find((c) => c.startsWith('gym-hub__previewState--'))))]);
+    check(`${width}: the preview colours nothing as progress`, states.length === 1 && states[0] === 'gym-hub__previewState--noData', states.join(','));
+    check(`${width}: the same still stands before the first workout`, (await page.locator('.gym-hub__previewBody').count()) === 1 && preview.length === 1, JSON.stringify(preview));
     check(`${width}: the training card says no session yet`, ((await page.locator('.gym-hub__week').textContent()) ?? '').trim() === 'Noch keine Session erfasst.');
     check(`${width}: nothing 3D on the empty hub`, fetched.length === 0, fetched.join(','));
     if (shoot) await page.screenshot({ path: tag('B', 'hub-no-data') });

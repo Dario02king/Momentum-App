@@ -18,6 +18,12 @@ import './gymHub.css';
  * saved — and the primary action. Nothing is computed here that the app
  * does not already compute; nothing is shown that is not stored.
  */
+export function weekSentence(t: ReturnType<typeof useT>, done: number, target: number): string {
+  if (done < target) return t('gymHub.training.thisWeek', { done, target });
+  if (done === target) return done === 1 ? t('gymHub.training.atTargetOne') : t('gymHub.training.atTarget', { done });
+  return t('gymHub.training.aboveTarget', { done, target });
+}
+
 export function TrainingCard({
   rating,
   onStart,
@@ -46,13 +52,10 @@ export function TrainingCard({
   const { state } = useLoadable(load);
   const facts = state.status === 'ready' ? state.value : null;
 
-  const weekLine =
-    rating && rating.started
-      ? t('gymHub.training.thisWeek', {
-          done: rating.state.sessionsThisWeek,
-          target: rating.state.weeklyTarget,
-        })
-      : t('gymHub.training.none');
+  // The same two stored values, read three ways: a fraction only while the
+  // target is ahead, because "7 von 3" reads as a bounded progress figure
+  // that it is not. No number here changes; only the sentence does.
+  const weekLine = rating && rating.started ? weekSentence(t, rating.state.sessionsThisWeek, rating.state.weeklyTarget) : t('gymHub.training.none');
   const lastLine = facts?.latest
     ? facts.today
       ? t('gymHub.training.today')
