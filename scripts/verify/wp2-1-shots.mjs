@@ -93,8 +93,32 @@ for (const width of WIDTHS) {
   await page.waitForTimeout(500);
   const hint = ((await page.locator('.plan-editor__hint').textContent()) ?? '').trim();
   check(`${width}: the creation hint is the approved copy`, hint.startsWith('Ein Trainingsplan ist eine Liste von Übungen') && !/ß/.test(hint), hint.slice(0, 40));
+
+  /* ── The untouched initial state: nothing pre-created, nothing prefilled ── */
+  const initial = await page.evaluate(() => {
+    const input = document.querySelector('#plan-name');
+    const save = [...document.querySelectorAll('button.button--primary')].find((b) => b.textContent.trim() === 'Plan sichern');
+    const text = document.querySelector('.gym-session__scroll').textContent;
+    return { name: input.value, placeholder: input.getAttribute('placeholder'), lines: document.querySelectorAll('.plan-editor__line').length, saveDisabled: save?.disabled ?? null, text, plans: null };
+  });
+  check(`${width}: Neuer Plan opens with an empty name`, initial.name === '' && initial.placeholder === null, JSON.stringify([initial.name, initial.placeholder]));
+  check(`${width}: Neuer Plan opens with zero exercises`, initial.lines === 0 && initial.text.includes('Füge mindestens eine Übung hinzu.'), String(initial.lines));
+  check(`${width}: the save action is not ready until named and filled`, initial.saveDisabled === true, String(initial.saveDisabled));
+  const outsideHint = initial.text.replace(hint, '');
+  const examples = ['Push', 'Pull', 'Legs', 'Full Body', 'Upper Body'].filter((name) => outsideHint.includes(name));
+  check(`${width}: no example plan name appears outside the helper sentence`, examples.length === 0, examples.join('|'));
+  check(`${width}: nothing was written by opening the editor`, (await idb(page, 'gymPlans')).length === 0);
+  await page.screenshot({ path: tag('B', 'plan-editor-empty') });
+
   await page.getByLabel('Name des Plans').fill('Push A');
   for (const query of ['Bankdrücken', 'Schrägbank Kurzhantel', 'Seitheben Kabel', 'Pushdown Seil']) await pickExercise(page, query);
+  // The name card keeps its full height however long the list below it gets.
+  const nameCard = await page.evaluate(() => {
+    const input = document.querySelector('#plan-name');
+    const i = input.getBoundingClientRect(), c = input.closest('.card').getBoundingClientRect();
+    return { inputBottom: i.bottom, cardBottom: c.bottom };
+  });
+  check(`${width}: the name field is fully inside its card with four exercises below`, nameCard.inputBottom + 12 <= nameCard.cardBottom, JSON.stringify(nameCard));
   const lines = await page.locator('.plan-editor__name').allTextContents();
   check(`${width}: four lines in the order added, under German names`, lines.join('|') === 'Bankdrücken|Schrägbank Kurzhantel|Seitheben Kabel|Pushdown Seil', lines.join('|'));
   await page.getByRole('button', { name: 'Seitheben Kabel nach oben' }).click();
@@ -105,7 +129,7 @@ for (const width of WIDTHS) {
   check(`${width}: nothing in the editor is clipped`, clipEditor.length === 0, clipEditor.slice(0, 2).join('; '));
   const smallEditor = await smallTargets(page);
   check(`${width}: every editor control is a real target`, smallEditor.length === 0, smallEditor.slice(0, 3).join('; '));
-  await page.screenshot({ path: tag('B', 'plan-editor'), fullPage: false });
+  await page.screenshot({ path: tag('B2', 'plan-editor-filled-by-script'), fullPage: false });
   await page.getByRole('button', { name: 'Plan sichern' }).click();
   await page.waitForTimeout(700);
   const rows = await page.locator('.plans__slots').textContent();

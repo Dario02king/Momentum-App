@@ -100,6 +100,14 @@
   gap: var(--space-4);
 }
 
+/* A scrolling column scrolls; it never squeezes what is in it. A card with
+   `overflow: hidden` has an automatic minimum height of 0 as a flex item, so
+   once the column grew past the viewport the plan editor's name card was
+   shrunk and its input clipped rather than pushed into the scroll. */
+.gym-session__scroll > * {
+  flex-shrink: 0;
+}
+
 .gym-session__closed {
   font-size: var(--type-footnote);
   color: var(--text-secondary);

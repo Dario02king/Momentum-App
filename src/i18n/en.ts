@@ -683,7 +683,6 @@ export const en: Translations = {
   'plans.editor.new': 'New training plan',
   'plans.editor.edit': 'Edit plan',
   'plans.editor.name': 'Plan name',
-  'plans.editor.namePlaceholder': 'e.g. Push A',
   'plans.editor.exercises': 'Exercises',
   'plans.editor.noExercises': 'Add at least one exercise.',
   'plans.editor.add': 'Add exercise',

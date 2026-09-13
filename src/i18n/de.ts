@@ -690,7 +690,6 @@ export const de = {
   'plans.editor.new': 'Neuer Trainingsplan',
   'plans.editor.edit': 'Plan bearbeiten',
   'plans.editor.name': 'Name des Plans',
-  'plans.editor.namePlaceholder': 'z. B. Push A',
   'plans.editor.exercises': 'Übungen',
   'plans.editor.noExercises': 'Füge mindestens eine Übung hinzu.',
   'plans.editor.add': 'Übung hinzufügen',

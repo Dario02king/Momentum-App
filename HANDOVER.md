@@ -151,12 +151,12 @@ records (answers, sessions, sets, snapshots)
   Extras land in the snapshot, never in the plan. Screenshots and the
   browser proof: `scripts/verify/wp2-1-shots.mjs`, `docs/design/wp2-1/`.
 - `SCHEMA_VERSION` and `BACKUP_FORMAT_VERSION` are unchanged (5 / 3).
-- **Open (A5):** the exact manual-vs-plan *output* comparison is blocked by
-  a pre-existing property of `gymService.buildExerciseDays`: sets are read
-  in `by_date` index order — date, then the random id — and
-  `musclePerformance` sums in that order, so two identical manual histories
-  already differ in the last ULP. Inputs are proved identical
-  (`planEquivalence.test.ts`); the output assertion is an explicit todo.
+- **Scoring equivalence** (`planEquivalence.test.ts`, 20 seeded runs):
+  manual and plan entry write identical set and session rows; every
+  discrete output is identical; floating outputs agree to within the same
+  last-ULP effect a manual-vs-manual control shows. Exact float equality is
+  not a plan invariant under the current engine — see the determinism debt
+  below.
 
 **Infrastructure only — built, tested, not reachable from any screen**
 - Rest days, pause periods, tombstones, profile: stores +
@@ -429,6 +429,26 @@ own history; no population norms, ever.
 
 ## Risks and known debt
 
+- **Gym replay is not bit-deterministic across record ids** (found in WP2-1,
+  deliberately not fixed there). `gymService.buildExerciseDays` reads sets
+  through the `by_date` index, whose order within a day is the record id —
+  random — and `core/gym/performance.ts musclePerformance()` sums each
+  group's weighted ratios in that order. Floating-point addition is not
+  associative, so **the same sets under different ids replay to numbers
+  that differ in the last ULP**. Reproduction:
+  `src/storage/services/planEquivalence.test.ts` (seeded ids, control =
+  manual vs manual). Observed over 20 seeded runs: 2 ULP at the source
+  (a muscle ratio, |Δ| = 4.4e-16 at ≈ 1.12) and, propagated through
+  `(ratio − 1) × 100`, the curve and the daily fold, up to 13 ULP of a
+  0–1000 performance score (|Δ| = 1.5e-12 at ≈ 595), 4 ULP of a rating, 4 ULP
+  of a ladder position; a movement (`p[t] − p[t−1]`) inherits 2 ULP of its
+  operands. Never a discrete output, never a rank, and nine orders of
+  magnitude below any genuine scoring change. The fix — a deterministic set
+  order in `buildExerciseDays` (date, exercise, order) — was tried: it makes
+  manual and plan entry byte-identical and keeps every Stage 2 baseline,
+  **but changes the pinned `domainOutputs` Gym-history fingerprint**, which
+  hashes `days` in index order. That makes it a scoring-engine work package
+  with its own deliberate re-pin, not a WP2 side effect.
 - **Legacy Sport is unreachable** (above). Real RC2 users are affected.
 - ~~**`gymPerformanceOverSpan` anchors to an exercise's first recorded day, for
   ever.**~~ **Addressed for the rating in Phase 4.1** (D100): the trend and

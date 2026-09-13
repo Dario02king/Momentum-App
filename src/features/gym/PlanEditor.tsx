@@ -118,7 +118,6 @@ export function PlanEditor({
             id="plan-name"
             className="field"
             value={name}
-            placeholder={t('plans.editor.namePlaceholder')}
             onChange={(event) => setName(event.target.value)}
             autoComplete="off"
             maxLength={60}
