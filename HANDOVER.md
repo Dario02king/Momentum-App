@@ -185,9 +185,16 @@ records (answers, sessions, sets, snapshots)
 - The training line is the same two stored values read three ways — a
   fraction only below target, *Ziel erreicht* at it, *· Ziel n* above it —
   so "7 von 3" never appears (`weekSentence` in `TrainingCard.tsx`).
-- Pre-existing, untouched: the "Laufen" label is rendered twice in the Gym
-  area (the section heading and `RunningTerminal`'s own), as in the
-  muscle-map QA screenshots.
+- Polish pass before merge (six approved findings, presentation only): the
+  set row's inputs size from their content — the weight input never below
+  five characters, the reps input never below two, padding two steps below
+  the shared field's, minimums released under 360px; the no-data guidance on
+  the muscle destination is a state line over a hint inside one status; the
+  entry card carries no section label (it names itself); the pending set
+  row has no helper sentence beneath it (the row is the instruction);
+  counts are figures everywhere (`1 Plan`, `1 Übung`); and the "Laufen"
+  heading that `RunningTerminal` repeated under the area's own is gone.
+  Before/after pairs: `docs/design/wp2-polish/`.
 
 **Infrastructure only — built, tested, not reachable from any screen**
 - Rest days, pause periods, tombstones, profile: stores +

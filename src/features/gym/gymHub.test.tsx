@@ -37,6 +37,9 @@ describe('the muscle entry card before the first workout', () => {
   it('is one named button that says there is no data, and colours nothing as progress', () => {
     for (const html of [render(null), render(emptyHistory())]) {
       expect(html).toMatch(/<button[^>]*aria-label="Muskelgruppen öffnen"/);
+      // The card names itself once: no grey section label repeating it.
+      expect(html).not.toContain('section__label');
+      expect(html.match(/>Muskelgruppen</g)?.length ?? 0).toBe(1);
       expect(html).toContain(de['gymHub.muscles.none']);
       expect(html).toContain(de['gymHub.muscles.noneHint']);
       // The preview is a picture, hidden from assistive technology: a still
@@ -65,7 +68,7 @@ describe('the muscle entry card before the first workout', () => {
       awaitingBodyweight: [],
     };
     const html = render(history);
-    expect(html).toContain('1 von 10 Gruppen gewertet');
+    expect(html).toContain('1 von 10 gewertet');
     expect(html).toContain('Gesamt +10 %');
     expect(html).toContain('Letzte 30 Tage');
     expect(html).not.toContain(de['gymHub.muscles.none']);

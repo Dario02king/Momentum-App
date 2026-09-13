@@ -672,9 +672,10 @@ export function GymSessionScreen({
                     />
                   ) : null}
 
-                  {pending ? (
-                    <p className="gym-exercise__best">{t('gym.exercise.pending')}</p>
-                  ) : entry.bestScore !== null ? (
+                  {/* A pending row is its own instruction — the numbered row,
+                      "Wdh." and "kg" say what goes where — so no sentence
+                      repeats it beneath every exercise. */}
+                  {pending ? null : entry.bestScore !== null ? (
                     <p className="gym-exercise__best">
                       {t('gym.bestSet')} ·{' '}
                       {t('gym.bestSetValue', {

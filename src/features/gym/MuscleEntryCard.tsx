@@ -71,7 +71,9 @@ export function MuscleEntryCard({
       : null;
 
   return (
-    <Section label={t('gymHub.muscles.title')}>
+    // No section label: the card names itself, and it is the section's only
+    // card, so a grey "Muskelgruppen" above a bold one was the same word twice.
+    <Section>
       <button
         type="button"
         className="card gym-hub__muscles"

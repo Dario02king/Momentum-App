@@ -88,7 +88,12 @@ for (const width of CHECK_WIDTHS) {
     check(`${width}: the body preview does not dominate the hub`, muscles.height <= 200, String(muscles.height));
     const summaryText = ((await page.locator('.gym-hub__musclesSummary').textContent()) ?? '').trim();
     const overallText = ((await page.locator('.gym-hub__musclesOverall').textContent()) ?? '').trim();
-    check(`${width}: the entry states the counted groups and the overall change`, /\d+ von 10 Gruppen gewertet/.test(summaryText) && /^Gesamt [+-]?\d+ %$/.test(overallText), `${summaryText} | ${overallText}`);
+    check(`${width}: the entry states the counted groups and the overall change`, /^\d+ von 10 gewertet$/.test(summaryText) && /^Gesamt [+-]?\d+ %$/.test(overallText), `${summaryText} | ${overallText}`);
+    const summaryLines = await page.locator('.gym-hub__musclesSummary').evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+    check(`${width}: the count sits on one line`, summaryLines === 1, String(summaryLines));
+    const headings = await page.locator('.areas__scroll h2, .areas__scroll .section__label').allTextContents();
+    check(`${width}: "Muskelgruppen" is not repeated above its card`, !headings.some((h) => h.trim() === 'Muskelgruppen') && (await page.locator('.gym-hub__musclesTitle').count()) === 1, headings.join('|'));
+    check(`${width}: "Laufen" heads its block once`, headings.filter((h) => h.trim() === 'Laufen').length === 1, headings.join('|'));
     check(`${width}: the entry is one named button`, (await page.getByRole('button', { name: 'Muskelgruppen öffnen' }).count()) === 1);
     check(`${width}: the preview is the still of the approved body, not the SVG diagram`, (await page.locator('.gym-hub__previewBody').count()) === 1 && (await page.locator('.gym-hub__muscles .body-renderer').count()) === 0 && (await page.locator('.gym-hub__previewBody').evaluate((img) => img.complete && img.naturalWidth > 0)));
     check(`${width}: the preview is one small asset`, preview.length === 1 && preview[0].bytes > 0 && preview[0].bytes <= 20000, JSON.stringify(preview));
@@ -196,6 +201,13 @@ for (const width of CHECK_WIDTHS) {
     const rowStates = (await page.locator('.muscle-row').allTextContents()).map((s) => s.trim());
     check(`${width}: every row says untrained, none fakes a state`, rowStates.length === 10 && rowStates.every((s) => /Noch nicht trainiert/.test(s)), rowStates.join('|').slice(0, 80));
     check(`${width}: the guidance is a status, not an alert`, (await page.locator('.gym-progress__noData[role="status"]').count()) === 1);
+    const guidance = await page.locator('.gym-progress__noData').evaluate((el) => {
+      const [state, hint] = el.children;
+      return { children: el.children.length, stateBlock: getComputedStyle(state).display === 'block' && getComputedStyle(hint).display === 'block', stateBelow: hint.getBoundingClientRect().top >= state.getBoundingClientRect().bottom, text: el.textContent.trim() };
+    });
+    check(`${width}: the state stands on its own line above the hint`, guidance.children === 2 && guidance.stateBlock && guidance.stateBelow, JSON.stringify(guidance));
+    const guidanceAria = await page.locator('.gym-progress__noData').ariaSnapshot();
+    check(`${width}: and both are announced as one status`, /^- status: Noch nicht trainiert Nach deiner ersten Session/.test(guidanceAria.trim()), guidanceAria);
     check(`${width}: no fake overall figure`, (await page.locator('[data-metric="gym-overall"]').count()) === 0);
     const clip = await clipped(page);
     check(`${width}: the empty destination is not clipped`, clip.length === 0, clip.slice(0, 2).join('; '));

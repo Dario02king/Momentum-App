@@ -155,6 +155,7 @@ for (const width of WIDTHS) {
   /* ── The limit ──────────────────────────────────────────────────────── */
   for (const name of ['Pull A', 'Legs', 'Push B', 'Pull B']) await createPlan(page, name, ['Latzug weit']);
   check(`${width}: five plans exist`, (await idb(page, 'gymPlans')).length === 5);
+  check(`${width}: exercise counts are figures`, (await page.getByText(/^1 Übung$/).count()) >= 1 && (await page.getByText(/Eine Übung/).count()) === 0);
   check(`${width}: creation is unavailable at five`, (await page.getByRole('button', { name: 'Neuer Plan' }).count()) === 0);
   const limit = ((await page.locator('.plans__limit').textContent()) ?? '').trim();
   check(`${width}: the limit is explained inline`, limit === 'Maximal 5 Pläne. Lösche einen Plan, um Platz für einen neuen zu schaffen.', limit);
@@ -188,6 +189,20 @@ for (const width of WIDTHS) {
   check(`${width}: the pending row suggests last time in the placeholder, not as a value`, placeholder === '8' && (await page.locator('.gym-set--pending input').first().inputValue()) === '');
   const clipDraft = await clipped(page);
   check(`${width}: the draft is not clipped`, clipDraft.length === 0, clipDraft.slice(0, 2).join('; '));
+  check(`${width}: no helper sentence under a pending row`, (await page.locator('.gym-exercise__best').count()) === 0);
+  // The weight field holds "76.5" and "102.5" fully at this width, as value or placeholder.
+  const fit = await page.locator('.gym-set--pending').first().evaluate((row) => {
+    const [reps, weight] = row.querySelectorAll('input');
+    const content = (i) => { const s = getComputedStyle(i); return i.getBoundingClientRect().width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) - parseFloat(s.borderLeftWidth) - parseFloat(s.borderRightWidth); };
+    const s = getComputedStyle(weight);
+    const c = document.createElement('canvas').getContext('2d');
+    c.font = `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
+    const w = (t) => Math.ceil(c.measureText(t).width);
+    return { weight: Math.floor(content(weight)), reps: Math.floor(content(reps)), '76.5': w('76.5'), '102.5': w('102.5'), '12': w('12'), fontSize: s.fontSize };
+  });
+  check(`${width}: the weight field holds 102.5 and 76.5`, fit.weight >= fit['102.5'] && fit.weight >= fit['76.5'], JSON.stringify(fit));
+  check(`${width}: the reps field holds two digits`, fit.reps >= fit['12'], JSON.stringify(fit));
+  check(`${width}: the inputs keep a 17px font`, fit.fontSize === '17px', fit.fontSize);
   await page.screenshot({ path: tag('F', 'session-draft') });
 
   // Walk away and come back: still nothing persisted, and the plan is offered again.

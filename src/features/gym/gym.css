@@ -198,6 +198,43 @@
   width: 100%;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  /* Two steps below the shared field padding. At 360px the two inputs have
+     119px between them; "102.5" and a two-digit rep count need 71px of
+     glyphs plus two borders each, so 16px a side (64px of air) clipped the
+     weight and 12px a side (48px) still left the reps 6px short. 8px fits
+     both with room to spare. */
+  padding-inline: var(--space-2);
+}
+
+/* The two fields size from their content instead of splitting the row in
+   half: the reps unit ("Wdh.") is wider than the weight unit ("kg"), and
+   an equal split starved the field that holds the longer value. The weight
+   input never goes below five characters — "102.5" — and the reps input
+   below two, each plus its padding; whatever is left is shared, the larger
+   part to the weight. */
+.gym-set__field {
+  flex: 2 1 auto;
+}
+
+.gym-set__field:last-of-type {
+  flex: 3 1 auto;
+}
+
+.gym-set__field .gym-set__input {
+  min-width: calc(2ch + 2 * var(--space-2));
+}
+
+.gym-set__field:last-of-type .gym-set__input {
+  min-width: calc(5ch + 2 * var(--space-2));
+}
+
+/* Below 360px the row cannot hold both minimums; the fields shrink as they
+   always did there rather than push the row out of the card. */
+@media (max-width: 359px) {
+  .gym-set__field .gym-set__input,
+  .gym-set__field:last-of-type .gym-set__input {
+    min-width: 0;
+  }
 }
 
 .gym-set__unit {
@@ -467,6 +504,12 @@
 
 .gym-set--pending .gym-set__input::placeholder {
   color: var(--text-tertiary);
+}
+
+/* With no sentence beneath it, a pending row closes the card: no hairline
+   between it and the card's own padding. */
+.gym-set--pending:last-child {
+  border-bottom: none;
 }
 
 .gym-set__remove--spacer {

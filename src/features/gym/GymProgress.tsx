@@ -107,7 +107,8 @@ export function GymProgress({ history }: { history: GymHistory }) {
       <Section label={t('gym.progress.muscles')}>
         <Card>
           <p className="gym-progress__noData" role="status">
-            {t('gymHub.muscles.none')} {t('gymHub.muscles.noneHint')}
+            <span className="gym-progress__noDataState">{t('gymHub.muscles.none')}</span>{' '}
+            <span className="gym-progress__noDataHint">{t('gymHub.muscles.noneHint')}</span>
           </p>
           <MuscleModule
             muscles={history.overall.muscles}
