@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { MUSCLE_GROUPS, type MuscleGroup } from '../../core/model';
 import { Card, EmptyState, Section } from '../../components';
+import './gymHub.css';
 import { MetricDetailSheet, MetricTile } from '../../components/metrics';
-import { ChevronRightIcon, ProgressIcon } from '../../components/Icons';
+import { ChevronRightIcon } from '../../components/Icons';
 import { MUSCLE_LABEL_KEYS, type MuscleView } from '../../components/BodyRenderer';
 import { percentChange } from '../../core/gym/performance';
 import { useT } from '../../i18n/I18nProvider';
@@ -95,15 +96,29 @@ export function GymProgress({ history }: { history: GymHistory }) {
     );
   }
 
+  /*
+   * Before the first workout the destination still exists (WP2-2): the body
+   * in its untrained state and the ten rows saying so. No overall figure —
+   * there is nothing to state — and no exercise list. Nothing is coloured
+   * as if progress existed; every group is `noData`, which is the truth.
+   */
   if (history.days.length === 0) {
     return (
-      <Card>
-        <EmptyState
-          icon={<ProgressIcon size={26} />}
-          title={t('gym.progress.title')}
-          body={t('gym.progress.noData')}
-        />
-      </Card>
+      <Section label={t('gym.progress.muscles')}>
+        <Card>
+          <p className="gym-progress__noData" role="status">
+            {t('gymHub.muscles.none')} {t('gymHub.muscles.noneHint')}
+          </p>
+          <MuscleModule
+            muscles={history.overall.muscles}
+            analytics={analytics}
+            views={views}
+            selected={selected}
+            onSelect={(muscle) => setSelected(muscle)}
+            onToggle={(muscle) => setSelected((current) => (current === muscle ? null : muscle))}
+          />
+        </Card>
+      </Section>
     );
   }
 

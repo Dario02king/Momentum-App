@@ -707,4 +707,26 @@ export const en: Translations = {
   'gym.lastTime.set': '{reps} × {weight} kg',
   'gym.lastTime.none': 'Never recorded',
 
+  /* ── Gym hub (WP2-2) ─────────────────────────────────────────────────── */
+  'gymHub.training.title': 'Training',
+  'gymHub.training.thisWeek': '{done} of {target} sessions this week',
+  'gymHub.training.none': 'No session logged yet.',
+  'gymHub.training.last': 'Last session: {date}',
+  'gymHub.training.today': 'A session is already logged today.',
+  'gymHub.training.log': 'Log a workout',
+  'gymHub.training.continue': 'Continue workout',
+  'gymHub.plans.none': 'No training plan yet',
+  'gymHub.plans.count': '{count} plans',
+  'gymHub.plans.countOne': 'One plan',
+  'gymHub.plans.manage': 'Manage plans',
+  'gymHub.muscles.title': 'Muscle groups',
+  'gymHub.muscles.open': 'Open muscle groups',
+  'gymHub.muscles.summary': '{count} of {total} groups counted',
+  'gymHub.muscles.overall': 'Overall {change}',
+  'gymHub.muscles.trained': '{count} of {total} groups trained',
+  'gymHub.muscles.none': 'No training data yet.',
+  'gymHub.muscles.noneHint': 'After your first session you will see here which muscle groups you trained and how they develop.',
+  'gymHub.muscles.range': 'Last {days} days',
+  'gymHub.open': 'Open Gym',
+
 };

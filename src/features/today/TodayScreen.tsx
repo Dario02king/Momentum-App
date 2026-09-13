@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { today as currentDay } from '../../core/clock';
-import type { StoredDomainType, TrainingPlanRecord } from '../../core/model';
+import type { StoredDomainType } from '../../core/model';
 import type { DomainTerminal } from '../../app/route';
 import { Button, Card, EmptyState, LoadFailure, Row, Section, StaleNotice } from '../../components';
 import { ChevronRightIcon, PlusIcon, SparkIcon } from '../../components/Icons';
@@ -11,10 +11,7 @@ import type { TrainingSession } from '../../storage/services/checkInService';
 import type { TranslationKey } from '../../i18n';
 import { FoodCard } from '../food/FoodCard';
 import '../pause/pause.css';
-import { GymSessionScreen } from '../gym/GymSessionScreen';
-import { PlanChooserSheet } from '../gym/PlanChooserSheet';
-import { draftFromPlan, openSessionForDay, type SessionDraft } from '../../storage/services/gymService';
-import { listTrainingPlans } from '../../storage/services/trainingPlanService';
+import { useTrainingLauncher } from '../gym/useTrainingLauncher';
 import { BossSummary } from './BossSummary';
 import { CheckInItem } from './CheckInItem';
 import { useDay } from './useDay';
@@ -40,10 +37,13 @@ const TRAINING_COPY: Record<StoredDomainType, { title: TranslationKey; log: Tran
 export function TodayScreen({
   onGoToAreas,
   onGoToRank,
+  onOpenGym,
 }: {
   /** Bereiche, optionally opened on a given area. */
   onGoToAreas(terminal?: DomainTerminal): void;
   onGoToRank?(): void;
+  /** The Gym hub (WP2-2): logging or muscle progress, the user's choice. */
+  onOpenGym?(): void;
 }) {
   const t = useT();
   const { language } = useI18n();
@@ -64,16 +64,15 @@ export function TodayScreen({
   /*
    * A gym session is not a diary line with a note on it — it holds exercises
    * and sets — so tapping one opens the logging screen rather than the sheet
-   * the other training logs use.
+   * the other training logs use. The quick-log flow — continue today's
+   * session, or choose a plan, or open a free session — is the launcher the
+   * Gym hub shares (WP2-1, WP2-2); it stays one tap from here.
    */
-  const [gymSessionId, setGymSessionId] = useState<string | null>(null);
-  /*
-   * A planned workout that has not been persisted yet (WP2-1): the plan's
-   * exercises on the page, no session row anywhere. It becomes a session
-   * inside the logging screen, with the first saved set — never here.
-   */
-  const [gymDraft, setGymDraft] = useState<{ draft: SessionDraft; planName: string } | null>(null);
-  const [plans, setPlans] = useState<TrainingPlanRecord[] | null>(null);
+  const gym = useTrainingLauncher({
+    date,
+    onClosed: () => void reload(),
+    onManagePlans: () => onGoToAreas('gym'),
+  });
 
   // Three states, never collapsed into one: still loading, failed outright,
   // or loaded. What is *empty* is decided further down, from the day itself.
@@ -114,54 +113,9 @@ export function TodayScreen({
   const dailyDone =
     (mental?.answeredCount ?? 0) + (day.food?.adherence !== null && day.food ? 1 : 0);
 
-  /** A free session, created on opening — exactly as before WP2-1. */
-  const openFreeSession = () => {
-    setPlans(null);
-    void openSessionForDay(date)
-      .then((session) => setGymSessionId(session.id))
-      .catch(() => reload());
-  };
+  const openGym = (sessionId?: string) => gym.start(sessionId);
 
-  const openGym = (sessionId?: string) => {
-    if (sessionId) {
-      setGymSessionId(sessionId);
-      return;
-    }
-    /*
-     * One session per calendar day: a day that already has one is continued,
-     * whichever way it was started, and no second plan is seeded into it.
-     */
-    const todays = day.training.find((training) => training.domain === 'gym')?.sessionsToday ?? [];
-    const existing = todays[todays.length - 1];
-    if (existing) {
-      setGymSessionId(existing.id);
-      return;
-    }
-    // With saved plans the user chooses; without any, the flow is the free
-    // session it always was, with no sheet in the way.
-    void listTrainingPlans()
-      .then((saved) => {
-        if (saved.length === 0) openFreeSession();
-        else setPlans(saved);
-      })
-      .catch(() => openFreeSession());
-  };
-
-  if (gymSessionId || gymDraft) {
-    return (
-      <GymSessionScreen
-        sessionId={gymSessionId}
-        draft={gymDraft?.draft ?? null}
-        planName={gymDraft?.planName ?? null}
-        date={date}
-        onClose={() => {
-          setGymSessionId(null);
-          setGymDraft(null);
-          void reload();
-        }}
-      />
-    );
-  }
+  if (gym.open) return <>{gym.overlay}</>;
 
   return (
     <div className="screen">
@@ -253,7 +207,15 @@ export function TodayScreen({
         {day.training.map((training) => {
           const copy = TRAINING_COPY[training.domain];
           return (
-            <Section key={training.domain} label={t(copy.title)}>
+            <Section key={training.domain} label={t(copy.title)} labelHidden={training.domain === 'gym' && Boolean(onOpenGym)}>
+              {/* Gym's label is the door to its hub (WP2-2): logging stays
+                  the button below; the area itself is one tap away too. */}
+              {training.domain === 'gym' && onOpenGym ? (
+                <button type="button" className="today__areaLink" onClick={onOpenGym} aria-label={t('gymHub.open')}>
+                  <span className="section__label today__areaLabel">{t(copy.title)}</span>
+                  <ChevronRightIcon size={16} />
+                </button>
+              ) : null}
               <Card>
                 <div className="week__header">
                   <span className="week__label">{t('sports.thisWeek')}</span>
@@ -372,20 +334,7 @@ export function TodayScreen({
         ) : null}
       </div>
 
-      <PlanChooserSheet
-        open={plans !== null}
-        plans={plans ?? []}
-        onClose={() => setPlans(null)}
-        onChoosePlan={(plan) => {
-          setPlans(null);
-          setGymDraft({ draft: draftFromPlan(plan), planName: plan.name });
-        }}
-        onFreeSession={openFreeSession}
-        onManagePlans={() => {
-          setPlans(null);
-          onGoToAreas('gym');
-        }}
-      />
+      {gym.overlay}
 
       <SessionSheet
         open={editingSession !== null}

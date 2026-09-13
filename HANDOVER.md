@@ -158,6 +158,27 @@ records (answers, sessions, sets, snapshots)
   not a plan invariant under the current engine — see the determinism debt
   below.
 
+**WP2-2 — Gym navigation** (same branch, not merged)
+- `#/areas/gym` is the **Gym hub** (`features/areas/GymTerminal.tsx`):
+  Training (this week, last session, *Training erfassen*, the plan count
+  with *Pläne verwalten*) → the *Muskelgruppen* entry card (bundled SVG
+  figure in the range's states, or untrained) → the rating board → the
+  plans → the Gym card and Laufen as before. `#/areas/gym/muscles` is the
+  **muscle destination** (`features/gym/GymMusclesScreen.tsx`): the range
+  control and the whole `GymProgress` hierarchy — overall tile, the 3D body
+  behind its unchanged lazy boundary, the ten rows, the exercises — and it
+  exists before the first workout with everything untrained. The route
+  model gained one optional `section` (`app/route.ts`, `mergeRoute`,
+  `leave`); the section's back control walks the pushed entry.
+- Heute: the Gym label is *Gym öffnen* → hub; *Session eintragen* is the
+  unchanged quick log. Both use `features/gym/useTrainingLauncher.tsx`.
+- Only the muscle destination fetches the viewer chunk and the model
+  (`release-proof.mjs`, `wp2-2-shots.mjs`); `gymHub.test.tsx` pins that no
+  hub file imports `features/body`. Screenshots: `docs/design/wp2-2/`.
+- Pre-existing, untouched: the "Laufen" label is rendered twice in the Gym
+  area (the section heading and `RunningTerminal`'s own), as in the
+  muscle-map QA screenshots.
+
 **Infrastructure only — built, tested, not reachable from any screen**
 - Rest days, pause periods, tombstones, profile: stores +
   repositories exist, no logic and no UI. **Weight entries are now reachable**

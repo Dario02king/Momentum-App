@@ -601,6 +601,18 @@ export async function openSessionForDay(
   return gymSessionsRepository.create({ date, configSnapshotId: snapshot.id });
 }
 
+/** The day's session if one exists — read only, never created. */
+export async function existingSessionForDay(date: DateKey = today()): Promise<GymSessionRecord | null> {
+  const existing = await gymSessionsRepository.listByDate(date);
+  return existing[existing.length - 1] ?? null;
+}
+
+/** The most recent session of all, for the hub to name; `null` before the first. */
+export async function latestGymSession(): Promise<GymSessionRecord | null> {
+  const all = await gymSessionsRepository.getAll();
+  return all[all.length - 1] ?? null;
+}
+
 /* ── Performance, replayed ──────────────────────────────────────────────── */
 
 export interface GymHistory {

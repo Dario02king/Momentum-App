@@ -21,30 +21,63 @@ export type DomainTerminal = 'mental' | 'gym' | 'food';
  * back to the terminal restores the area that was being looked at; the hash
  * carries it only where it applies.
  */
+/**
+ * A destination inside the Gym area (WP2-2). `muscles` is the muscle-group
+ * progress view — the one place the 3D body is rendered. The hub itself has
+ * no section: it *is* `#/areas/gym`.
+ */
+export type GymSection = 'muscles';
+
 export interface Route {
   tab: TabId;
   terminal: DomainTerminal;
+  /** Only meaningful on the Gym area; absent everywhere else. */
+  section?: GymSection;
 }
 
 const TABS: readonly TabId[] = ['today', 'progress', 'rank', 'areas'];
 export const TERMINALS: readonly DomainTerminal[] = ['mental', 'gym', 'food'];
+const GYM_SECTIONS: readonly GymSection[] = ['muscles'];
 
 const isTab = (value: string): value is TabId => (TABS as readonly string[]).includes(value);
 const isTerminal = (value: string): value is DomainTerminal =>
   (TERMINALS as readonly string[]).includes(value);
+const isGymSection = (value: string): value is GymSection =>
+  (GYM_SECTIONS as readonly string[]).includes(value);
 
-/** `#/areas/gym` → `{ tab: 'areas', terminal: 'gym' }`; anything else → `null`. */
+/**
+ * `#/areas/gym` → `{ tab: 'areas', terminal: 'gym' }`,
+ * `#/areas/gym/muscles` → the same with `section: 'muscles'`; anything else
+ * → `null`. A section on any other area is not a place and is dropped.
+ */
 export function parseRoute(hash: string): Partial<Route> | null {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
-  const [tab, terminal] = parts;
+  const [tab, terminal, section] = parts;
   if (!tab || !isTab(tab)) return null;
-  if (tab === 'areas' && terminal && isTerminal(terminal)) return { tab, terminal };
+  if (tab === 'areas' && terminal && isTerminal(terminal)) {
+    if (terminal === 'gym' && section && isGymSection(section)) return { tab, terminal, section };
+    return { tab, terminal };
+  }
   return { tab };
 }
 
-/** The hash for a route. The area appears only where it means something. */
+/** The hash for a route. The area and the section appear only where they mean something. */
 export function formatRoute(route: Route): string {
-  return route.tab === 'areas' ? `#/${route.tab}/${route.terminal}` : `#/${route.tab}`;
+  if (route.tab !== 'areas') return `#/${route.tab}`;
+  const section = route.terminal === 'gym' && route.section ? `/${route.section}` : '';
+  return `#/${route.tab}/${route.terminal}${section}`;
+}
+
+/**
+ * The route after a change. A section belongs to the place it was opened
+ * in, so moving tab or area leaves it behind unless the move names one.
+ */
+export function mergeRoute(previous: Route, next: Partial<Route>): Route {
+  const moved = next.tab !== undefined || next.terminal !== undefined;
+  const section = 'section' in next ? next.section : moved ? undefined : previous.section;
+  const merged: Route = { tab: next.tab ?? previous.tab, terminal: next.terminal ?? previous.terminal };
+  if (section !== undefined && merged.tab === 'areas' && merged.terminal === 'gym') merged.section = section;
+  return merged;
 }
 
 const hasWindow = typeof window !== 'undefined' && typeof window.history !== 'undefined';
@@ -52,7 +85,7 @@ const hasWindow = typeof window !== 'undefined' && typeof window.history !== 'un
 function fromLocation(fallback: Route): Route {
   if (!hasWindow) return fallback;
   const parsed = parseRoute(window.location.hash);
-  return parsed ? { ...fallback, ...parsed } : fallback;
+  return parsed ? mergeRoute(fallback, parsed) : fallback;
 }
 
 /**
@@ -65,6 +98,13 @@ function fromLocation(fallback: Route): Route {
 export function useRoute(initial: Route): {
   route: Route;
   navigate(next: Partial<Route>, options?: { replace?: boolean }): void;
+  /**
+   * Leaves the current place the way it was entered: if the app pushed it,
+   * Back walks the history entry — so a section opened from its hub returns
+   * to the hub without leaving a second hub entry behind it; if the user
+   * arrived by link, there is nothing to walk and `next` replaces it.
+   */
+  leave(next: Partial<Route>): void;
 } {
   const [route, setRoute] = useState<Route>(() => fromLocation(initial));
 
@@ -96,17 +136,27 @@ export function useRoute(initial: Route): {
 
   const navigate = useCallback((next: Partial<Route>, options?: { replace?: boolean }) => {
     setRoute((previous) => {
-      const merged = { ...previous, ...next };
+      const merged = mergeRoute(previous, next);
       if (hasWindow) {
         const hash = formatRoute(merged);
         if (window.location.hash !== hash) {
+          // A pushed entry is marked, so `leave` knows Back has somewhere to go.
           if (options?.replace) window.history.replaceState(null, '', hash);
-          else window.history.pushState(null, '', hash);
+          else window.history.pushState({ pushed: true }, '', hash);
         }
       }
       return merged;
     });
   }, []);
 
-  return { route, navigate };
+  const leave = useCallback(
+    (next: Partial<Route>) => {
+      const pushed = hasWindow && (window.history.state as { pushed?: boolean } | null)?.pushed === true;
+      if (pushed) window.history.back();
+      else navigate(next, { replace: true });
+    },
+    [navigate],
+  );
+
+  return { route, navigate, leave };
 }

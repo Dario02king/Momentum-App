@@ -295,3 +295,24 @@
 .week__legacyAsk:active {
   background: var(--surface-secondary);
 }
+
+/* ── The Gym label as the door to its hub (WP2-2) ───────────────────────── */
+
+.today__areaLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  margin-top: -12px;
+  color: var(--text-secondary);
+  position: relative;
+}
+
+.today__areaLink .today__areaLabel {
+  padding-bottom: 0;
+}
+
+.today__areaLink svg {
+  color: var(--accent-ink);
+  margin-bottom: 1px;
+}

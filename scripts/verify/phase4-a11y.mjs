@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, phone, onboard } from './lib.mjs';
+import { URL_APP, check, summary, phone, onboard, openMuscles } from './lib.mjs';
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const ctx = await browser.newContext(phone);
@@ -83,6 +83,10 @@ await page.waitForTimeout(1200);
 // The Gym workspace is the Gym area of the domain terminal under Bereiche.
 await page.getByRole('radio', { name: 'Gym' }).click();
 await page.waitForTimeout(900);
+nodes = await tree();
+check('every control on the Gym hub has a name', unnamed(nodes).length === 0,
+  unnamed(nodes).map((n) => n.role).join(', '));
+await openMuscles(page, { wait: 1500 });
 
 nodes = await tree();
 check('every control on Gym progress has a name', unnamed(nodes).length === 0,

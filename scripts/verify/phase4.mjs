@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, phone, onboard, clipped, smallTargets } from './lib.mjs';
+import { URL_APP, check, summary, phone, onboard, clipped, smallTargets, openMuscles } from './lib.mjs';
 import { inSheet } from './lib.mjs';
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
@@ -156,9 +156,11 @@ async function fillSet(page, index, reps, weight) {
 
   await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
   await page.waitForTimeout(1200);
-  // The Gym workspace is the Gym area of the domain terminal under Bereiche.
+  // The Gym area opens on its hub (WP2-2); the hierarchy is on Muskelgruppen.
   await page.getByRole('radio', { name: 'Gym' }).click();
   await page.waitForTimeout(900);
+  check('the hub offers the muscle groups as a named destination', await page.getByRole('button', { name: 'Muskelgruppen öffnen' }).isVisible());
+  await openMuscles(page, { wait: 1500 });
 
   check('Progress shows the Gym hierarchy', await page.locator('[data-metric="gym-overall"]').isVisible());
   const counted = await page.locator('[data-metric="gym-overall"] .metric-tile__line').textContent();
@@ -202,7 +204,8 @@ async function fillSet(page, index, reps, weight) {
   clip = await clipped(page);
   check('the exercise history is not clipped', clip.length === 0, clip.slice(0, 2).join('; '));
 
-  await page.getByRole('button', { name: 'Zurück' }).click();
+  // The detail's own back, not the Muskelgruppen screen's beneath it.
+  await page.locator('.gym-detail .gym-session__back').click();
   await page.waitForTimeout(500);
 
   await page.locator('.tab-bar button', { hasText: 'Rang' }).click();

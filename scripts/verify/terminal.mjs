@@ -92,8 +92,8 @@ check('Gym shows the Gym workspace, with Laufen inside it and nothing of Mental 
   metrics.length > 0 && metrics.every((m) => m.startsWith('gym') || m.startsWith('running')) &&
   JSON.stringify(await names()) === JSON.stringify(['Gym', 'Laufen']),
   metrics.join(','));
-check('the Gym workspace carries the rating board and the progress hierarchy',
-  (await page.locator('[data-metric="gym-rating"]').count()) === 1 && (await page.locator('[data-metric="gym-overall"]').count()) === 1);
+check('the Gym hub carries the rating board and the door to the muscle groups',
+  (await page.locator('[data-metric="gym-rating"]').count()) === 1 && (await page.getByRole('button', { name: 'Muskelgruppen öffnen' }).count()) === 1);
 check('and the Gym target is configured there', await page.getByText('3 Sessions / Woche').isVisible());
 check('the URL names the area', (await hash()) === '#/areas/gym');
 

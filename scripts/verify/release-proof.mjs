@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, onboard, seed, seedTraining, seedMuscles } from './lib.mjs';
+import { URL_APP, check, summary, onboard, openMuscles, seed, seedTraining, seedMuscles } from './lib.mjs';
 
 /**
  * Release evidence for the muscle map, Stage 5: what the network actually
@@ -38,13 +38,14 @@ async function fresh({ serviceWorkers = 'allow', init = null } = {}) {
   await visit('Rang', () => page.getByRole('button', { name: 'Rang' }).click());
   await visit('Bereiche → Mental', () => page.getByRole('button', { name: 'Bereiche' }).click());
   await visit('Bereiche → Ernährung', () => page.getByRole('radio', { name: 'Ernährung' }).click());
-  await visit('Bereiche → Gym', async () => { await page.getByRole('radio', { name: 'Gym' }).click(); await page.waitForTimeout(3500); });
+  await visit('Bereiche → Gym (hub)', async () => { await page.getByRole('radio', { name: 'Gym' }).click(); await page.waitForTimeout(2000); });
+  await visit('Gym → Muskelgruppen', async () => { await openMuscles(page, { wait: 3500 }); });
   console.log('\n[network per route, cold boot, no worker]');
   for (const [route, chunk, glb] of table) console.log(`  ${route.padEnd(22)} | ${chunk.padEnd(52)} | ${glb}`);
-  const before = table.slice(0, 5);
-  check('no route before Gym fetches the viewer chunk or the model', before.every(([, c, g]) => c === 'none' && g === 'none'));
-  const gym = table[5];
-  check('Gym fetches the viewer chunk, its CSS and the model, each 200', /200 .*BodyViewer-.*\.js/.test(gym[1]) && /200 .*BodyViewer-.*\.css/.test(gym[1]) && /200 .*momentum-body\.glb/.test(gym[2]), `${gym[1]} | ${gym[2]}`);
+  const before = table.slice(0, 6);
+  check('no route before Muskelgruppen — the Gym hub included — fetches the viewer chunk or the model', before.every(([, c, g]) => c === 'none' && g === 'none'), before.map((r) => r.join(' | ')).join(' ; '));
+  const gym = table[6];
+  check('Muskelgruppen fetches the viewer chunk, its CSS and the model, each 200', /200 .*BodyViewer-.*\.js/.test(gym[1]) && /200 .*BodyViewer-.*\.css/.test(gym[1]) && /200 .*momentum-body\.glb/.test(gym[2]), `${gym[1]} | ${gym[2]}`);
   await ctx.close();
 }
 
@@ -74,7 +75,8 @@ async function fresh({ serviceWorkers = 'allow', init = null } = {}) {
   await page.getByRole('button', { name: 'Bereiche' }).click();
   await page.waitForTimeout(700);
   await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(5000);
+  await page.waitForTimeout(900);
+  await openMuscles(page, { wait: 5000 });
   console.log('[offline Gym responses]', log.join(' | ') || '(served by the worker without a network response event)');
   check('offline, Gym still shows the 3D body and its rows', (await page.locator('.body-viewer canvas').count()) === 1 && (await page.locator('.muscle-row').count()) === 10, `canvas ${await page.locator('canvas').count()}, rows ${await page.locator('.muscle-row').count()}, figure ${await page.locator('.muscle-module__figure').count()}`);
   await ctx.setOffline(false);
@@ -89,7 +91,8 @@ async function fresh({ serviceWorkers = 'allow', init = null } = {}) {
   await page.getByRole('button', { name: 'Bereiche' }).click();
   await page.waitForTimeout(700);
   await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(4500);
+  await page.waitForTimeout(900);
+  await openMuscles(page);
   await page.locator('.areas__scroll').evaluate((el) => { const m = document.querySelector('.muscle-rows'); el.scrollTop += m.getBoundingClientRect().top - el.getBoundingClientRect().top - 8; });
   await page.waitForTimeout(600);
   const charts = await page.locator('.muscle-row').evaluateAll((rows) => rows.map((row) => {
@@ -148,7 +151,9 @@ async function fresh({ serviceWorkers = 'allow', init = null } = {}) {
   await page.locator('[data-muscle], .muscle-row__button').first().click();
   await page.waitForTimeout(500);
   check('a selected row is exposed as pressed', (await page.locator('.muscle-row__button[aria-pressed="true"]').count()) === 1);
-  // The credits sheet.
+  // The credits sheet: in the general section of the Gym area, under the hub.
+  await page.getByRole('button', { name: 'Zurück' }).click();
+  await page.waitForTimeout(900);
   await page.getByRole('button', { name: /3D-Körpermodell/ }).click();
   await page.waitForTimeout(600);
   const dialog = page.locator('[role="dialog"]');

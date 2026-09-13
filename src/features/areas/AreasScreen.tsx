@@ -44,7 +44,8 @@ import {
 } from '../../storage/services/configurationService';
 import { PauseSection } from '../pause/PauseSection';
 import { MetricBoard } from '../../components/metrics';
-import { TERMINALS, type DomainTerminal } from '../../app/route';
+import { TERMINALS, type DomainTerminal, type GymSection } from '../../app/route';
+import { GymMusclesScreen } from '../gym/GymMusclesScreen';
 import { DomainStandingTile } from './DomainStandingTile';
 import { DomainSwitch } from './DomainSwitch';
 import { GymTerminal } from './GymTerminal';
@@ -271,12 +272,17 @@ export function AreasScreen({
   configuration,
   actions,
   terminal,
+  section,
   onSelectTerminal,
+  onOpenSection,
 }: {
   configuration: AppConfiguration;
   actions: AreasActions;
   terminal: DomainTerminal;
+  /** A destination inside the Gym area, or nothing for the area itself. */
+  section?: GymSection | undefined;
   onSelectTerminal(terminal: DomainTerminal): void;
+  onOpenSection(section: GymSection | undefined): void;
 }) {
   const t = useT();
   const { language } = useI18n();
@@ -450,6 +456,12 @@ export function AreasScreen({
     );
   };
 
+  // Muskelgruppen is its own destination inside the Gym area (WP2-2): the
+  // one screen that renders the 3D body, reached from the hub and by link.
+  if (terminal === 'gym' && section === 'muscles') {
+    return <GymMusclesScreen onBack={() => onOpenSection(undefined)} />;
+  }
+
   return (
     <div className="screen">
       <header className="screen__header screen__header--terminal">
@@ -470,7 +482,7 @@ export function AreasScreen({
         ) : null}
         {terminal === 'gym' ? (
           <>
-            <GymTerminal />
+            <GymTerminal onOpenMuscles={() => onOpenSection('muscles')} />
             {domainCard('gym', domains.gym)}
 
             {/*

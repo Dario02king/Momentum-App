@@ -1,0 +1,126 @@
+/*
+ * The Gym hub (WP2-2): what training stands at, the one button, and the
+ * door to the muscle groups — in that order, in the card language the rest
+ * of the app already speaks.
+ */
+
+/* ── Training ───────────────────────────────────────────────────────────── */
+
+.gym-hub__training {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gym-hub__week {
+  font-size: var(--type-headline);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+}
+
+.gym-hub__last {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.gym-hub__action {
+  padding-top: var(--space-2);
+}
+
+.gym-hub__plans {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-1);
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+}
+
+.gym-hub__plansLink {
+  min-height: 44px;
+  padding: 0 var(--space-1);
+  color: var(--accent-ink);
+  font-size: var(--type-footnote);
+  font-weight: var(--weight-medium);
+  flex: none;
+}
+
+/* ── Muscle groups: the whole card is the button ────────────────────────── */
+
+.gym-hub__muscles {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-4) var(--card-pad);
+  background: var(--domain-gym-tint);
+  color: var(--text-primary);
+}
+
+.gym-hub__muscles:active {
+  filter: brightness(0.97);
+}
+
+/* The two figures side by side, small: a preview, not the module. */
+.gym-hub__figure {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  height: 128px;
+}
+
+.gym-hub__figure .body-renderer,
+.gym-hub__figure .body-renderer__figures {
+  display: flex;
+  gap: 2px;
+}
+
+.gym-hub__musclesBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gym-hub__musclesTitle {
+  font-size: var(--type-headline);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.2px;
+}
+
+.gym-hub__musclesSummary {
+  font-size: var(--type-subhead);
+  color: var(--text-primary);
+}
+
+.gym-hub__musclesOverall {
+  font-size: var(--type-subhead);
+  font-weight: var(--weight-semibold);
+  color: var(--domain-gym-ink);
+  font-variant-numeric: tabular-nums;
+  /* "Gesamt +26 %" is one figure; the unit never drops to its own line. */
+  white-space: nowrap;
+}
+
+.gym-hub__musclesRange {
+  font-size: var(--type-caption);
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.gym-hub__chevron {
+  flex: none;
+  color: var(--domain-gym-ink);
+}
+
+/* ── The muscle destination before the first workout ───────────────────── */
+
+.gym-progress__noData {
+  font-size: var(--type-footnote);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  padding: 0 var(--card-pad) var(--space-3);
+}

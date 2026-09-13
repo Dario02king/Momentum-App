@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, onboard, seed, seedTraining, seedMuscles } from './lib.mjs';
+import { URL_APP, onboard, seed, seedTraining, seedMuscles, openMuscles } from './lib.mjs';
 
 /**
  * The committed QA screenshots for the muscle map: the real Gym screen at
@@ -24,7 +24,8 @@ async function open(width, height, init = null) {
   await page.getByRole('button', { name: 'Bereiche' }).click();
   await page.waitForTimeout(700);
   await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(4500);
+  await page.waitForTimeout(900);
+  await openMuscles(page);
   return { ctx, page };
 }
 const scrollTo = async (page, selector, offset = 8) => {

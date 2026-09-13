@@ -714,6 +714,28 @@ export const de = {
   'gym.lastTime.set': '{reps} × {weight} kg',
   'gym.lastTime.none': 'Noch nie erfasst',
 
+  /* ── Gym-Hub (WP2-2) ─────────────────────────────────────────────────── */
+  'gymHub.training.title': 'Training',
+  'gymHub.training.thisWeek': '{done} von {target} Sessions diese Woche',
+  'gymHub.training.none': 'Noch keine Session erfasst.',
+  'gymHub.training.last': 'Letzte Session: {date}',
+  'gymHub.training.today': 'Heute bereits eine Session erfasst.',
+  'gymHub.training.log': 'Training erfassen',
+  'gymHub.training.continue': 'Training fortsetzen',
+  'gymHub.plans.none': 'Noch kein Trainingsplan',
+  'gymHub.plans.count': '{count} Pläne',
+  'gymHub.plans.countOne': 'Ein Plan',
+  'gymHub.plans.manage': 'Pläne verwalten',
+  'gymHub.muscles.title': 'Muskelgruppen',
+  'gymHub.muscles.open': 'Muskelgruppen öffnen',
+  'gymHub.muscles.summary': '{count} von {total} Gruppen gewertet',
+  'gymHub.muscles.overall': 'Gesamt {change}',
+  'gymHub.muscles.trained': '{count} von {total} Gruppen trainiert',
+  'gymHub.muscles.none': 'Noch keine Trainingsdaten.',
+  'gymHub.muscles.noneHint': 'Nach deiner ersten Session siehst du hier, welche Muskelgruppen du trainiert hast und wie sie sich entwickeln.',
+  'gymHub.muscles.range': 'Letzte {days} Tage',
+  'gymHub.open': 'Gym öffnen',
+
 } as const;
 
 export type TranslationKey = keyof typeof de;

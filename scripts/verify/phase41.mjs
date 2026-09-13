@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, phone, onboard, clipped, smallTargets, inSheet } from './lib.mjs';
+import { URL_APP, check, summary, phone, onboard, clipped, smallTargets, inSheet, openMuscles } from './lib.mjs';
 
 /**
  * Phase 4.1: the Gym scoring model on the screen.
@@ -228,7 +228,8 @@ async function openProgress(page) {
   const ytd = await page.locator('[data-metric="gym-ytd"] .metric-tile__value').textContent();
   check('the year-to-date figure is a real percentage', /%|Gehalten/.test(ytd ?? ''), ytd?.trim());
 
-  check('the detail hierarchy is still below it',
+  await openMuscles(page, { wait: 1500 });
+  check('the detail hierarchy is on Muskelgruppen',
     await page.locator('[data-metric="gym-overall"]').isVisible());
   check('and the muscle module is still there, with its ten rows',
     (await page.locator('.muscle-module').count()) === 1 && (await page.locator('.muscle-row').count()) === 10);
@@ -256,7 +257,8 @@ async function openProgress(page) {
   check('it says what has not been touched', breakSheet.untouched);
   check('it says the rating has a floor', breakSheet.floor);
   check('it says how to stop it', breakSheet.resume);
-  // The performance figures are untouched by the break.
+  // The performance figures are untouched by the break — on Muskelgruppen, since WP2-2.
+  await openMuscles(page, { wait: 1500 });
   check('the performance detail is still shown', await page.locator('[data-metric="gym-overall"]').isVisible());
   await ctx.close();
 }

@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, onboard, seed, seedTraining, seedMuscles } from './lib.mjs';
+import { URL_APP, check, summary, onboard, openMuscles, seed, seedTraining, seedMuscles } from './lib.mjs';
 
 /**
  * The Muskelgruppen module in the real Gym workspace, Stage 4.
@@ -65,7 +65,9 @@ async function toGym(page, { wait = 4500 } = {}) {
   await page.getByRole('button', { name: 'Bereiche' }).click();
   await page.waitForTimeout(700);
   await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(wait);
+  await page.waitForTimeout(900);
+  // Since WP2-2 the Gym area opens on its hub; the module is one tap further.
+  await openMuscles(page, { wait });
 }
 
 async function showModule(page) {
@@ -113,8 +115,10 @@ const settle = async (page, quiet = 1200, timeout = 20000) => {
   await page.waitForTimeout(1200);
   check('and not on Bereiche → Ernährung', chunks.length === 0, chunks.join(','));
   await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(4500);
-  check('Gym fetches the viewer chunk and the model, and only then',
+  await page.waitForTimeout(2000);
+  check('and not on the Gym hub itself (WP2-2)', chunks.length === 0, chunks.join(','));
+  await openMuscles(page);
+  check('Muskelgruppen fetches the viewer chunk and the model, and only then',
     chunks.some((c) => /^BodyViewer.*\.js$/.test(c)) && chunks.includes('momentum-body.glb'), chunks.join(','));
   await showModule(page);
 
@@ -196,7 +200,9 @@ const settle = async (page, quiet = 1200, timeout = 20000) => {
   await page.waitForTimeout(600);
   if (OUT) { await showModule(page); await page.screenshot({ path: `${OUT}/muscles-393.png` }); }
 
-  /* Laufen moved in; Verlauf keeps its row and loses the board. */
+  /* Laufen moved in — on the Gym hub, beneath the board; Verlauf keeps its row and loses the board. */
+  await page.getByRole('button', { name: 'Zurück' }).click();
+  await page.waitForTimeout(1200);
   check('Laufen sits inside the Gym workspace', (await page.locator('.areas__running').count()) === 1 && (await page.locator('.areas__running').textContent())?.includes('Laufen'));
   check('with its rating board and its weekly target',
     (await page.locator('.areas__running [data-metric="running-rating"]').count()) === 1 &&
@@ -219,6 +225,9 @@ const settle = async (page, quiet = 1200, timeout = 20000) => {
     /patmateee/.test(credit) && /CC BY 4\.0/.test(credit) && /bearbeitet/.test(credit), credit.slice(0, 120));
   const links = await sheet.locator('a').evaluateAll((els) => els.map((a) => [a.getAttribute('href'), a.target, a.rel]));
   check('and links to the model and the licence, safely', links.length === 2 && links.every(([href, target, rel]) => /^https?:\/\//.test(href) && target === '_blank' && /noopener/.test(rel)), JSON.stringify(links));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  await openMuscles(page, { wait: 3000 });
   check('the licence is nowhere near the body itself', !(await page.locator('.muscle-module').textContent())?.includes('CC BY'));
   await ctx.close();
 }
@@ -317,7 +326,7 @@ for (const [width, height] of [[430, 932], [320, 693]]) {
   await toGym(page, { wait: 4000 });
   await showModule(page);
   check('a viewer chunk that cannot be fetched degrades to the flat figure', (await page.locator('.muscle-module__figure svg').count()) > 0);
-  check('and the rest of the Gym screen keeps working', (await page.locator('.muscle-row').count()) === 10 && (await page.locator('[data-metric="gym-rating"]').count()) === 1);
+  check('and the rest of the Gym screen keeps working', (await page.locator('.muscle-row').count()) === 10 && (await page.locator('[data-metric="gym-overall"]').count()) === 1);
   await ctx.close();
 }
 {
@@ -336,7 +345,7 @@ for (const [width, height] of [[430, 932], [320, 693]]) {
   await toGym(page, { wait: 4000 });
   await showModule(page);
   check('a viewer that throws after mounting degrades to the flat figure', (await page.locator('.muscle-module__figure svg').count()) > 0);
-  check('and takes nothing else down with it', (await page.locator('.muscle-row').count()) === 10 && (await page.locator('[data-metric="gym-rating"]').count()) === 1);
+  check('and takes nothing else down with it', (await page.locator('.muscle-row').count()) === 10 && (await page.locator('[data-metric="gym-overall"]').count()) === 1);
   await ctx.close();
 }
 {
@@ -415,12 +424,16 @@ for (const [width, height] of [[430, 932], [320, 693]]) {
   // Leaving Gym and coming back.
   let p = await probe(page);
   check('one canvas, one live context and one set of pointer handlers', (await page.locator('canvas').count()) === 1 && p.contexts - p.lost === 1 && p.listeners === 4, JSON.stringify(p));
+  // The area switch is on the hub, one step back from the module.
+  await page.getByRole('button', { name: 'Zurück' }).click();
+  await page.waitForTimeout(900);
   await page.getByRole('radio', { name: 'Ernährung' }).click();
   await page.waitForTimeout(1200);
   p = await probe(page);
   check('leaving Gym takes the body down and releases its context and handlers', (await page.locator('canvas').count()) === 0 && p.contexts - p.lost === 0 && p.listeners === 0, JSON.stringify(p));
   await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(3500);
+  await page.waitForTimeout(900);
+  await openMuscles(page, { wait: 3500 });
   await showModule(page);
   p = await probe(page);
   check('coming back gives exactly one of each again, not two', (await page.locator('canvas').count()) === 1 && p.contexts - p.lost === 1 && p.listeners === 4, JSON.stringify(p));

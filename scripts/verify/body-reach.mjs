@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, onboard, seed, seedTraining, seedMuscles } from './lib.mjs';
+import { URL_APP, check, summary, onboard, seed, seedTraining, seedMuscles, openMuscles } from './lib.mjs';
 
 /**
  * How much of the body each region offers a finger, measured, not assumed.
@@ -29,7 +29,8 @@ for (const [width, height] of [[393, 852], [430, 932], [320, 693]].filter(([w]) 
   await page.getByRole('button', { name: 'Bereiche' }).click();
   await page.waitForTimeout(600);
   await page.getByRole('radio', { name: 'Gym' }).click();
-  await page.waitForTimeout(4500);
+  await page.waitForTimeout(900);
+  await openMuscles(page);
   await page.locator('.areas__scroll').evaluate((el) => { const m = document.querySelector('.muscle-module'); el.scrollTop += m.getBoundingClientRect().top - el.getBoundingClientRect().top - 8; });
   await page.waitForTimeout(1200);
   const box = await page.locator('.body-viewer canvas').boundingBox();
