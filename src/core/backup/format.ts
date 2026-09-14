@@ -1,13 +1,15 @@
 import { isValidDateKey, isValidWeekKey } from '../dates';
 import {
   SCHEMA_VERSION,
+  TRAINING_PLAN_KIND,
+  TRAINING_PLAN_VERSION,
   type AnswerRecord,
   type ConfigSnapshotRecord,
   type DomainRecord,
   type ExerciseRecord,
   type FoodDayRecord,
   type FoodEntryRecord,
-  type GymPlanRecord,
+  type GymPlanStoreRecord,
   type GymSessionRecord,
   type GymSetRecord,
   type PausePeriodRecord,
@@ -75,7 +77,15 @@ export interface BackupData {
   /* ── Added in format version 2. Absent in a version 1 file. ─────────── */
   profile: ProfileRecord | null;
   exercises: ExerciseRecord[];
-  gymPlans: GymPlanRecord[];
+  /**
+   * The user's training plans (WP2-1), and anything else the store held.
+   *
+   * A record carrying the training-plan discriminator is validated as one;
+   * any other shape is carried through untouched, never shown as a plan and
+   * never dropped — the store had no validation before WP2-1, and a file
+   * must not start failing for what it was always allowed to hold.
+   */
+  gymPlans: GymPlanStoreRecord[];
   gymSessions: GymSessionRecord[];
   gymSets: GymSetRecord[];
   runs: RunRecord[];
@@ -201,6 +211,27 @@ function validateFoodDay(item: Record<string, unknown>): string | null {
     item.adherence > 10
   ) {
     return 'has no adherence rating from 1 to 10';
+  }
+  return null;
+}
+
+/**
+ * A training plan is checked strictly; an unknown shape is left alone.
+ *
+ * Strict, because a plan with a line that names no exercise would open an
+ * editor showing nothing. Tolerant of the rest, because nothing ever wrote
+ * another shape into this store but nothing ever refused one either.
+ */
+function validateGymPlan(item: Record<string, unknown>): string | null {
+  if (item.kind !== TRAINING_PLAN_KIND) return null;
+  if (item.version !== TRAINING_PLAN_VERSION) return 'has a training-plan version this app does not know';
+  if (!isString(item.name) || item.name.trim() === '') return 'has no name';
+  if (!Array.isArray(item.exercises)) return 'has no exercise list';
+  for (const line of item.exercises) {
+    if (!isObject(line)) return 'has an exercise that is not a record';
+    if (!isString(line.exerciseId) || line.exerciseId === '') return 'has an exercise with no id';
+    if (!isString(line.name)) return 'has an exercise with no name';
+    if (typeof line.order !== 'number' || !Number.isFinite(line.order)) return 'has an exercise with no position';
   }
   return null;
 }
@@ -350,7 +381,7 @@ export function validateBackup(input: unknown): ValidationResult {
    * means "this profile has not started that area", not "the file is broken".
    */
   const exercises = checkArray(data.exercises ?? [], 'exercises', () => null, problems);
-  const gymPlans = checkArray(data.gymPlans ?? [], 'gymPlans', () => null, problems);
+  const gymPlans = checkArray(data.gymPlans ?? [], 'gymPlans', validateGymPlan, problems);
   const gymSessions = checkArray(
     data.gymSessions ?? [],
     'gymSessions',
@@ -410,7 +441,7 @@ export function validateBackup(input: unknown): ValidationResult {
       rankEvents: rankEvents as RankEventRecord[],
       profile: (data.profile ?? null) as ProfileRecord | null,
       exercises: exercises as ExerciseRecord[],
-      gymPlans: gymPlans as GymPlanRecord[],
+      gymPlans: gymPlans as GymPlanStoreRecord[],
       gymSessions: gymSessions as GymSessionRecord[],
       gymSets: gymSets as GymSetRecord[],
       runs: runs as RunRecord[],

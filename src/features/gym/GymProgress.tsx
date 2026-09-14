@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
 import { MUSCLE_GROUPS, type MuscleGroup } from '../../core/model';
 import { Card, EmptyState, Section } from '../../components';
+import './gymHub.css';
 import { MetricDetailSheet, MetricTile } from '../../components/metrics';
-import { ChevronRightIcon, ProgressIcon } from '../../components/Icons';
+import { ChevronRightIcon } from '../../components/Icons';
 import { MUSCLE_LABEL_KEYS, type MuscleView } from '../../components/BodyRenderer';
 import { percentChange } from '../../core/gym/performance';
 import { useT } from '../../i18n/I18nProvider';
 import { exerciseHistory, type GymHistory } from '../../storage/services/gymService';
 import { ExerciseDetail } from './ExerciseDetail';
+import { useExerciseNamer } from './exerciseNames';
 import { MuscleModule } from './MuscleModule';
 import { toMuscleAnalytics } from './muscleAnalytics';
 import { muscleStateOf } from './muscleState';
@@ -48,6 +50,7 @@ const changeText = (
 
 export function GymProgress({ history }: { history: GymHistory }) {
   const t = useT();
+  const namer = useExerciseNamer();
   const [selected, setSelected] = useState<MuscleGroup | null>(null);
   const [openExercise, setOpenExercise] = useState<string | null>(null);
   const [overallOpen, setOverallOpen] = useState(false);
@@ -75,17 +78,17 @@ export function GymProgress({ history }: { history: GymHistory }) {
     return [...ids]
       .map((id) => ({
         id,
-        name: history.names.get(id) ?? id,
+        name: namer.name(id, history.names.get(id) ?? id),
         comparison: history.comparisons.get(id),
         latest: exerciseHistory(history, id)[0] ?? null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [history, selected]);
+  }, [history, selected, namer]);
 
   if (openExercise) {
     return (
       <ExerciseDetail
-        name={history.names.get(openExercise) ?? openExercise}
+        name={namer.name(openExercise, history.names.get(openExercise) ?? openExercise)}
         days={exerciseHistory(history, openExercise)}
         comparison={history.comparisons.get(openExercise)}
         onClose={() => setOpenExercise(null)}
@@ -93,15 +96,30 @@ export function GymProgress({ history }: { history: GymHistory }) {
     );
   }
 
+  /*
+   * Before the first workout the destination still exists (WP2-2): the body
+   * in its untrained state and the ten rows saying so. No overall figure —
+   * there is nothing to state — and no exercise list. Nothing is coloured
+   * as if progress existed; every group is `noData`, which is the truth.
+   */
   if (history.days.length === 0) {
     return (
-      <Card>
-        <EmptyState
-          icon={<ProgressIcon size={26} />}
-          title={t('gym.progress.title')}
-          body={t('gym.progress.noData')}
-        />
-      </Card>
+      <Section label={t('gym.progress.muscles')}>
+        <Card>
+          <p className="gym-progress__noData" role="status">
+            <span className="gym-progress__noDataState">{t('gymHub.muscles.none')}</span>{' '}
+            <span className="gym-progress__noDataHint">{t('gymHub.muscles.noneHint')}</span>
+          </p>
+          <MuscleModule
+            muscles={history.overall.muscles}
+            analytics={analytics}
+            views={views}
+            selected={selected}
+            onSelect={(muscle) => setSelected(muscle)}
+            onToggle={(muscle) => setSelected((current) => (current === muscle ? null : muscle))}
+          />
+        </Card>
+      </Section>
     );
   }
 

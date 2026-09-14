@@ -20,7 +20,7 @@ import type {
   ExerciseRecord,
   FoodDayRecord,
   FoodEntryRecord,
-  GymPlanRecord,
+  GymPlanStoreRecord,
   GymSessionRecord,
   GymSetRecord,
   PausePeriodRecord,
@@ -54,7 +54,7 @@ const snapshotStore = createRepository<ConfigSnapshotRecord>(STORES.configSnapsh
 const rankEventStore = createRepository<RankEventRecord>(STORES.rankEvents);
 const profileStore = createRepository<ProfileRecord>(STORES.profile);
 const exerciseStore = createRepository<ExerciseRecord>(STORES.exercises);
-const gymPlanStore = createRepository<GymPlanRecord>(STORES.gymPlans);
+const gymPlanStore = createRepository<GymPlanStoreRecord>(STORES.gymPlans);
 const gymSessionStore = createRepository<GymSessionRecord>(STORES.gymSessions);
 const gymSetStore = createRepository<GymSetRecord>(STORES.gymSets);
 const runStore = createRepository<RunRecord>(STORES.runs);

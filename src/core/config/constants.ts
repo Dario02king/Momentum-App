@@ -191,6 +191,8 @@ export const GYM = {
   MIN_TARGET_PER_WEEK: 1,
   MAX_TARGET_PER_WEEK: 7,
   DEFAULT_TARGET_PER_WEEK: 3,
+  /** Saved training plans a user may hold at once (WP2-1). */
+  MAX_PLANS: 5,
 } as const;
 
 export const RUNNING = {

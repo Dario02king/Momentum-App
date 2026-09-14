@@ -543,7 +543,14 @@ export type TrainingGoal = 'hypertrophy' | 'strength' | 'mixed';
 export type PlanFocus = 'fullBody' | 'upper' | 'lower';
 export type TrainingVolume = 'low' | 'medium' | 'high';
 
-export interface GymPlanRecord {
+/**
+ * The generated-plan shape iteration 2 reserved the `gymPlans` store for.
+ *
+ * Nothing ever wrote one: the store stayed empty on every device and in
+ * every backup. It is kept as a type so a backup that somehow carries one
+ * still round-trips — preserved, never shown, never read as a training plan.
+ */
+export interface LegacyGymPlanRecord {
   id: string;
   daysPerWeek: number;
   focus: PlanFocus;
@@ -556,12 +563,101 @@ export interface GymPlanRecord {
   updatedAt: string;
 }
 
+/** The discriminator every user training plan carries (WP2-1). */
+export const TRAINING_PLAN_KIND = 'userTrainingPlan';
+export const TRAINING_PLAN_VERSION = 1;
+
+/**
+ * One line of a training plan: which exercise, and where in the list.
+ *
+ * `name` is a snapshot of the display name at the time the line was added.
+ * It is never joined on; it is the fallback a plan renders when the id can
+ * no longer be resolved, so a plan is readable whatever became of the
+ * catalogue or of a custom exercise since.
+ */
+export interface TrainingPlanExercise {
+  exerciseId: string;
+  name: string;
+  order: number;
+}
+
+/**
+ * A training plan the user built: a named, ordered list of exercises they
+ * train together (WP2-1).
+ *
+ * The plan is configuration, not history. A session started from it copies
+ * its lines into the session's own snapshot (`GymSessionRecord.exercises`)
+ * and never reads them back through the plan, so editing, reordering or
+ * deleting a plan cannot reach a workout already done.
+ *
+ * `kind` and `version` are explicit because the store this lives in was
+ * declared for a different, never-written shape: a record without the
+ * discriminator is not a training plan and is never shown as one.
+ */
+export interface TrainingPlanRecord {
+  id: string;
+  kind: typeof TRAINING_PLAN_KIND;
+  version: typeof TRAINING_PLAN_VERSION;
+  name: string;
+  exercises: TrainingPlanExercise[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Whatever the `gymPlans` store may hold. Only the training plan is live. */
+export type GymPlanStoreRecord = TrainingPlanRecord | LegacyGymPlanRecord;
+
+export function isTrainingPlan(record: unknown): record is TrainingPlanRecord {
+  if (typeof record !== 'object' || record === null) return false;
+  const candidate = record as Partial<TrainingPlanRecord>;
+  return (
+    candidate.kind === TRAINING_PLAN_KIND &&
+    candidate.version === TRAINING_PLAN_VERSION &&
+    typeof candidate.id === 'string' &&
+    typeof candidate.name === 'string' &&
+    Array.isArray(candidate.exercises)
+  );
+}
+
+/** Where a session's exercise came from: the plan it was started from, or added on the day. */
+export type SessionExerciseSource = 'plan' | 'extra';
+
+/**
+ * One exercise of a session, as the session itself remembers it (WP2-1).
+ *
+ * Written once when a planned workout is first persisted, and appended to
+ * when an exercise is added during the session. It carries the display
+ * name as it stood, so the session renders identically whatever later
+ * happens to the plan or the exercise record; it is never resolved through
+ * `planId`, which is provenance and nothing more.
+ *
+ * Only the *structure* lives here — which exercises, in what order, from
+ * where. What was lifted is in the sets, exactly as before, and scoring
+ * reads only those.
+ */
+export interface GymSessionExerciseSnapshot {
+  exerciseId: string;
+  name: string;
+  order: number;
+  source: SessionExerciseSource;
+}
+
 export interface GymSessionRecord {
   id: string;
   date: DateKey;
   weekKey: WeekKey;
   performedAt: string;
+  /** Informational provenance only. Session contents are never resolved through it. */
   planId: string | null;
+  /**
+   * The session's own ordered exercise snapshot.
+   *
+   * **Absent on a session that was not started from a plan** — every session
+   * logged before WP2-1, and every free session after it — and those render
+   * from their sets, as they always have. Present means the session owns its
+   * structure, including exercises that have no set yet.
+   */
+  exercises?: GymSessionExerciseSnapshot[];
   note: string | null;
   /**
    * A session carried over from RC2's generic Sport domain.

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { today as currentDay } from '../../core/clock';
 import type { StoredDomainType } from '../../core/model';
+import type { DomainTerminal } from '../../app/route';
 import { Button, Card, EmptyState, LoadFailure, Row, Section, StaleNotice } from '../../components';
 import { ChevronRightIcon, PlusIcon, SparkIcon } from '../../components/Icons';
 import { SessionSheet } from '../../domains/sports/SessionSheet';
@@ -10,8 +11,7 @@ import type { TrainingSession } from '../../storage/services/checkInService';
 import type { TranslationKey } from '../../i18n';
 import { FoodCard } from '../food/FoodCard';
 import '../pause/pause.css';
-import { GymSessionScreen } from '../gym/GymSessionScreen';
-import { openSessionForDay } from '../../storage/services/gymService';
+import { useTrainingLauncher } from '../gym/useTrainingLauncher';
 import { BossSummary } from './BossSummary';
 import { CheckInItem } from './CheckInItem';
 import { useDay } from './useDay';
@@ -37,9 +37,13 @@ const TRAINING_COPY: Record<StoredDomainType, { title: TranslationKey; log: Tran
 export function TodayScreen({
   onGoToAreas,
   onGoToRank,
+  onOpenGym,
 }: {
-  onGoToAreas(): void;
+  /** Bereiche, optionally opened on a given area. */
+  onGoToAreas(terminal?: DomainTerminal): void;
   onGoToRank?(): void;
+  /** The Gym hub (WP2-2): logging or muscle progress, the user's choice. */
+  onOpenGym?(): void;
 }) {
   const t = useT();
   const { language } = useI18n();
@@ -60,9 +64,15 @@ export function TodayScreen({
   /*
    * A gym session is not a diary line with a note on it — it holds exercises
    * and sets — so tapping one opens the logging screen rather than the sheet
-   * the other training logs use.
+   * the other training logs use. The quick-log flow — continue today's
+   * session, or choose a plan, or open a free session — is the launcher the
+   * Gym hub shares (WP2-1, WP2-2); it stays one tap from here.
    */
-  const [gymSessionId, setGymSessionId] = useState<string | null>(null);
+  const gym = useTrainingLauncher({
+    date,
+    onClosed: () => void reload(),
+    onManagePlans: () => onGoToAreas('gym'),
+  });
 
   // Three states, never collapsed into one: still loading, failed outright,
   // or loaded. What is *empty* is decided further down, from the day itself.
@@ -103,28 +113,9 @@ export function TodayScreen({
   const dailyDone =
     (mental?.answeredCount ?? 0) + (day.food?.adherence !== null && day.food ? 1 : 0);
 
-  const openGym = (sessionId?: string) => {
-    if (sessionId) {
-      setGymSessionId(sessionId);
-      return;
-    }
-    void openSessionForDay(date)
-      .then((session) => setGymSessionId(session.id))
-      .catch(() => reload());
-  };
+  const openGym = (sessionId?: string) => gym.start(sessionId);
 
-  if (gymSessionId) {
-    return (
-      <GymSessionScreen
-        sessionId={gymSessionId}
-        date={date}
-        onClose={() => {
-          setGymSessionId(null);
-          void reload();
-        }}
-      />
-    );
-  }
+  if (gym.open) return <>{gym.overlay}</>;
 
   return (
     <div className="screen">
@@ -178,7 +169,7 @@ export function TodayScreen({
               title={t('today.emptyTitle')}
               body={t('today.emptyBody')}
               action={
-                <Button variant="secondary" onClick={onGoToAreas}>
+                <Button variant="secondary" onClick={() => onGoToAreas()}>
                   {t('today.emptyAction')}
                 </Button>
               }
@@ -194,7 +185,7 @@ export function TodayScreen({
                   title={t('today.noQuestionsTitle')}
                   body={t('today.noQuestionsBody')}
                   action={
-                    <Button variant="secondary" onClick={onGoToAreas}>
+                    <Button variant="secondary" onClick={() => onGoToAreas()}>
                       {t('today.emptyAction')}
                     </Button>
                   }
@@ -216,7 +207,15 @@ export function TodayScreen({
         {day.training.map((training) => {
           const copy = TRAINING_COPY[training.domain];
           return (
-            <Section key={training.domain} label={t(copy.title)}>
+            <Section key={training.domain} label={t(copy.title)} labelHidden={training.domain === 'gym' && Boolean(onOpenGym)}>
+              {/* Gym's label is the door to its hub (WP2-2): logging stays
+                  the button below; the area itself is one tap away too. */}
+              {training.domain === 'gym' && onOpenGym ? (
+                <button type="button" className="today__areaLink" onClick={onOpenGym} aria-label={t('gymHub.open')}>
+                  <span className="section__label today__areaLabel">{t(copy.title)}</span>
+                  <ChevronRightIcon size={16} />
+                </button>
+              ) : null}
               <Card>
                 <div className="week__header">
                   <span className="week__label">{t('sports.thisWeek')}</span>
@@ -295,7 +294,7 @@ export function TodayScreen({
                     out beside it.
                   */
                   day.legacySportChoicePending ? (
-                    <button type="button" className="week__legacyAsk" onClick={onGoToAreas}>
+                    <button type="button" className="week__legacyAsk" onClick={() => onGoToAreas()}>
                       {t('legacySport.today.pending')}
                     </button>
                   ) : null
@@ -334,6 +333,8 @@ export function TodayScreen({
           />
         ) : null}
       </div>
+
+      {gym.overlay}
 
       <SessionSheet
         open={editingSession !== null}

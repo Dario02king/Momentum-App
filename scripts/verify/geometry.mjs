@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, onboard, seed, seedTraining } from './lib.mjs';
+import { URL_APP, check, summary, onboard, seed, seedTraining, openMuscles } from './lib.mjs';
 
 /**
  * Card geometry: does any text sit on, or past, the edge of the box that
@@ -262,10 +262,14 @@ for (const [width, height] of [
   await page.getByRole('radio', { name: 'Gym' }).click();
   await page.waitForTimeout(3500);
   await audit(page, 'bereiche-gym', width);
-  /* The muscle module: the body, the ten rows and their charts. */
+  /* The muscle module, on its own destination since WP2-2: the body, the ten rows and their charts. */
+  await openMuscles(page, { wait: 3500 });
+  await audit(page, 'bereiche-gym-muskeln-top', width);
   await scrollTo(page, '.muscle-rows');
   await audit(page, 'bereiche-gym-muskeln', width);
-  /* Laufen, now inside the Gym workspace, and a sheet opened from its tile. */
+  await page.getByRole('button', { name: 'Zurück' }).click();
+  await page.waitForTimeout(1200);
+  /* Laufen, inside the Gym workspace, and a sheet opened from its tile. */
   await scrollTo(page, '[data-metric="running-rating"]');
   await audit(page, 'bereiche-laufen', width);
   await page.locator('[data-metric="running-rating"] .metric-tile__open').click();

@@ -33,7 +33,7 @@ function MainApp({
 }) {
   // Today is where the app opens: the daily check-in is the whole point.
   // The tab and the terminal's area are one route, mirrored to the URL.
-  const { route, navigate } = useRoute({ tab: 'today', terminal: 'mental' });
+  const { route, navigate, leave } = useRoute({ tab: 'today', terminal: 'mental' });
   const { tab } = route;
 
   return (
@@ -41,7 +41,8 @@ function MainApp({
       <main className="app__content">
         {tab === 'today' ? (
           <TodayScreen
-            onGoToAreas={() => navigate({ tab: 'areas' })}
+            onGoToAreas={(terminal) => navigate(terminal ? { tab: 'areas', terminal } : { tab: 'areas' })}
+            onOpenGym={() => navigate({ tab: 'areas', terminal: 'gym' })}
             onGoToRank={() => navigate({ tab: 'rank' })}
           />
         ) : null}
@@ -54,7 +55,13 @@ function MainApp({
             configuration={configuration}
             actions={actions}
             terminal={route.terminal}
+            section={route.section}
             onSelectTerminal={(terminal) => navigate({ terminal })}
+            /* Opening a section pushes, so Back returns to the hub; the
+               section's own back control leaves the way it was entered —
+               walking the pushed entry, or replacing a deep link — so the
+               history never holds the hub twice. */
+            onOpenSection={(section) => (section ? navigate({ section }) : leave({ section: undefined }))}
           />
         ) : null}
       </main>

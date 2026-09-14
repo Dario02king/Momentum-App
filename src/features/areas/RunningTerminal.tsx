@@ -1,5 +1,3 @@
-import { Section } from '../../components';
-import { useT } from '../../i18n/I18nProvider';
 import { RunningOverview } from '../running/RunningOverview';
 import { useRunningRating } from '../running/useRunningRating';
 
@@ -11,14 +9,12 @@ import { useRunningRating } from '../running/useRunningRating';
  * from its runs, so it loads on its own and an empty Gym says nothing about
  * it. Before the first run there is nothing to show a rating of, and the
  * card below is where the weekly target is set.
+ *
+ * It carries no heading of its own: its one host, the Areas screen, already
+ * titles the block "Laufen", and the boards inside label themselves.
  */
 export function RunningTerminal() {
-  const t = useT();
   const rating = useRunningRating();
   if (!rating?.started) return null;
-  return (
-    <Section label={t('running.progress.title')}>
-      <RunningOverview state={rating.state} started={rating.started} />
-    </Section>
-  );
+  return <RunningOverview state={rating.state} started={rating.started} />;
 }

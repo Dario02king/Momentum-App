@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, phone, onboard } from './lib.mjs';
+import { URL_APP, check, summary, phone, onboard, openMuscles } from './lib.mjs';
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const ctx = await browser.newContext(phone);
@@ -48,14 +48,14 @@ check('every control in the session has a name', unnamed(nodes).length === 0,
 
 const fields = nodes.filter((n) => n.role === 'textbox');
 check('reps and weight fields say which set and which exercise they are',
-  fields.length >= 4 && fields.every((n) => /Bench Press/.test(n.name)),
+  fields.length >= 4 && fields.every((n) => /Bankdrücken/.test(n.name)),
   JSON.stringify(fields.map((n) => n.name)));
 check('the reps field says it is reps, and the weight says kilograms',
   fields.some((n) => /Wiederholungen/.test(n.name)) && fields.some((n) => /Kilogramm/.test(n.name)));
 
 const removes = nodes.filter((n) => n.role === 'button' && /entfernen/.test(n.name));
 check('each remove button names the set and exercise it affects',
-  removes.length >= 2 && removes.some((n) => /Satz 1 von Bench Press/.test(n.name)),
+  removes.length >= 2 && removes.some((n) => /Satz 1 von Bankdrücken/.test(n.name)),
   JSON.stringify(removes.map((n) => n.name)));
 
 const addSet = nodes.find((n) => n.role === 'button' && /Satz zu/.test(n.name));
@@ -83,6 +83,10 @@ await page.waitForTimeout(1200);
 // The Gym workspace is the Gym area of the domain terminal under Bereiche.
 await page.getByRole('radio', { name: 'Gym' }).click();
 await page.waitForTimeout(900);
+nodes = await tree();
+check('every control on the Gym hub has a name', unnamed(nodes).length === 0,
+  unnamed(nodes).map((n) => n.role).join(', '));
+await openMuscles(page, { wait: 1500 });
 
 nodes = await tree();
 check('every control on Gym progress has a name', unnamed(nodes).length === 0,

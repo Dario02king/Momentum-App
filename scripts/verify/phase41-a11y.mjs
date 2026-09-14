@@ -79,8 +79,8 @@ async function seedGym(page, { metWeeks, silentDays = 0 }) {
         });
       const p = (n, l = 2) => String(n).padStart(l, '0');
       const key = (d) => `${p(d.getFullYear(), 4)}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-      const shift = (n) => {
-        const d = new Date();
+      const shift = (n, from = new Date()) => {
+        const d = new Date(from);
         d.setHours(12, 0, 0, 0);
         d.setDate(d.getDate() + n);
         return d;
@@ -97,8 +97,13 @@ async function seedGym(page, { metWeeks, silentDays = 0 }) {
       const db = await open();
       const snaps = await all(db, 'configSnapshots');
       const settings = await all(db, 'settings');
-      const totalDays = metWeeks * 7 + silentDays;
-      const origin = key(shift(-(totalDays + 2)));
+      // Anchored to complete ISO weeks, as in phase41.mjs: the last complete
+      // Monday-to-Sunday week ending at least `silentDays` before today, and
+      // `metWeeks` such weeks with sessions on Monday, Wednesday and Friday.
+      const end = shift(-Math.max(1, silentDays));
+      const lastSunday = shift(-(end.getDay() % 7), end);
+      const firstMonday = shift(-6 - 7 * (metWeeks - 1), lastSunday);
+      const origin = key(shift(-2, firstMonday));
       await putAll(db, 'configSnapshots', snaps.map((s, i) => (i === 0 ? { ...s, effectiveFrom: origin } : s)));
       await putAll(db, 'settings', [{ ...settings[0], firstUseDate: origin }]);
 
@@ -107,7 +112,7 @@ async function seedGym(page, { metWeeks, silentDays = 0 }) {
       let index = 0;
       for (let week = 0; week < metWeeks; week += 1) {
         for (const offset of [0, 2, 4]) {
-          const at = shift(-(totalDays - (week * 7 + offset)));
+          const at = shift(week * 7 + offset, firstMonday);
           const date = key(at);
           const id = `seed-${date}`;
           sessions.push({

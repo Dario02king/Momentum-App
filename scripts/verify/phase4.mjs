@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { URL_APP, check, summary, phone, onboard, clipped, smallTargets } from './lib.mjs';
+import { URL_APP, check, summary, phone, onboard, clipped, smallTargets, openMuscles } from './lib.mjs';
 import { inSheet } from './lib.mjs';
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
@@ -19,12 +19,17 @@ async function openGym(page) {
   await page.waitForTimeout(700);
 }
 
+/**
+ * Since WP2-1 the picker shows a built-in under its German catalogue name
+ * while the search still matches the stored English one, so the search
+ * narrows by the English name and the first row is the one wanted.
+ */
 async function addExercise(page, name) {
   await page.getByRole('button', { name: /Übung hinzufügen/ }).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('textbox', { name: 'Suchen' }).fill(name);
   await page.waitForTimeout(300);
-  await page.locator('.gym-picker__row', { hasText: name }).first().click();
+  await page.locator('.gym-picker__row').first().click();
   await page.waitForTimeout(600);
 }
 
@@ -151,9 +156,11 @@ async function fillSet(page, index, reps, weight) {
 
   await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
   await page.waitForTimeout(1200);
-  // The Gym workspace is the Gym area of the domain terminal under Bereiche.
+  // The Gym area opens on its hub (WP2-2); the hierarchy is on Muskelgruppen.
   await page.getByRole('radio', { name: 'Gym' }).click();
   await page.waitForTimeout(900);
+  check('the hub offers the muscle groups as a named destination', await page.getByRole('button', { name: 'Muskelgruppen öffnen' }).isVisible());
+  await openMuscles(page, { wait: 1500 });
 
   check('Progress shows the Gym hierarchy', await page.locator('[data-metric="gym-overall"]').isVisible());
   const counted = await page.locator('[data-metric="gym-overall"] .metric-tile__line').textContent();
@@ -191,13 +198,14 @@ async function fillSet(page, index, reps, weight) {
   await page.locator('.gym-progress__row').first().click();
   await page.waitForTimeout(600);
   check('an exercise opens its own history',
-    await page.getByRole('heading', { name: 'Bench Press' }).isVisible());
+    await page.getByRole('heading', { name: 'Bankdrücken' }).isVisible());
   check('the history shows the best-set comparison',
     (await page.locator('.gym-detail__value').first().textContent())?.includes('×'));
   clip = await clipped(page);
   check('the exercise history is not clipped', clip.length === 0, clip.slice(0, 2).join('; '));
 
-  await page.getByRole('button', { name: 'Zurück' }).click();
+  // The detail's own back, not the Muskelgruppen screen's beneath it.
+  await page.locator('.gym-detail .gym-session__back').click();
   await page.waitForTimeout(500);
 
   await page.locator('.tab-bar button', { hasText: 'Rang' }).click();

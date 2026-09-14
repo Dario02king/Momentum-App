@@ -129,8 +129,84 @@ records (answers, sessions, sets, snapshots)
   conversion engine is unchanged — it was always correct, it simply had no
   door.
 
+**WP2-1 — exercise catalogue and training plans** (branch
+`claude/momentum-gym-plans`, not merged)
+- The catalogue has 48 entries (`src/core/gym/catalogue.ts`): the 29 from
+  iteration 2 with their roles and English record names unchanged, plus 19
+  approved ids. It is now the **presentation source** for a built-in — a
+  localised name (de-CH / en) and an anatomical detail label — while the
+  seeded `exercises` record stays the id anchor and fallback, never
+  rewritten (`features/gym/exerciseNames.ts`). Roles are pinned in
+  `catalogue.test.ts`.
+- Training plans live in the existing `gymPlans` store as
+  `TrainingPlanRecord` (`kind: 'userTrainingPlan', version: 1`); at most
+  `GYM.MAX_PLANS` (5). Service: `storage/services/trainingPlanService.ts`;
+  UI: Bereiche → Gym → Trainingspläne (`features/gym/TrainingPlansSection`,
+  `PlanEditor`). A record of any other shape in that store is preserved and
+  never shown.
+- A planned workout is a **draft** until its first set is saved
+  (`gymService.startSessionFromDraft`); the session then owns an ordered
+  exercise snapshot (`GymSessionRecord.exercises`, absent on every free or
+  pre-WP2 session) and `planId` is provenance only. One session per day.
+  Extras land in the snapshot, never in the plan. Screenshots and the
+  browser proof: `scripts/verify/wp2-1-shots.mjs`, `docs/design/wp2-1/`.
+- `SCHEMA_VERSION` and `BACKUP_FORMAT_VERSION` are unchanged (5 / 3).
+- **Scoring equivalence** (`planEquivalence.test.ts`, 20 seeded runs):
+  manual and plan entry write identical set and session rows; every
+  discrete output is identical; floating outputs agree to within the same
+  last-ULP effect a manual-vs-manual control shows. Exact float equality is
+  not a plan invariant under the current engine — see the determinism debt
+  below.
+
+**WP2-2 — Gym navigation** (same branch, not merged)
+- `#/areas/gym` is the **Gym hub** (`features/areas/GymTerminal.tsx`):
+  Training (this week, last session, *Training erfassen*, the plan count
+  with *Pläne verwalten*) → the *Muskelgruppen* entry card → the rating board → the
+  plans → the Gym card and Laufen as before. `#/areas/gym/muscles` is the
+  **muscle destination** (`features/gym/GymMusclesScreen.tsx`): the range
+  control and the whole `GymProgress` hierarchy — overall tile, the 3D body
+  behind its unchanged lazy boundary, the ten rows, the exercises — and it
+  exists before the first workout with everything untrained. The route
+  model gained one optional `section` (`app/route.ts`, `mergeRoute`,
+  `leave`); the section's back control walks the pushed entry.
+- Heute: the Gym label is *Gym öffnen* → hub; *Session eintragen* is the
+  unchanged quick log. Both use `features/gym/useTrainingLauncher.tsx`.
+- Only the muscle destination fetches the viewer chunk and the model
+  (`release-proof.mjs`, `wp2-2-shots.mjs`); `gymHub.test.tsx` pins that no
+  hub file imports `features/body`. Screenshots: `docs/design/wp2-2/`.
+- The entry card's body is a **still of the approved model**:
+  `features/gym/assets/body-preview.webp` (12 kB) is `momentum-body.glb`
+  rendered once through the real viewer in its neutral tint by
+  `tools/render-body-preview.mjs` — regenerate it from there when the model
+  changes, never redraw it. It has no regions and takes no colour; ten
+  markers beside it carry the groups' states from the same history the
+  module shows (grey before the first workout). The bundled SVG diagram
+  stays what it was: the muscle module's stand-in where WebGL is missing.
+- The training line is the same two stored values read three ways — a
+  fraction only below target, *Ziel erreicht* at it, *· Ziel n* above it —
+  so "7 von 3" never appears (`weekSentence` in `TrainingCard.tsx`).
+- Polish pass before merge (six approved findings, presentation only): the
+  set row's inputs size from their content — the weight input never below
+  five characters, the reps input never below two, padding two steps below
+  the shared field's, minimums released under 360px; the no-data guidance on
+  the muscle destination is a state line over a hint inside one status; the
+  entry card carries no section label (it names itself); the pending set
+  row has no helper sentence beneath it (the row is the instruction);
+  counts are figures everywhere (`1 Plan`, `1 Übung`); and the "Laufen"
+  heading that `RunningTerminal` repeated under the area's own is gone.
+  Before/after pairs: `docs/design/wp2-polish/`.
+- Follow-up debt from the pre-merge gates, none of it blocking: the
+  repository's default branch is named `claude/momentum-pwa-spec-j82dhm`,
+  which CI configuration and documentation will have to name explicitly;
+  a saved set row re-syncs both fields from storage after either commits,
+  so a value typed into the other field within that window is overwritten
+  (timing-dependent, not reached at typing speed); the chooser's
+  *Pläne verwalten* link sits 4px right of its label; the Training card's
+  footer keeps the 44px link's air; the session screen's title repeats
+  "Session"; two-word exercise names wrap at 360px behind the 44px controls.
+
 **Infrastructure only — built, tested, not reachable from any screen**
-- Gym plans, rest days, pause periods, tombstones, profile: stores +
+- Rest days, pause periods, tombstones, profile: stores +
   repositories exist, no logic and no UI. **Weight entries are now reachable**
   — the Gym session screen writes one when a bodyweight exercise needs it.
 - `RunRecord` carries `source`/`externalId` as the import seam. No importer.
@@ -400,6 +476,26 @@ own history; no population norms, ever.
 
 ## Risks and known debt
 
+- **Gym replay is not bit-deterministic across record ids** (found in WP2-1,
+  deliberately not fixed there). `gymService.buildExerciseDays` reads sets
+  through the `by_date` index, whose order within a day is the record id —
+  random — and `core/gym/performance.ts musclePerformance()` sums each
+  group's weighted ratios in that order. Floating-point addition is not
+  associative, so **the same sets under different ids replay to numbers
+  that differ in the last ULP**. Reproduction:
+  `src/storage/services/planEquivalence.test.ts` (seeded ids, control =
+  manual vs manual). Observed over 20 seeded runs: 2 ULP at the source
+  (a muscle ratio, |Δ| = 4.4e-16 at ≈ 1.12) and, propagated through
+  `(ratio − 1) × 100`, the curve and the daily fold, up to 13 ULP of a
+  0–1000 performance score (|Δ| = 1.5e-12 at ≈ 595), 4 ULP of a rating, 4 ULP
+  of a ladder position; a movement (`p[t] − p[t−1]`) inherits 2 ULP of its
+  operands. Never a discrete output, never a rank, and nine orders of
+  magnitude below any genuine scoring change. The fix — a deterministic set
+  order in `buildExerciseDays` (date, exercise, order) — was tried: it makes
+  manual and plan entry byte-identical and keeps every Stage 2 baseline,
+  **but changes the pinned `domainOutputs` Gym-history fingerprint**, which
+  hashes `days` in index order. That makes it a scoring-engine work package
+  with its own deliberate re-pin, not a WP2 side effect.
 - **Legacy Sport is unreachable** (above). Real RC2 users are affected.
 - ~~**`gymPerformanceOverSpan` anchors to an exercise's first recorded day, for
   ever.**~~ **Addressed for the rating in Phase 4.1** (D100): the trend and
@@ -530,6 +626,19 @@ date-dependent assertion ("a missed week costs half a week rather than the
 balance") identically on the pre-integration base `fc2ffff`, and `body.mjs`'s
 dev-page tap grid misses one region of about its own pitch while the finer
 production probe reaches all ten. Neither test was edited for the release.
+
+**The `phase41` date dependence, resolved (WP2 final gate).** The Gym seed
+in `phase41.mjs` and its copy in `phase41-a11y.mjs` laid `metWeeks` 7-day
+blocks back from the run date, while the ledger counts ISO weeks (Monday to
+Sunday). From Thursday to Sunday the last block straddled two ISO weeks, so
+"the middle week" deleted by `weekKey` was not the seed's middle block and
+the Endurance balance read `1.0 von 4 Wochen` — which the rule by hand
+confirms is correct for that input (a one-session first week, a deleted
+week, one met week). Both seeds now lay complete ISO weeks with sessions on
+Monday, Wednesday and Friday, ending with the last complete week at least
+`silentDays` before today; the ordinary run and runs with `CLOCK=YYYY-MM-DD`
+on 2026-09-13, 09-14, 09-16, 10-01, 12-30 and 2027-01-02 all read
+`1.5 von 4 Wochen`. Nothing in production changed.
 
 **Next for the muscle map, none of it blocking:** a finer pitch for the
 `body.mjs` probe; the "several exercises" line for a group whose latest day

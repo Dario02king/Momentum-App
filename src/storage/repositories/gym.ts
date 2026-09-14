@@ -1,12 +1,14 @@
 import { nowIso } from '../../core/clock';
 import { weekKeyOf, type DateKey, type WeekKey } from '../../core/dates';
 import { createId } from '../../core/ids';
-import type {
-  ExerciseRecord,
-  GymPlanRecord,
-  GymSessionRecord,
-  GymSetRecord,
-  MuscleGroup,
+import {
+  isTrainingPlan,
+  type ExerciseRecord,
+  type GymPlanStoreRecord,
+  type GymSessionRecord,
+  type GymSetRecord,
+  type MuscleGroup,
+  type TrainingPlanRecord,
 } from '../../core/model';
 import { STORES } from '../db';
 import { createRepository } from './base';
@@ -22,7 +24,7 @@ import { createRepository } from './base';
  */
 
 const exercises = createRepository<ExerciseRecord>(STORES.exercises);
-const plans = createRepository<GymPlanRecord>(STORES.gymPlans);
+const plans = createRepository<GymPlanStoreRecord>(STORES.gymPlans);
 const sessions = createRepository<GymSessionRecord>(STORES.gymSessions);
 const sets = createRepository<GymSetRecord>(STORES.gymSets);
 
@@ -42,12 +44,29 @@ export const exercisesRepository = {
   },
 };
 
+/**
+ * The `gymPlans` store holds the user's training plans (WP2-1).
+ *
+ * It was declared in iteration 2 for a generated-plan shape nothing ever
+ * wrote. `getAll` returns whatever is there, for backup; `listTrainingPlans`
+ * returns only records carrying the training-plan discriminator, so a
+ * record of any other shape — restored from a hand-edited file, say — is
+ * preserved and never shown as a plan.
+ */
 export const gymPlansRepository = {
-  get: (id: string) => plans.get(id),
+  async get(id: string): Promise<TrainingPlanRecord | undefined> {
+    const record = await plans.get(id);
+    return isTrainingPlan(record) ? record : undefined;
+  },
   getAll: () => plans.getAll(),
-  put: (record: GymPlanRecord) => plans.put(record),
+  async listTrainingPlans(): Promise<TrainingPlanRecord[]> {
+    return (await plans.getAll())
+      .filter(isTrainingPlan)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+  },
+  put: (record: TrainingPlanRecord) => plans.put(record),
   remove: (id: string) => plans.remove(id),
-  replaceAll: async (records: GymPlanRecord[]) => {
+  replaceAll: async (records: GymPlanStoreRecord[]) => {
     await plans.clear();
     await plans.putMany(records);
   },

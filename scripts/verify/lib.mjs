@@ -37,6 +37,16 @@ export async function onboard(page, { questions = [/Wie gut hast du gesch/, /Wie
   await page.waitForTimeout(900);
 }
 
+/**
+ * Bereiche → Gym → Muskelgruppen (WP2-2). The Gym area opens on its hub;
+ * the body and the ten rows live one tap further, on `#/areas/gym/muscles`,
+ * which is also the only place the 3D chunk is fetched.
+ */
+export async function openMuscles(page, { wait = 4500 } = {}) {
+  await page.getByRole('button', { name: 'Muskelgruppen öffnen' }).click();
+  await page.waitForTimeout(wait);
+}
+
 /** Reads the stored domains straight out of IndexedDB. */
 export async function storedDomains(page) {
   return page.evaluate(async () => {

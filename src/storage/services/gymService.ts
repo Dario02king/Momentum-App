@@ -17,9 +17,12 @@ import { createId } from '../../core/ids';
 import type {
   ExerciseLoadType,
   ExerciseRecord,
+  GymSessionExerciseSnapshot,
   GymSessionRecord,
   GymSetRecord,
   MuscleGroup,
+  SessionExerciseSource,
+  TrainingPlanRecord,
 } from '../../core/model';
 import { ensureCurrentSnapshot } from '../configService';
 import {
@@ -168,6 +171,22 @@ export interface SessionExercise {
   sets: GymSetRecord[];
   /** The best set of this exercise on this day, if any set is scorable. */
   bestScore: number | null;
+  /**
+   * Where the session says the exercise came from, when the session owns a
+   * snapshot; `null` for a session that renders from its sets alone.
+   */
+  source: SessionExerciseSource | null;
+  /**
+   * The most recent earlier day this exercise was recorded, and its sets in
+   * order — what the user did last time. `null` when there is no earlier
+   * day. The session on screen is never its own "last time".
+   */
+  lastRecorded: LastRecorded | null;
+}
+
+export interface LastRecorded {
+  date: DateKey;
+  sets: { reps: number; weightGrams: number }[];
 }
 
 export interface GymSessionView {
@@ -201,10 +220,158 @@ export async function loadSession(
     // opened in the edit window still reads the body it was performed with.
     weightEntriesRepository.latestOnOrBefore(session.date),
   ]);
+  const grouped = groupSets(sets, exercises, toGrams(bodyweight?.kg ?? null), session.exercises);
   return {
     session,
-    exercises: groupSets(sets, exercises, toGrams(bodyweight?.kg ?? null)),
+    exercises: await withLastRecorded(grouped, session.id, session.date),
     editable: isSameWeek(session.date, reference),
+  };
+}
+
+/* ── A planned workout before it is a session ──────────────────────────── */
+
+/**
+ * What the user chose to do today, before any of it has happened.
+ *
+ * Choosing a plan is not a workout. The draft is the plan's lines — plus any
+ * exercise added on the spot — held by the screen and written nowhere: no
+ * session row exists, so nothing has been credited for attendance, until
+ * the first set is actually saved (`startSessionFromDraft`). A reload before
+ * that forgets the choice, which is correct: there was nothing to remember.
+ */
+export interface SessionDraft {
+  /** Provenance only. Never used to resolve the draft's contents. */
+  planId: string | null;
+  exercises: GymSessionExerciseSnapshot[];
+}
+
+/** A draft from a saved plan: its lines, in its order, all marked `plan`. */
+export function draftFromPlan(plan: TrainingPlanRecord): SessionDraft {
+  return {
+    planId: plan.id,
+    exercises: [...plan.exercises]
+      .sort((a, b) => a.order - b.order)
+      .map((line, index) => ({
+        exerciseId: line.exerciseId,
+        name: line.name,
+        order: index,
+        source: 'plan' as const,
+      })),
+  };
+}
+
+/** The draft as the session screen shows it: every exercise, no set yet. */
+export async function loadDraftView(
+  draft: SessionDraft,
+  date: DateKey = today(),
+): Promise<Omit<GymSessionView, 'session'>> {
+  const exercises = await listExercises();
+  const grouped = groupSets([], exercises, null, draft.exercises);
+  return {
+    exercises: await withLastRecorded(grouped, null, date),
+    editable: true,
+  };
+}
+
+/**
+ * Persists the draft as the day's session, the moment there is something
+ * real to persist.
+ *
+ * Called by the screen together with the first saved set, never on its
+ * own. The session is the day's existing one if there is one — one session
+ * per calendar day, and a second plan never overwrites a snapshot already
+ * written — otherwise a new one carrying the draft as its own snapshot.
+ * Calling it twice for the same day returns the same session and writes
+ * the snapshot once, so a retry cannot duplicate anything.
+ */
+export async function startSessionFromDraft(
+  draft: SessionDraft,
+  date: DateKey = today(),
+  reference: DateKey = today(),
+): Promise<GymSessionRecord> {
+  const session = await openSessionForDay(date, reference);
+  if (session.exercises !== undefined) return session;
+  const next: GymSessionRecord = {
+    ...session,
+    planId: session.planId ?? draft.planId,
+    exercises: draft.exercises.map((entry, index) => ({ ...entry, order: index })),
+    updatedAt: nowIso(),
+  };
+  await gymSessionsRepository.put(next);
+  return next;
+}
+
+/**
+ * Adds an exercise to a session's own snapshot, as an extra.
+ *
+ * A session without a snapshot renders from its sets and needs no entry; a
+ * session that already names the exercise keeps the entry it has. The saved
+ * plan is never touched from here — an extra belongs to the day it was done.
+ */
+export async function addSessionExercise(
+  sessionId: string,
+  exerciseId: string,
+  reference: DateKey = today(),
+): Promise<GymSessionRecord> {
+  const session = await gymSessionsRepository.get(sessionId);
+  if (!session) throw new Error(`Unknown session ${sessionId}`);
+  if (session.exercises === undefined) return session;
+  if (session.exercises.some((entry) => entry.exerciseId === exerciseId)) return session;
+  assertEditable(session.date, reference);
+  const exercise = await exercisesRepository.get(exerciseId);
+  const next: GymSessionRecord = {
+    ...session,
+    exercises: [
+      ...session.exercises,
+      {
+        exerciseId,
+        name: exercise?.name ?? exerciseId,
+        order: session.exercises.length,
+        source: 'extra',
+      },
+    ],
+    updatedAt: nowIso(),
+  };
+  await gymSessionsRepository.put(next);
+  return next;
+}
+
+/**
+ * What the user did the last time they recorded an exercise, per exercise.
+ *
+ * Read from the sets, never invented: an exercise with no earlier day has
+ * `null`. The session being viewed is excluded so that a workout in
+ * progress is never its own "last time".
+ */
+async function withLastRecorded(
+  entries: SessionExercise[],
+  excludeSessionId: string | null,
+  before: DateKey,
+): Promise<SessionExercise[]> {
+  return Promise.all(
+    entries.map(async (entry) => ({
+      ...entry,
+      lastRecorded: await lastRecordedFor(entry.exercise.id, excludeSessionId, before),
+    })),
+  );
+}
+
+export async function lastRecordedFor(
+  exerciseId: string,
+  excludeSessionId: string | null,
+  before: DateKey = today(),
+): Promise<LastRecorded | null> {
+  const sets = (await gymSetsRepository.listByExercise(exerciseId)).filter(
+    (set) => set.sessionId !== excludeSessionId && set.date <= before && set.reps > 0,
+  );
+  if (sets.length === 0) return null;
+  const latest = sets.reduce((max, set) => (set.date > max ? set.date : max), sets[0]!.date);
+  return {
+    date: latest,
+    sets: sets
+      .filter((set) => set.date === latest)
+      .sort((a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt))
+      .map((set) => ({ reps: set.reps, weightGrams: set.weightGrams })),
   };
 }
 
@@ -213,14 +380,33 @@ function toGrams(kg: number | null): number | null {
   return kg === null || !Number.isFinite(kg) || kg <= 0 ? null : Math.round(kg * 1000);
 }
 
+/**
+ * The exercises of a session, in order.
+ *
+ * With a snapshot, the session's own list is the order and every entry is
+ * present whether or not it has a set yet; a set whose exercise the snapshot
+ * does not name is appended, so nothing recorded can ever be hidden.
+ * Without one — every session before WP2-1, and every free session — the
+ * order is the order the sets were added in, exactly as it always was.
+ */
 function groupSets(
   sets: GymSetRecord[],
   exercises: ExerciseRecord[],
   bodyweightGrams: number | null,
+  snapshot: readonly GymSessionExerciseSnapshot[] | undefined,
 ): SessionExercise[] {
   const byId = new Map(exercises.map((exercise) => [exercise.id, exercise]));
   const order: string[] = [];
   const grouped = new Map<string, GymSetRecord[]>();
+  const sources = new Map<string, SessionExerciseSource>();
+  const snapshotNames = new Map<string, string>();
+  for (const entry of [...(snapshot ?? [])].sort((a, b) => a.order - b.order)) {
+    if (grouped.has(entry.exerciseId)) continue;
+    grouped.set(entry.exerciseId, []);
+    order.push(entry.exerciseId);
+    sources.set(entry.exerciseId, entry.source);
+    snapshotNames.set(entry.exerciseId, entry.name);
+  }
   for (const set of [...sets].sort((a, b) => a.order - b.order)) {
     const list = grouped.get(set.exerciseId);
     if (list) list.push(set);
@@ -237,10 +423,11 @@ function groupSets(
       exercise:
         byId.get(exerciseId) ??
         /* An exercise that has been deleted still has to render its history:
-           the sets know their own muscles, so nothing is lost but the name. */
+           the sets know their own muscles, and the snapshot its name, so
+           nothing is lost. */
         ({
           id: exerciseId,
-          name: exerciseId,
+          name: snapshotNames.get(exerciseId) ?? exerciseId,
           muscles: list[0]?.muscles ?? [],
           ...(list[0]?.primaryMuscles === undefined
             ? {}
@@ -254,6 +441,8 @@ function groupSets(
         } satisfies ExerciseRecord),
       sets: list,
       bestScore: best,
+      source: snapshot === undefined ? null : (sources.get(exerciseId) ?? 'extra'),
+      lastRecorded: null,
     };
   });
 }
@@ -378,6 +567,19 @@ export async function removeExerciseFromSession(
     assertEditable(set.date, reference);
     await gymSetsRepository.remove(set.id);
   }
+  // The session's own snapshot forgets it too, so a planned exercise the
+  // user removed does not come back as an empty line. The plan is untouched.
+  const session = await gymSessionsRepository.get(sessionId);
+  if (session?.exercises?.some((entry) => entry.exerciseId === exerciseId)) {
+    assertEditable(session.date, reference);
+    await gymSessionsRepository.put({
+      ...session,
+      exercises: session.exercises
+        .filter((entry) => entry.exerciseId !== exerciseId)
+        .map((entry, index) => ({ ...entry, order: index })),
+      updatedAt: nowIso(),
+    });
+  }
 }
 
 /**
@@ -397,6 +599,18 @@ export async function openSessionForDay(
   assertEditable(date, reference);
   const snapshot = await ensureCurrentSnapshot();
   return gymSessionsRepository.create({ date, configSnapshotId: snapshot.id });
+}
+
+/** The day's session if one exists — read only, never created. */
+export async function existingSessionForDay(date: DateKey = today()): Promise<GymSessionRecord | null> {
+  const existing = await gymSessionsRepository.listByDate(date);
+  return existing[existing.length - 1] ?? null;
+}
+
+/** The most recent session of all, for the hub to name; `null` before the first. */
+export async function latestGymSession(): Promise<GymSessionRecord | null> {
+  const all = await gymSessionsRepository.getAll();
+  return all[all.length - 1] ?? null;
 }
 
 /* ── Performance, replayed ──────────────────────────────────────────────── */
