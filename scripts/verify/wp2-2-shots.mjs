@@ -101,7 +101,20 @@ for (const width of CHECK_WIDTHS) {
     const measuredCount = Number(/^(\d+) von/.exec(summaryText)?.[1] ?? 0);
     check(`${width}: ten markers, lit only where a group is measured`, lit.length === 10 && lit.filter((s) => s === 'improved' || s === 'unchanged' || s === 'declined').length === measuredCount, lit.join(','));
     const weekText = ((await page.locator('.gym-hub__week').textContent()) ?? '').trim();
-    check(`${width}: above target the week line is not a fraction`, /^\d+ Sessions diese Woche ·\u00A0Ziel\u00A0\d+$/.test(weekText), weekText);
+    // The sentence follows the stored count against the target of 3, whatever
+    // weekday the suite runs on: a fraction below, "Ziel erreicht" at, "· Ziel 3" above.
+    const sessionsThisWeek = await page.evaluate(async () => {
+      const db = await new Promise((res, rej) => { const r = indexedDB.open('momentum'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+      const rows = await new Promise((res, rej) => { const r = db.transaction(['gymSessions'], 'readonly').objectStore('gymSessions').getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+      const now = new Date(); now.setHours(12, 0, 0, 0);
+      const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const from = key(monday);
+      const to = key(now);
+      return rows.filter((r) => r.date >= from && r.date <= to).length;
+    });
+    const expectedWeek = sessionsThisWeek < 3 ? `${sessionsThisWeek} von 3 Sessions diese Woche` : sessionsThisWeek === 3 ? '3 Sessions diese Woche ·\u00A0Ziel\u00A0erreicht' : `${sessionsThisWeek} Sessions diese Woche ·\u00A0Ziel\u00A03`;
+    check(`${width}: the week line reads the stored count in the right form`, weekText === expectedWeek, `${weekText} | expected ${expectedWeek}`);
     check(`${width}: the plan count is a figure`, ((await page.locator('.gym-hub__plans span').first().textContent()) ?? '').trim() === '1 Plan');
     check(`${width}: the rating board is still on the hub, below`, (await page.locator('[data-metric="gym-rating"]').count()) === 1);
     check(`${width}: the plans are reachable from the hub`, await page.getByRole('button', { name: 'Pläne verwalten' }).isVisible() && (await page.locator('.plans__slots').count()) === 1);

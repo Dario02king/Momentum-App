@@ -618,6 +618,20 @@ balance") identically on the pre-integration base `fc2ffff`, and `body.mjs`'s
 dev-page tap grid misses one region of about its own pitch while the finer
 production probe reaches all ten. Neither test was edited for the release.
 
+**The `phase41` date dependence, filed (WP2 hardening).** The check seeds
+three "met weeks" as 7-day blocks counted back from the run date
+(`seedGym`, sessions at day offsets 0, 2 and 4 of each block), then deletes
+"the middle week" by the sessions' stored `weekKey`, which is the ISO week
+(Monday to Sunday), and expects the Endurance progress to read
+`1.5 von 4 Wochen`. The seed's blocks and the ledger's ISO weeks only line
+up on some weekdays; on the others the deleted ISO week straddles two seed
+blocks, a different set of sessions disappears, and the tile reads
+`1.0 von 4 Wochen`. Observed failing on 2026-09-13 (a Sunday) and recorded
+as failing on `fc2ffff` before the muscle-map integration; no run in the WP2
+series has seen it pass, so the passing weekdays are not verified. The
+mechanism is suspected, not proven: the fix would anchor the seed to ISO
+weeks (a harness change, not a product one) and is not part of WP2.
+
 **Next for the muscle map, none of it blocking:** a finer pitch for the
 `body.mjs` probe; the "several exercises" line for a group whose latest day
 had more than one (the ids are on the view model, the copy is not decided);

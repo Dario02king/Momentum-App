@@ -55,7 +55,19 @@ export function TrainingCard({
   // The same two stored values, read three ways: a fraction only while the
   // target is ahead, because "7 von 3" reads as a bounded progress figure
   // that it is not. No number here changes; only the sentence does.
-  const weekLine = rating && rating.started ? weekSentence(t, rating.state.sessionsThisWeek, rating.state.weeklyTarget) : t('gymHub.training.none');
+  //
+  // Whether a session exists is the session log's fact, not the ledger's:
+  // the Boss ledger counts Gym as started only from its first *scored* day,
+  // and a user's first session is logged on a day that has not closed yet.
+  // Gating on the ledger said "no session yet" right above "one logged
+  // today". While either is still loading the line says nothing — loading
+  // is not "none".
+  const weekLine =
+    facts === null || rating === null
+      ? null
+      : facts.latest
+        ? weekSentence(t, rating.state.sessionsThisWeek, rating.state.weeklyTarget)
+        : t('gymHub.training.none');
   const lastLine = facts?.latest
     ? facts.today
       ? t('gymHub.training.today')
@@ -75,7 +87,7 @@ export function TrainingCard({
   return (
     <Section label={t('gymHub.training.title')}>
       <Card className="gym-hub__training">
-        <p className="gym-hub__week">{weekLine}</p>
+        <p className="gym-hub__week">{weekLine ?? '\u00A0'}</p>
         {lastLine ? <p className="gym-hub__last">{lastLine}</p> : null}
         <div className="gym-hub__action">
           <Button variant="primary" block onClick={onStart}>

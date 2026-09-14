@@ -261,6 +261,17 @@ for (const width of WIDTHS) {
   await page.waitForTimeout(700);
   const weekAfter = await weekValue();
   check(`${width}: the week counts the session once`, weekAfter === weekBefore + 1, `${weekBefore} → ${weekAfter}`);
+
+  /* ── The hub on the day of the first session: a fact, not the ledger ──── */
+  // No day is scored yet, so the Boss ledger has not "started" Gym; the
+  // Training card still counts the session, because the session log did.
+  await page.locator('.tab-bar button', { hasText: 'Bereiche' }).click();
+  await page.waitForTimeout(500);
+  await page.getByRole('radio', { name: 'Gym' }).click();
+  await page.waitForTimeout(1500);
+  const hubWeek = ((await page.locator('.gym-hub__week').textContent()) ?? '').trim();
+  check(`${width}: the hub counts today's session in the week line`, /^\d+ von 3 Sessions diese Woche$/.test(hubWeek), hubWeek);
+  check(`${width}: and says one is logged today`, ((await page.locator('.gym-hub__last').textContent()) ?? '').trim() === 'Heute bereits eine Session erfasst.');
   check(`${width}: no page errors`, errors.length === 0, errors.join(' | '));
 
   await ctx.close();
