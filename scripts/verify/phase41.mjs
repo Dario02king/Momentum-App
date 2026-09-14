@@ -20,9 +20,15 @@ const pad = (n, l = 2) => String(n).padStart(l, '0');
 /**
  * Writes gym sessions and sets straight into IndexedDB.
  *
- * Weeks are counted back from today so the fixture means the same thing
- * whenever it is run. `metWeeks` weeks of three sessions each, then
- * `silentDays` of nothing.
+ * The fixture is anchored to **ISO weeks**, because that is what the ledger
+ * counts: `metWeeks` complete Monday-to-Sunday weeks with a session on the
+ * Monday, Wednesday and Friday of each, ending with the last complete week
+ * that finishes at least `silentDays` before today (at least one day, so the
+ * running week is never seeded). Counting 7-day blocks back from the run
+ * date instead meant that from Thursday to Sunday a block straddled two ISO
+ * weeks, the "middle week" deleted by `weekKey` was not the seed's middle
+ * block, and the Endurance balance read 1.0 where the assertion said 1.5 —
+ * correctly, for the input it had been given.
  */
 async function seedGym(page, { metWeeks, silentDays = 0, improving = true }) {
   return page.evaluate(
@@ -48,8 +54,8 @@ async function seedGym(page, { metWeeks, silentDays = 0, improving = true }) {
         });
       const p = (n, l = 2) => String(n).padStart(l, '0');
       const key = (d) => `${p(d.getFullYear(), 4)}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-      const shift = (n) => {
-        const d = new Date();
+      const shift = (n, from = new Date()) => {
+        const d = new Date(from);
         d.setHours(12, 0, 0, 0);
         d.setDate(d.getDate() + n);
         return d;
@@ -63,11 +69,16 @@ async function seedGym(page, { metWeeks, silentDays = 0, improving = true }) {
         return `${p(y, 4)}-W${p(1 + Math.round((t - f) / (7 * 86400000)))}`;
       };
 
+      // The last day that may hold a session, then back to the Sunday that
+      // closes the last complete ISO week on or before it.
+      const end = shift(-Math.max(1, silentDays));
+      const lastSunday = shift(-(end.getDay() % 7), end);
+      const firstMonday = shift(-6 - 7 * (metWeeks - 1), lastSunday);
+      const origin = key(shift(-2, firstMonday));
+
       const db = await open();
       const snaps = await all(db, 'configSnapshots');
       const settings = await all(db, 'settings');
-      const totalDays = metWeeks * 7 + silentDays;
-      const origin = key(shift(-(totalDays + 2)));
       await putAll(db, 'configSnapshots', snaps.map((s, i) => (i === 0 ? { ...s, effectiveFrom: origin } : s)));
       await putAll(db, 'settings', [{ ...settings[0], firstUseDate: origin }]);
 
@@ -76,8 +87,7 @@ async function seedGym(page, { metWeeks, silentDays = 0, improving = true }) {
       let setIndex = 0;
       for (let week = 0; week < metWeeks; week += 1) {
         for (const offset of [0, 2, 4]) {
-          const back = totalDays - (week * 7 + offset);
-          const at = shift(-back);
+          const at = shift(week * 7 + offset, firstMonday);
           const date = key(at);
           const id = `seed-${date}`;
           sessions.push({
@@ -117,8 +127,14 @@ async function seedGym(page, { metWeeks, silentDays = 0, improving = true }) {
   );
 }
 
+/**
+ * `CLOCK=YYYY-MM-DD` runs the suite as if today were that date: the page's
+ * clock is shifted before it loads, timers keep running. For proving the
+ * fixtures mean the same thing on any weekday; unset, today is today.
+ */
 async function ready(opts = {}, seedOpts = null) {
   const ctx = await browser.newContext({ ...phone, ...opts });
+  if (process.env.CLOCK) await ctx.clock.setSystemTime(new Date(`${process.env.CLOCK}T12:00:00`));
   const page = await ctx.newPage();
   await page.goto(URL_APP, { waitUntil: 'networkidle' });
   await page.waitForTimeout(400);

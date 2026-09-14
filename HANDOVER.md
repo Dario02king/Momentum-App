@@ -195,6 +195,15 @@ records (answers, sessions, sets, snapshots)
   counts are figures everywhere (`1 Plan`, `1 Übung`); and the "Laufen"
   heading that `RunningTerminal` repeated under the area's own is gone.
   Before/after pairs: `docs/design/wp2-polish/`.
+- Follow-up debt from the pre-merge gates, none of it blocking: the
+  repository's default branch is named `claude/momentum-pwa-spec-j82dhm`,
+  which CI configuration and documentation will have to name explicitly;
+  a saved set row re-syncs both fields from storage after either commits,
+  so a value typed into the other field within that window is overwritten
+  (timing-dependent, not reached at typing speed); the chooser's
+  *Pläne verwalten* link sits 4px right of its label; the Training card's
+  footer keeps the 44px link's air; the session screen's title repeats
+  "Session"; two-word exercise names wrap at 360px behind the 44px controls.
 
 **Infrastructure only — built, tested, not reachable from any screen**
 - Rest days, pause periods, tombstones, profile: stores +
@@ -618,19 +627,18 @@ balance") identically on the pre-integration base `fc2ffff`, and `body.mjs`'s
 dev-page tap grid misses one region of about its own pitch while the finer
 production probe reaches all ten. Neither test was edited for the release.
 
-**The `phase41` date dependence, filed (WP2 hardening).** The check seeds
-three "met weeks" as 7-day blocks counted back from the run date
-(`seedGym`, sessions at day offsets 0, 2 and 4 of each block), then deletes
-"the middle week" by the sessions' stored `weekKey`, which is the ISO week
-(Monday to Sunday), and expects the Endurance progress to read
-`1.5 von 4 Wochen`. The seed's blocks and the ledger's ISO weeks only line
-up on some weekdays; on the others the deleted ISO week straddles two seed
-blocks, a different set of sessions disappears, and the tile reads
-`1.0 von 4 Wochen`. Observed failing on 2026-09-13 (a Sunday) and recorded
-as failing on `fc2ffff` before the muscle-map integration; no run in the WP2
-series has seen it pass, so the passing weekdays are not verified. The
-mechanism is suspected, not proven: the fix would anchor the seed to ISO
-weeks (a harness change, not a product one) and is not part of WP2.
+**The `phase41` date dependence, resolved (WP2 final gate).** The Gym seed
+in `phase41.mjs` and its copy in `phase41-a11y.mjs` laid `metWeeks` 7-day
+blocks back from the run date, while the ledger counts ISO weeks (Monday to
+Sunday). From Thursday to Sunday the last block straddled two ISO weeks, so
+"the middle week" deleted by `weekKey` was not the seed's middle block and
+the Endurance balance read `1.0 von 4 Wochen` — which the rule by hand
+confirms is correct for that input (a one-session first week, a deleted
+week, one met week). Both seeds now lay complete ISO weeks with sessions on
+Monday, Wednesday and Friday, ending with the last complete week at least
+`silentDays` before today; the ordinary run and runs with `CLOCK=YYYY-MM-DD`
+on 2026-09-13, 09-14, 09-16, 10-01, 12-30 and 2027-01-02 all read
+`1.5 von 4 Wochen`. Nothing in production changed.
 
 **Next for the muscle map, none of it blocking:** a finer pitch for the
 `body.mjs` probe; the "several exercises" line for a group whose latest day
